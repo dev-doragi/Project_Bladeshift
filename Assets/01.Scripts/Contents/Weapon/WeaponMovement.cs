@@ -69,9 +69,18 @@ public class WeaponMovement : MonoBehaviour
         _rb.MoveRotation(_rb.rotation + (spinSpeed * Time.fixedDeltaTime));
     }
 
-    public void ExecutePinFlight(Vector2 direction, float speed, LayerMask enemyMask, LayerMask wallMask, Func<Transform, bool> onCheckTarget, Action<Transform> onPinned)
+    public void ExecutePinFlight(
+        Vector2 direction,
+        float speed,
+        LayerMask enemyMask,
+        LayerMask wallMask,
+        Func<Vector2> getRangeCenter,
+        float maxRange,
+        Func<Transform, bool> onCheckTarget,
+        Action<Transform> onPinned,
+        Action onRangeExceeded)
     {
-        StartCoroutine(PinFlightRoutine(direction, speed, enemyMask, wallMask, onCheckTarget, onPinned));
+        StartCoroutine(PinFlightRoutine(direction, speed, enemyMask, wallMask, getRangeCenter, maxRange, onCheckTarget, onPinned, onRangeExceeded));
     }
 
     public void ExecuteOrbitFinisher(Vector2 pivot, float radius, float duration, Action onReleasePoint, Action onComplete)
@@ -89,13 +98,23 @@ public class WeaponMovement : MonoBehaviour
         StartCoroutine(ReturnRoutine(getTargetPos, _minReturnSpeed, _maxReturnSpeed, controlRadius, _returnStopDistance, checkIntercept, onReturnComplete));
     }
 
-    private IEnumerator PinFlightRoutine(Vector2 direction, float speed, LayerMask enemyMask, LayerMask wallMask, Func<Transform, bool> onCheckTarget, Action<Transform> onPinned)
+    private IEnumerator PinFlightRoutine(
+        Vector2 direction,
+        float speed,
+        LayerMask enemyMask,
+        LayerMask wallMask,
+        Func<Vector2> getRangeCenter,
+        float maxRange,
+        Func<Transform, bool> onCheckTarget,
+        Action<Transform> onPinned,
+        Action onRangeExceeded)
     {
         if (_rb == null) yield break;
 
         Vector2 flightDirection = direction.sqrMagnitude > 0f ? direction.normalized : Vector2.right;
         int enemyLayerMask = enemyMask.value;
         int wallLayerMask = wallMask.value;
+        float safeMaxRange = Mathf.Max(0f, maxRange);
 
         while (true)
         {
@@ -124,7 +143,11 @@ public class WeaponMovement : MonoBehaviour
 
             RaycastHit2D wallHit = Physics2D.Raycast(currentPos, flightDirection, moveDistance, wallLayerMask);
             bool hasWallHit = wallHit.collider != null;
-            float actualMoveDist = hasWallHit ? wallHit.distance : moveDistance;
+            float rangeMoveDist = moveDistance;
+            bool hasRangeHit = TryGetRangeBoundaryDistance(currentPos, flightDirection, moveDistance, getRangeCenter, safeMaxRange, out rangeMoveDist);
+            float actualMoveDist = moveDistance;
+            if (hasWallHit) actualMoveDist = Mathf.Min(actualMoveDist, wallHit.distance);
+            if (hasRangeHit) actualMoveDist = Mathf.Min(actualMoveDist, rangeMoveDist);
 
             if (onCheckTarget != null)
             {
@@ -170,15 +193,53 @@ public class WeaponMovement : MonoBehaviour
                 }
             }
 
-            if (hasWallHit)
+            if (hasWallHit && wallHit.distance <= rangeMoveDist + 0.0001f)
             {
                 _rb.MovePosition(wallHit.point);
                 onPinned?.Invoke(wallHit.transform);
                 yield break;
             }
 
+            if (hasRangeHit)
+            {
+                _rb.MovePosition(currentPos + (flightDirection * rangeMoveDist));
+                onRangeExceeded?.Invoke();
+                yield break;
+            }
+
             _rb.MovePosition(currentPos + (flightDirection * moveDistance));
         }
+    }
+
+    private bool TryGetRangeBoundaryDistance(
+        Vector2 currentPos,
+        Vector2 moveDirection,
+        float moveDistance,
+        Func<Vector2> getRangeCenter,
+        float maxRange,
+        out float boundaryDistance)
+    {
+        boundaryDistance = moveDistance;
+        if (getRangeCenter == null || maxRange <= 0f || moveDistance <= 0f) return false;
+
+        Vector2 rangeCenter = getRangeCenter();
+        Vector2 nextPos = currentPos + (moveDirection * moveDistance);
+        if (Vector2.Distance(rangeCenter, nextPos) <= maxRange) return false;
+
+        Vector2 fromCenter = currentPos - rangeCenter;
+        float b = Vector2.Dot(fromCenter, moveDirection);
+        float c = Vector2.Dot(fromCenter, fromCenter) - (maxRange * maxRange);
+        float discriminant = (b * b) - c;
+
+        if (discriminant < 0f)
+        {
+            boundaryDistance = moveDistance;
+            return true;
+        }
+
+        float t = -b + Mathf.Sqrt(discriminant);
+        boundaryDistance = Mathf.Clamp(t, 0f, moveDistance);
+        return true;
     }
 
     private IEnumerator ReturnRoutine(Func<Vector2> getTargetPos, float minSpeed, float maxSpeed, float slowRadius, float stopDistance, Func<Vector2, Vector2, bool> checkIntercept, Action<bool> onReturnComplete)
