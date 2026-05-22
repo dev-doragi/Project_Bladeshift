@@ -76,11 +76,14 @@ public class WeaponMovement : MonoBehaviour
         LayerMask wallMask,
         Func<Vector2> getRangeCenter,
         float maxRange,
+        float rangeBrakeDeceleration,
+        float rangeAutoReturnSpeedThreshold,
+        Action onEnterRangeBraking,
         Func<Transform, bool> onCheckTarget,
         Action<Transform> onPinned,
         Action onRangeExceeded)
     {
-        StartCoroutine(PinFlightRoutine(direction, speed, enemyMask, wallMask, getRangeCenter, maxRange, onCheckTarget, onPinned, onRangeExceeded));
+        StartCoroutine(PinFlightRoutine(direction, speed, enemyMask, wallMask, getRangeCenter, maxRange, rangeBrakeDeceleration, rangeAutoReturnSpeedThreshold, onEnterRangeBraking, onCheckTarget, onPinned, onRangeExceeded));
     }
 
     public void ExecuteOrbitFinisher(Vector2 pivot, float radius, float duration, Action onReleasePoint, Action onComplete)
@@ -105,6 +108,9 @@ public class WeaponMovement : MonoBehaviour
         LayerMask wallMask,
         Func<Vector2> getRangeCenter,
         float maxRange,
+        float rangeBrakeDeceleration,
+        float rangeAutoReturnSpeedThreshold,
+        Action onEnterRangeBraking,
         Func<Transform, bool> onCheckTarget,
         Action<Transform> onPinned,
         Action onRangeExceeded)
@@ -115,6 +121,10 @@ public class WeaponMovement : MonoBehaviour
         int enemyLayerMask = enemyMask.value;
         int wallLayerMask = wallMask.value;
         float safeMaxRange = Mathf.Max(0f, maxRange);
+        float safeBrakeDeceleration = Mathf.Max(0f, rangeBrakeDeceleration);
+        float safeAutoReturnThreshold = Mathf.Max(0f, rangeAutoReturnSpeedThreshold);
+        float currentFlightSpeed = Mathf.Max(0f, speed);
+        bool isRangeBraking = false;
 
         while (true)
         {
@@ -135,10 +145,43 @@ public class WeaponMovement : MonoBehaviour
                 }
             }
 
-            float moveDistance = speed * Time.fixedDeltaTime;
+            if (isRangeBraking)
+            {
+                currentFlightSpeed = Mathf.Max(0f, currentFlightSpeed - (safeBrakeDeceleration * Time.fixedDeltaTime));
+                if (currentFlightSpeed <= safeAutoReturnThreshold)
+                {
+                    onRangeExceeded?.Invoke();
+                    yield break;
+                }
+
+                float brakeMoveDistance = currentFlightSpeed * Time.fixedDeltaTime;
+                if (brakeMoveDistance <= 0f)
+                {
+                    onRangeExceeded?.Invoke();
+                    yield break;
+                }
+
+                RaycastHit2D brakeWallHit = Physics2D.Raycast(currentPos, flightDirection, brakeMoveDistance, wallLayerMask);
+                bool hasBrakeWallHit = brakeWallHit.collider != null;
+                // During range braking we intentionally disable enemy piercing checks.
+                // This prevents late-frame pin/capture right before auto-return starts.
+
+                if (hasBrakeWallHit)
+                {
+                    _rb.MovePosition(brakeWallHit.point);
+                    onPinned?.Invoke(brakeWallHit.transform);
+                    yield break;
+                }
+
+                _rb.MovePosition(currentPos + (flightDirection * brakeMoveDistance));
+                continue;
+            }
+
+            float moveDistance = currentFlightSpeed * Time.fixedDeltaTime;
             if (moveDistance <= 0f)
             {
-                break;
+                onRangeExceeded?.Invoke();
+                yield break;
             }
 
             RaycastHit2D wallHit = Physics2D.Raycast(currentPos, flightDirection, moveDistance, wallLayerMask);
@@ -203,8 +246,9 @@ public class WeaponMovement : MonoBehaviour
             if (hasRangeHit)
             {
                 _rb.MovePosition(currentPos + (flightDirection * rangeMoveDist));
-                onRangeExceeded?.Invoke();
-                yield break;
+                isRangeBraking = true;
+                onEnterRangeBraking?.Invoke();
+                continue;
             }
 
             _rb.MovePosition(currentPos + (flightDirection * moveDistance));

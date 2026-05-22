@@ -57,6 +57,7 @@ public class WeaponController : MonoBehaviour
     private bool _isDockWaiting;
     private bool _isAwaitingDockRecoveryTrigger;
     private float _dockWaitTimer;
+    private bool _isPiercingAttackActive;
 
     public float RecallEnergyCost => _recallEnergyCost;
     public float ControlRadius => _controlRadius;
@@ -64,6 +65,7 @@ public class WeaponController : MonoBehaviour
     public bool IsAttacking => _isAttacking;
     public bool IsThrustAiming => _isThrustAiming;
     public bool IsActionInputBlocked => _isAutoReturnInProgress || _isDockWaiting;
+    public bool IsPiercingAttackActive => _isPiercingAttackActive;
     public float ThrustDragThreshold => _thrustDragThreshold;
     public Vector2 FixedAimPosition => _fixedAimPos;
     public LayerMask WallAndEnvironmentLayer => _wallAndEnvironmentLayer;
@@ -350,6 +352,7 @@ public class WeaponController : MonoBehaviour
                 _isAttacking = false;
                 _isThrustAiming = false;
                 _isTimeSlowed = false;
+                _isPiercingAttackActive = false;
                 _view.HideTrajectory();
                 break;
 
@@ -499,7 +502,7 @@ public class WeaponController : MonoBehaviour
         StartReturnSequence();
     }
 
-    private void StartReturnSequence()
+    private void StartReturnSequence(bool useMouseIntercept = true)
     {
         _hitTargets.Clear();
         ChangeState(WeaponState.Returning);
@@ -507,7 +510,7 @@ public class WeaponController : MonoBehaviour
         _movement.ExecuteReturn(
             () => _sensor.GetClampedTargetPosition(_wallAndEnvironmentLayer),
             _controlRadius,
-            (currentPos, mousePos) => _sensor.IsMouseHovering(currentPos, mousePos),
+            useMouseIntercept ? (currentPos, mousePos) => _sensor.IsMouseHovering(currentPos, mousePos) : null,
             isSuccess =>
             {
                 _isAttacking = false;
@@ -592,6 +595,11 @@ public class WeaponController : MonoBehaviour
         _isThrustAiming = value;
     }
 
+    public void SetPiercingAttackActive(bool value)
+    {
+        _isPiercingAttackActive = value;
+    }
+
     public void HideTrajectoryFromModule()
     {
         _view.HideTrajectory();
@@ -605,5 +613,10 @@ public class WeaponController : MonoBehaviour
     public void ClearHitTargets()
     {
         _hitTargets.Clear();
+    }
+
+    public void StartReturnFromModule()
+    {
+        StartReturnSequence(false);
     }
 }

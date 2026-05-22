@@ -8,6 +8,9 @@ public class ThrustPierceModule : WeaponActionModule
     [Header("Pin Flight Tuning")]
     [SerializeField] private float _pinStartHitStopDuration = 0.15f;
     [SerializeField] private ShakeIntensity _pinWallHitShakeIntensity = ShakeIntensity.Weak;
+    [SerializeField, Range(0f, 1f)] private float _extraFlightRangeRatio = 0.2f;
+    [SerializeField] private float _rangeBrakeDeceleration = 45f;
+    [SerializeField] private float _rangeAutoReturnSpeedThreshold = 2f;
 
     public override bool TryHandlePinnedPrimary()
     {
@@ -96,6 +99,7 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.ClearHitTargets();
         Controller.ChangeStateFromModule(WeaponState.PinningFlight);
         Controller.SetAttackingFlag(true);
+        Controller.SetPiercingAttackActive(true);
 
         Movement.ExecutePinFlight(
             direction,
@@ -107,7 +111,13 @@ public class ThrustPierceModule : WeaponActionModule
                 Transform player = Sensor.GetPlayerTransform();
                 return player != null ? (Vector2)player.position : (Vector2)Controller.transform.position;
             },
-            Controller.ControlRadius,
+            Controller.ControlRadius * (1f + Mathf.Max(0f, _extraFlightRangeRatio)),
+            _rangeBrakeDeceleration,
+            _rangeAutoReturnSpeedThreshold,
+            () =>
+            {
+                Controller.SetPiercingAttackActive(false);
+            },
             targetTransform =>
             {
                 if (!Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, Controller.HitTargets)) return false;
@@ -119,20 +129,25 @@ public class ThrustPierceModule : WeaponActionModule
             },
             hitTransform =>
             {
+                Controller.SetPiercingAttackActive(false);
                 EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
                 Controller.SetAttackingFlag(false);
                 Controller.ChangeStateFromModule(WeaponState.Pinned);
             },
             () =>
             {
+                Controller.SetPiercingAttackActive(false);
                 Controller.SetAttackingFlag(false);
+                Controller.SetThrustAimingFlag(false);
+                Controller.HideTrajectoryFromModule();
+                Controller.ResetTimeScaleFromModule();
                 if (Controller.HasCapturedEnemies())
                 {
                     Controller.ChangeStateFromModule(WeaponState.Pinned);
                     return;
                 }
 
-                Controller.ExecutePinnedRecall();
+                Controller.StartReturnFromModule();
             });
     }
 }

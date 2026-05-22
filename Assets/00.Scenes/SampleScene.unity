@@ -2296,6 +2296,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5259452382723162312, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _extraFlightRangeRatio
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5259452382723162312, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _rangeBrakeDeceleration
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723434080366493270, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _maxReturnSpeed
+      value: 50
+      objectReference: {fileID: 0}
     - target: {fileID: 8857529888259376973, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: m_Name
       value: Weapon
