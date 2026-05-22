@@ -14,6 +14,7 @@ public class WeaponLinkEnergy : MonoBehaviour
 
     private const float Epsilon = 0.0001f;
     private bool _isRecoveryBlocked;
+    private bool _spentEnergyThisFrame;
 
     public float MaxEnergy => _maxEnergy;
     public float CurrentEnergy => _currentEnergy;
@@ -24,6 +25,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     public bool IsEmpty => _currentEnergy <= Epsilon;
     public bool IsControlLocked { get; private set; }
     public bool CanStartControl => !IsControlLocked && !IsEmpty && !_isRecoveryBlocked;
+    public bool SpentEnergyThisFrame => _spentEnergyThisFrame;
     public LinkEnergyDepletionMode DepletionMode => _depletionMode;
 
     private void Awake()
@@ -47,7 +49,7 @@ public class WeaponLinkEnergy : MonoBehaviour
         float recoverRadius = safeControlRadius * Mathf.Clamp01(_recoverRadiusRatio);
         bool insideRecoverRadius = safeDistance <= recoverRadius;
 
-        IsRecovering = !_isRecoveryBlocked && insideRecoverRadius;
+        IsRecovering = !_isRecoveryBlocked && !_spentEnergyThisFrame && insideRecoverRadius;
         IsDraining = !_isRecoveryBlocked && !insideRecoverRadius && isRemoteControlling;
 
         float previousEnergy = _currentEnergy;
@@ -108,6 +110,7 @@ public class WeaponLinkEnergy : MonoBehaviour
 
         _currentEnergy -= amount;
         _currentEnergy = Mathf.Clamp(_currentEnergy, 0f, _maxEnergy);
+        _spentEnergyThisFrame = true;
 
         EventBus.Instance?.Publish(new LinkEnergyChangedEvent
         {
@@ -125,6 +128,51 @@ public class WeaponLinkEnergy : MonoBehaviour
         }
 
         return true;
+    }
+
+    public bool SpendEnergyOverTime(float amountPerSecond)
+    {
+        return SpendEnergyOverTime(amountPerSecond, ContinuousEnergySpendMode.StopBeforeEmpty);
+    }
+
+    public bool SpendEnergyOverTime(float amountPerSecond, ContinuousEnergySpendMode spendMode)
+    {
+        if (amountPerSecond <= 0f) return true;
+        if (IsControlLocked) return false;
+
+        float deltaCost = Mathf.Max(0f, amountPerSecond * Time.fixedDeltaTime);
+        if (deltaCost <= 0f) return true;
+
+        if (_currentEnergy >= deltaCost)
+        {
+            _currentEnergy -= deltaCost;
+            _currentEnergy = Mathf.Clamp(_currentEnergy, 0f, _maxEnergy);
+            _spentEnergyThisFrame = true;
+            EventBus.Instance?.Publish(new LinkEnergyChangedEvent
+            {
+                Current = _currentEnergy,
+                Max = _maxEnergy,
+                Normalized = Normalized,
+                DistanceRatio = DistanceRatio,
+                IsRecovering = IsRecovering,
+                IsDraining = IsDraining
+            });
+            if (_currentEnergy <= Epsilon)
+            {
+                NotifyDepleted();
+            }
+            return true;
+        }
+
+        if (spendMode == ContinuousEnergySpendMode.StopBeforeEmpty)
+        {
+            return false;
+        }
+
+        _currentEnergy = 0f;
+        _spentEnergyThisFrame = true;
+        NotifyDepleted();
+        return false;
     }
 
     public void NotifyDepleted()
@@ -154,6 +202,7 @@ public class WeaponLinkEnergy : MonoBehaviour
         _currentEnergy = _maxEnergy;
         _isRecoveryBlocked = false;
         IsControlLocked = false;
+        _spentEnergyThisFrame = false;
         IsRecovering = false;
         IsDraining = false;
         EventBus.Instance?.Publish(new LinkEnergyChangedEvent
@@ -165,5 +214,10 @@ public class WeaponLinkEnergy : MonoBehaviour
             IsRecovering = false,
             IsDraining = false
         });
+    }
+
+    public void ClearFrameSpendFlag()
+    {
+        _spentEnergyThisFrame = false;
     }
 }

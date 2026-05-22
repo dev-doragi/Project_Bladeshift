@@ -39,14 +39,17 @@ public class WeaponCapture : MonoBehaviour
             Transform enemyTransform = enemy.transform;
             enemyTransform.SetParent(null);
 
-            if (forcePhysicsRestore && enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
+            if (enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
             {
                 rb.bodyType = RigidbodyType2D.Dynamic;
-                rb.linearVelocity = Vector2.zero;
-                rb.angularVelocity = 0f;
+                if (forcePhysicsRestore)
+                {
+                    rb.linearVelocity = Vector2.zero;
+                    rb.angularVelocity = 0f;
+                }
             }
 
-            if (forcePhysicsRestore && enemyTransform.TryGetComponent<Collider2D>(out var col))
+            if (enemyTransform.TryGetComponent<Collider2D>(out var col))
             {
                 col.enabled = true;
                 col.isTrigger = false;

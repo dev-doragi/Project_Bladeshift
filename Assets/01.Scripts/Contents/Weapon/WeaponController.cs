@@ -18,6 +18,10 @@ public class WeaponController : MonoBehaviour
     [SerializeField] private float _thrustDragThreshold = 2.0f;
     [SerializeField] private float _returnCompleteDistance = 0.7f;
     [SerializeField] private float _fullRechargeDelayAfterReturn = 1.0f;
+    [Header("2-1. Action Modules")]
+    [SerializeField] private WeaponActionModule _primaryModule;
+    [SerializeField] private WeaponActionModule _secondaryModule;
+    [SerializeField] private float _recallEnergyCost = 0f;
     [Header("3. Link Line Colors")]
     [SerializeField] private Color _recoverColor = Color.cyan;
     [SerializeField] private Color _stableColor = Color.white;
@@ -52,6 +56,14 @@ public class WeaponController : MonoBehaviour
     private bool _isDockWaiting;
     private bool _isAwaitingDockRecoveryTrigger;
     private float _dockWaitTimer;
+
+    public float RecallEnergyCost => _recallEnergyCost;
+    public WeaponState CurrentState => _currentState;
+    public bool IsAttacking => _isAttacking;
+    public bool IsThrustAiming => _isThrustAiming;
+    public bool IsActionInputBlocked => _isAutoReturnInProgress || _isDockWaiting;
+    public float ThrustDragThreshold => _thrustDragThreshold;
+    public Vector2 FixedAimPosition => _fixedAimPos;
 
     private void Awake()
     {
@@ -92,8 +104,20 @@ public class WeaponController : MonoBehaviour
         _sensor.Configure(_playerTransform, _mainCamera, _controlRadius, 1.0f, 1.5f, 0f);
         _view.Configure(_sensor.GetPlayerTransform(), _controlRadius, 0f, 0f, _combat.SlashRadius);
         _movement.CacheRigidbody(_rb);
+        ConfigureActionModules();
 
         ChangeState(WeaponState.Grounded);
+    }
+
+    private void ConfigureActionModules()
+    {
+        if (_primaryModule == null)
+            _primaryModule = GetComponent<SpinSlashModule>();
+        if (_secondaryModule == null)
+            _secondaryModule = GetComponent<ThrustPierceModule>();
+
+        _primaryModule?.Initialize(this, _linkEnergy, _movement, _combat, _sensor, _capture, _view);
+        _secondaryModule?.Initialize(this, _linkEnergy, _movement, _combat, _sensor, _capture, _view);
     }
 
     private void OnEnable()
@@ -150,6 +174,9 @@ public class WeaponController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        _primaryModule?.OnTick();
+        _secondaryModule?.OnTick();
+
         TickLinkEnergy();
         TryStartDockReturnAfterApproach();
         TickDockWait();
@@ -157,35 +184,27 @@ public class WeaponController : MonoBehaviour
         if (_isThrustAiming && _currentState == WeaponState.Controlled)
         {
             _rb.MovePosition(_fixedAimPos);
-            return;
         }
-
-        if (_currentState == WeaponState.Slashing)
+        else
         {
-            _combat.TryTickSpinDamage(transform.position, transform.eulerAngles.z);
-            _combat.DefendProjectiles(transform.position);
-            _movement.ApplySpinRotation(_combat.SpinSpeed);
+            bool hasEnemy = _capture.GetCapturedEnemies().Count > 0;
+            bool canHover = _currentState == WeaponState.Controlled ||
+                            _currentState == WeaponState.Slashing ||
+                            (_currentState == WeaponState.Pinned && hasEnemy);
+
+            if (canHover && !_isThrustAiming)
+            {
+                _movement.HandleHoverMovement(_sensor.GetClampedTargetPosition(_wallAndEnvironmentLayer), _currentState == WeaponState.Slashing, _wallAndEnvironmentLayer);
+            }
         }
 
-
-        bool hasEnemy = _capture.GetCapturedEnemies().Count > 0;
-
-
-        bool canHover = _currentState == WeaponState.Controlled || 
-                        _currentState == WeaponState.Slashing || 
-                        (_currentState == WeaponState.Pinned && hasEnemy);
-
-        if (canHover && !_isThrustAiming)
-        {
-            _movement.HandleHoverMovement(_sensor.GetClampedTargetPosition(_wallAndEnvironmentLayer), _currentState == WeaponState.Slashing, _wallAndEnvironmentLayer);
-        }
+        _linkEnergy?.ClearFrameSpendFlag();
     }
 
     private void TickLinkEnergy()
     {
         if (_linkEnergy == null || _playerTransform == null) return;
 
-        bool hasEnemy = _capture.GetCapturedEnemies().Count > 0;
         bool isRemoteControlling =
             _currentState == WeaponState.Controlled ||
             _currentState == WeaponState.Slashing ||
@@ -362,94 +381,25 @@ public class WeaponController : MonoBehaviour
 
     private void OnPrimaryAttack(PrimaryAttackEvent evt)
     {
-        if (_isAutoReturnInProgress || _isDockWaiting) return;
+        if (IsActionInputBlocked) return;
         if (_isThrustAiming) return;
+        if (evt.IsStarted && _secondaryModule != null && _secondaryModule.TryHandlePinnedPrimary()) return;
 
-        if (_currentState == WeaponState.Pinned)
-        {
-            if (_isAttacking) return; // 방어 코드: 피니셔 연출 중 중복 입력 차단
-
-            if (evt.IsStarted)
-            {
-                if (!_sensor.IsPlayerInRange(transform.position)) return;
-
-                bool hasVictim = _capture.GetCapturedEnemies().Count > 0;
-
-                if (hasVictim)
-                {
-                    ExecuteSpinFinisher();
-                }
-                else
-                {
-                    UnpinAndReturn(); 
-                }
-                return;
-            }
-        }
-
-        if (evt.IsStarted)
-        {
-            if (_currentState != WeaponState.Controlled || _isAttacking) return;
-            _isAttacking = true;
-            _combat.ResetTickTimer();
-            ChangeState(WeaponState.Slashing);
-            return;
-        }
-
-        _isAttacking = false;
-        if (_currentState == WeaponState.Slashing) ChangeState(WeaponState.Controlled);
+        if (evt.IsStarted) _primaryModule?.OnPress();
+        else _primaryModule?.OnRelease();
     }
 
     private void OnSecondaryAttack(SecondaryAttackEvent evt)
     {
-        if (_isAutoReturnInProgress || _isDockWaiting) return;
+        if (IsActionInputBlocked) return;
         if (evt.IsStarted)
         {
-        if (_currentState == WeaponState.Pinned)
-        {
-            if (_isAttacking) return; // 방어 코드: 피니셔 연출 중 중복 입력 차단
-
-            if (!_sensor.IsPlayerInRange(transform.position)) return;
-
-            if (_capture.GetCapturedEnemies().Count > 0)
-            {
-                ExecuteSpinFinisher();
-            }
-            else
-            {
-                UnpinAndReturn();
-            }
-            return;
-        }
-
-            if (_currentState != WeaponState.Controlled || _isAttacking) return;
-
-            _fixedAimPos = transform.position;
-            _mouseStartPos = _sensor.GetMouseWorldPosition();
-            _isThrustAiming = true;
-            _movement.StopFollow();
-            ApplySlowMotion();
+            if (_secondaryModule != null && _secondaryModule.TryHandlePinnedSecondary()) return;
+            _secondaryModule?.OnPress();
         }
         else
         {
-            if (!_isThrustAiming || _currentState == WeaponState.Returning) return;
-
-            _isThrustAiming = false;
-
-            Vector2 mouseWorldPos = _sensor.GetMouseWorldPosition();
-            float dragDistance = Vector2.Distance(_mouseStartPos, mouseWorldPos);
-
-            _view.HideTrajectory();
-            ResetTimeScale();
-
-            if (dragDistance < _thrustDragThreshold)
-            {
-                ChangeState(WeaponState.Controlled);
-                return;
-            }
-
-            Vector2 direction = (mouseWorldPos - _fixedAimPos).normalized;
-            StartPinSequence(direction);
+            _secondaryModule?.OnRelease();
         }
     }
 
@@ -479,9 +429,97 @@ public class WeaponController : MonoBehaviour
         });
     }
 
+    public bool CanStartSpinSlash()
+    {
+        return !IsActionInputBlocked && !_isThrustAiming && _currentState == WeaponState.Controlled && !_isAttacking;
+    }
+
+    public void BeginSpinSlash()
+    {
+        _isAttacking = true;
+        _combat.ResetTickTimer();
+        ChangeState(WeaponState.Slashing);
+    }
+
+    public void EndSpinSlash()
+    {
+        _isAttacking = false;
+        if (_currentState == WeaponState.Slashing)
+            ChangeState(WeaponState.Controlled);
+    }
+
+    public void TickSpinSlashCombat()
+    {
+        if (_currentState != WeaponState.Slashing) return;
+        _combat.TryTickSpinDamage(transform.position, transform.eulerAngles.z);
+        _combat.DefendProjectiles(transform.position);
+        _movement.ApplySpinRotation(_combat.SpinSpeed);
+    }
+
+    public bool CanStartThrustAim()
+    {
+        return !IsActionInputBlocked && _currentState == WeaponState.Controlled && !_isAttacking && !_isThrustAiming;
+    }
+
+    public void BeginThrustAim()
+    {
+        _fixedAimPos = transform.position;
+        _mouseStartPos = _sensor.GetMouseWorldPosition();
+        _isThrustAiming = true;
+        _movement.StopFollow();
+        ApplySlowMotion();
+    }
+
+    public bool CanReleaseThrustAim()
+    {
+        return _isThrustAiming && _currentState != WeaponState.Returning;
+    }
+
+    public void EndThrustAimAndReset()
+    {
+        _isThrustAiming = false;
+        _view.HideTrajectory();
+        ResetTimeScale();
+    }
+
+    public float GetThrustDragDistance(Vector2 releaseMousePos)
+    {
+        return Vector2.Distance(_mouseStartPos, releaseMousePos);
+    }
+
+    public void RestoreControlledAfterThrustCancel()
+    {
+        ChangeState(WeaponState.Controlled);
+    }
+
+    public void StartThrustPin(Vector2 direction)
+    {
+        StartPinSequence(direction);
+    }
+
+    public bool IsPlayerInControlRange()
+    {
+        return _sensor != null && _sensor.IsPlayerInRange(transform.position);
+    }
+
+    public bool HasCapturedEnemies()
+    {
+        return _capture != null && _capture.GetCapturedEnemies().Count > 0;
+    }
+
+    public void ExecutePinnedFinisher()
+    {
+        ExecuteSpinFinisher();
+    }
+
+    public void ExecutePinnedRecall()
+    {
+        UnpinAndReturn();
+    }
+
     private void UnpinAndReturn()
     {
-        _capture.UnbindAll();
+        _capture.UnbindAll(forcePhysicsRestore: true);
         transform.SetParent(null);
         transform.localScale = _originalScale;
         transform.rotation = Quaternion.Euler(0f, 0f, transform.eulerAngles.z);

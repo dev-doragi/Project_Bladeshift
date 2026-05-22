@@ -1703,6 +1703,8 @@ GameObject:
   - component: {fileID: 2068518547}
   - component: {fileID: 2068518546}
   - component: {fileID: 2068518551}
+  - component: {fileID: 2068518553}
+  - component: {fileID: 2068518552}
   m_Layer: 6
   m_Name: Weapon
   m_TagString: Untagged
@@ -1774,6 +1776,9 @@ MonoBehaviour:
   _thrustDragThreshold: 6
   _returnCompleteDistance: 0.7
   _fullRechargeDelayAfterReturn: 1
+  _primaryModule: {fileID: 2068518553}
+  _secondaryModule: {fileID: 2068518552}
+  _recallEnergyCost: 0
   _recoverColor: {r: 0, g: 1, b: 1, a: 1}
   _stableColor: {r: 1, g: 1, b: 1, a: 1}
   _drainColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
@@ -1929,6 +1934,35 @@ MonoBehaviour:
   _recoverRadiusRatio: 0.35
   _reactivationEnergyRatio: 0.2
   _depletionMode: 1
+--- !u!114 &2068518552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2068518540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f5b7d31cf9adf046ac5fa1e97438335, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ThrustPierceModule
+  _thrustFireCost: 18
+  _captureHoldCostPerSecond: 25
+  _captureHoldSpendMode: 1
+--- !u!114 &2068518553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2068518540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae037c0131141f44186cf5f3e9c0717c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpinSlashModule
+  _slashHoldCostPerSecond: 25
+  _slashHoldSpendMode: 1
 --- !u!1 &2069730400
 GameObject:
   m_ObjectHideFlags: 0
