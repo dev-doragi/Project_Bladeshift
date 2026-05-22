@@ -412,7 +412,10 @@ public class WeaponController : MonoBehaviour
         _hitTargets.Clear();
         ChangeState(WeaponState.PinningFlight);
         _isAttacking = true;
-        _movement.ExecutePinFlight(direction, _combat.PinSpeed, _combat.EnemyLayer, _wallAndEnvironmentLayer, targetTransform =>
+        _movement.ExecutePinFlight(direction, _combat.PinSpeed, _combat.EnemyLayer, _wallAndEnvironmentLayer,
+        () => _playerTransform.position,
+        _controlRadius,
+        targetTransform =>
         {
             if (!_combat.PerformPinDamage(targetTransform, transform.position, direction, _hitTargets)) return false;
             if (targetTransform != null)
@@ -420,12 +423,23 @@ public class WeaponController : MonoBehaviour
                 _capture.BindEnemy(targetTransform);
             }
             return false;
-        }, 
+        },
         hitTransform => 
         {
             EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = ShakeIntensity.Weak });
             _isAttacking = false;
             ChangeState(WeaponState.Pinned);
+        },
+        () =>
+        {
+            if (HasCapturedEnemies())
+            {
+                _isAttacking = false;
+                ChangeState(WeaponState.Pinned);
+                return;
+            }
+
+            StartReturnSequence();
         });
     }
 
