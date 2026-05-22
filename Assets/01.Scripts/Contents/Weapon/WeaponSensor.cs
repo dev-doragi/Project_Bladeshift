@@ -2,22 +2,31 @@ using UnityEngine;
 
 public class WeaponSensor : MonoBehaviour
 {
-    private const float LineOfSightMargin = 0.35f;
+    [Header("Range Tuning")]
+    [SerializeField] private float _acquireRadiusRatio = 1f;
+    [SerializeField] private float _releaseRadiusRatio = 1.2f;
+    [SerializeField] private float _mouseCaptureRadius = 1f;
+    [SerializeField] private float _mouseCaptureMaintainRadius = 1.5f;
+    [SerializeField] private float _lineOfSightMargin = 0.35f;
+
     private Transform _playerTransform;
     private Camera _mainCamera;
     private float _controlRadius;
-    private float _mouseCaptureRadius;
-    private float _mouseCaptureMaintainRadius;
     private Vector2 _lastValidMousePos;
 
-    public void Configure(Transform playerTransform, Camera mainCamera, float controlRadius, float mouseCaptureRadius, float mouseCaptureMaintainRadius, float breakMouseSpeed)
+    public void Initialize(Transform playerTransform, Camera mainCamera, float controlRadius)
     {
         _playerTransform = playerTransform;
         _mainCamera = mainCamera != null ? mainCamera : Camera.main;
         _controlRadius = controlRadius;
+        _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
+    }
+
+    public void Configure(Transform playerTransform, Camera mainCamera, float controlRadius, float mouseCaptureRadius, float mouseCaptureMaintainRadius, float breakMouseSpeed)
+    {
         _mouseCaptureRadius = mouseCaptureRadius;
         _mouseCaptureMaintainRadius = mouseCaptureMaintainRadius > 0f ? mouseCaptureMaintainRadius : (_mouseCaptureRadius * 1.5f);
-        _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
+        Initialize(playerTransform, mainCamera, controlRadius);
     }
 
     public Vector2 GetMouseWorldPosition()
@@ -52,7 +61,7 @@ public class WeaponSensor : MonoBehaviour
 
         if (distance <= 0.01f) return true;
 
-        float checkDistance = Mathf.Max(0f, distance - LineOfSightMargin);
+        float checkDistance = Mathf.Max(0f, distance - Mathf.Max(0f, _lineOfSightMargin));
         if (checkDistance <= 0f) return true;
 
         RaycastHit2D hit = Physics2D.Raycast(start, direction.normalized, checkDistance, wallMask);
@@ -87,7 +96,8 @@ public class WeaponSensor : MonoBehaviour
     {
         if (_playerTransform == null) return false;
 
-        float threshold = alreadyControlled ? _controlRadius * 1.2f : _controlRadius;
+        float ratio = alreadyControlled ? Mathf.Max(1f, _releaseRadiusRatio) : Mathf.Max(0f, _acquireRadiusRatio);
+        float threshold = _controlRadius * ratio;
         return Vector2.Distance(mousePos, _playerTransform.position) <= threshold;
     }
 

@@ -14,6 +14,7 @@ public class WeaponController : MonoBehaviour
 
     [Header("2. Combat Settings")]
     [SerializeField] private float _slowMotionScale = 0.2f;
+    [SerializeField] private float _slowMotionHoldDuration = 999f;
     [SerializeField] private LayerMask _wallAndEnvironmentLayer;
     [SerializeField] private float _thrustDragThreshold = 2.0f;
     [SerializeField] private float _returnCompleteDistance = 0.7f;
@@ -64,6 +65,8 @@ public class WeaponController : MonoBehaviour
     public bool IsActionInputBlocked => _isAutoReturnInProgress || _isDockWaiting;
     public float ThrustDragThreshold => _thrustDragThreshold;
     public Vector2 FixedAimPosition => _fixedAimPos;
+    public LayerMask WallAndEnvironmentLayer => _wallAndEnvironmentLayer;
+    public HashSet<IDamageable> HitTargets => _hitTargets;
 
     private void Awake()
     {
@@ -101,8 +104,8 @@ public class WeaponController : MonoBehaviour
 
         _controlRadius = _playerController.ControlRadius;
 
-        _sensor.Configure(_playerTransform, _mainCamera, _controlRadius, 1.0f, 1.5f, 0f);
-        _view.Configure(_sensor.GetPlayerTransform(), _controlRadius, 0f, 0f, _combat.SlashRadius);
+        _sensor.Initialize(_playerTransform, _mainCamera, _controlRadius);
+        _view.Initialize(_sensor.GetPlayerTransform(), _controlRadius, _combat);
         _movement.CacheRigidbody(_rb);
         ConfigureActionModules();
 
@@ -403,32 +406,6 @@ public class WeaponController : MonoBehaviour
         }
     }
 
-    private void StartPinSequence(Vector2 direction)
-    {
-        _isThrustAiming = false;
-        _view.HideTrajectory();
-        ResetTimeScale();
-        EventBus.Instance?.Publish(new HitStopEvent { Duration = 0.15f });
-        _hitTargets.Clear();
-        ChangeState(WeaponState.PinningFlight);
-        _isAttacking = true;
-        _movement.ExecutePinFlight(direction, _combat.PinSpeed, _combat.EnemyLayer, _wallAndEnvironmentLayer, targetTransform =>
-        {
-            if (!_combat.PerformPinDamage(targetTransform, transform.position, direction, _hitTargets)) return false;
-            if (targetTransform != null)
-            {
-                _capture.BindEnemy(targetTransform);
-            }
-            return false;
-        }, 
-        hitTransform => 
-        {
-            EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = ShakeIntensity.Weak });
-            _isAttacking = false;
-            ChangeState(WeaponState.Pinned);
-        });
-    }
-
     public bool CanStartSpinSlash()
     {
         return !IsActionInputBlocked && !_isThrustAiming && _currentState == WeaponState.Controlled && !_isAttacking;
@@ -492,11 +469,6 @@ public class WeaponController : MonoBehaviour
         ChangeState(WeaponState.Controlled);
     }
 
-    public void StartThrustPin(Vector2 direction)
-    {
-        StartPinSequence(direction);
-    }
-
     public bool IsPlayerInControlRange()
     {
         return _sensor != null && _sensor.IsPlayerInRange(transform.position);
@@ -509,7 +481,7 @@ public class WeaponController : MonoBehaviour
 
     public void ExecutePinnedFinisher()
     {
-        ExecuteSpinFinisher();
+        if (_primaryModule != null && _primaryModule.TryExecutePinnedFinisher()) return;
     }
 
     public void ExecutePinnedRecall()
@@ -588,7 +560,7 @@ public class WeaponController : MonoBehaviour
     {
         if (_isTimeSlowed) return;
         _isTimeSlowed = true;
-        EventBus.Instance?.Publish(new SlowMotionEvent { TargetTimeScale = _slowMotionScale, Duration = 999f });
+        EventBus.Instance?.Publish(new SlowMotionEvent { TargetTimeScale = _slowMotionScale, Duration = _slowMotionHoldDuration });
     }
 
     private void ResetTimeScale()
@@ -603,35 +575,34 @@ public class WeaponController : MonoBehaviour
         if (_view == null) _view = GetComponent<WeaponView>();
         if (_view != null) _view.DrawGizmos();
     }
-    private void ExecuteSpinFinisher()
-    {
-        _isAttacking = true;
-        EventBus.Instance?.Publish(new HitStopEvent { Duration = 0.2f });
-        EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = ShakeIntensity.Strong });
-        Vector2 pivot = _sensor.GetMouseWorldPosition();
-        float radius = Vector2.Distance(pivot, transform.position);
-        radius = Mathf.Max(radius, _combat.SlashRadius * 1.8f);
-        var captured = _capture.GetCapturedEnemies();
-        List<Transform> pinnedTargets = new List<Transform>(captured.Count);
-        foreach (var enemy in captured)
-        {
-            if (enemy != null)
-                pinnedTargets.Add(enemy.transform);
-        }
 
-        _movement.ExecuteOrbitFinisher(
-            pivot,
-            radius,
-            0.35f,
-            () =>
-            {
-                _combat.PerformSpinFinisher(transform.position, pinnedTargets);
-                _capture.UnbindAll();
-            },
-            () =>
-            {
-                _isAttacking = false;
-                ChangeState(WeaponState.Controlled);
-            });
+    public void ChangeStateFromModule(WeaponState newState)
+    {
+        ChangeState(newState);
+    }
+
+    public void SetAttackingFlag(bool value)
+    {
+        _isAttacking = value;
+    }
+
+    public void SetThrustAimingFlag(bool value)
+    {
+        _isThrustAiming = value;
+    }
+
+    public void HideTrajectoryFromModule()
+    {
+        _view.HideTrajectory();
+    }
+
+    public void ResetTimeScaleFromModule()
+    {
+        ResetTimeScale();
+    }
+
+    public void ClearHitTargets()
+    {
+        _hitTargets.Clear();
     }
 }

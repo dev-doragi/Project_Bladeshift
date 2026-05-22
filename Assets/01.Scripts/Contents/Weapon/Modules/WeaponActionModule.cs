@@ -33,4 +33,5 @@ public abstract class WeaponActionModule : MonoBehaviour
     public virtual void OnRelease() { }
     public virtual bool TryHandlePinnedPrimary() { return false; }
     public virtual bool TryHandlePinnedSecondary() { return false; }
+    public virtual bool TryExecutePinnedFinisher() { return false; }
 }

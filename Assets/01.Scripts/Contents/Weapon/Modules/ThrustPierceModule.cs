@@ -5,6 +5,9 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private float _thrustFireCost = 18f;
     [SerializeField] private float _captureHoldCostPerSecond = 10f;
     [SerializeField] private ContinuousEnergySpendMode _captureHoldSpendMode = ContinuousEnergySpendMode.DepleteToZero;
+    [Header("Pin Flight Tuning")]
+    [SerializeField] private float _pinStartHitStopDuration = 0.15f;
+    [SerializeField] private ShakeIntensity _pinWallHitShakeIntensity = ShakeIntensity.Weak;
 
     public override bool TryHandlePinnedPrimary()
     {
@@ -60,7 +63,7 @@ public class ThrustPierceModule : WeaponActionModule
         }
 
         Vector2 direction = (mouseWorldPos - Controller.FixedAimPosition).normalized;
-        Controller.StartThrustPin(direction);
+        StartPinSequence(direction);
     }
 
     private bool TryHandlePinnedAction()
@@ -80,5 +83,39 @@ public class ThrustPierceModule : WeaponActionModule
         }
 
         return true;
+    }
+
+    private void StartPinSequence(Vector2 direction)
+    {
+        if (Controller == null || Movement == null || Combat == null || Capture == null) return;
+
+        Controller.SetThrustAimingFlag(false);
+        Controller.HideTrajectoryFromModule();
+        Controller.ResetTimeScaleFromModule();
+        EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
+        Controller.ClearHitTargets();
+        Controller.ChangeStateFromModule(WeaponState.PinningFlight);
+        Controller.SetAttackingFlag(true);
+
+        Movement.ExecutePinFlight(
+            direction,
+            Combat.PinSpeed,
+            Combat.EnemyLayer,
+            Controller.WallAndEnvironmentLayer,
+            targetTransform =>
+            {
+                if (!Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, Controller.HitTargets)) return false;
+                if (targetTransform != null)
+                {
+                    Capture.BindEnemy(targetTransform);
+                }
+                return false;
+            },
+            hitTransform =>
+            {
+                EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
+                Controller.SetAttackingFlag(false);
+                Controller.ChangeStateFromModule(WeaponState.Pinned);
+            });
     }
 }
