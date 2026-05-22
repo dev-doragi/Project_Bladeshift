@@ -126,6 +126,12 @@ public class ThrustPierceModule : WeaponActionModule
             () =>
             {
                 Controller.SetAttackingFlag(false);
+                if (Controller.HasCapturedEnemies())
+                {
+                    Controller.ChangeStateFromModule(WeaponState.Pinned);
+                    return;
+                }
+
                 Controller.ExecutePinnedRecall();
             });
     }
