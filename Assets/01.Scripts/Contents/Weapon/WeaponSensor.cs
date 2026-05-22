@@ -70,14 +70,17 @@ public class WeaponSensor : MonoBehaviour
 
         if (distance <= 0.01f) return mousePos;
 
+        Vector2 targetPos = mousePos;
+
         if (distance > _controlRadius)
         {
-            direction = direction.normalized * _controlRadius;
+            targetPos = start + direction.normalized * _controlRadius;
+            direction = targetPos - start;
             distance = _controlRadius;
         }
 
         RaycastHit2D hit = Physics2D.Raycast(start, direction.normalized, distance, wallMask);
-        return hit.collider != null ? hit.point : mousePos;
+        return hit.collider != null ? hit.point : targetPos;
     }
 
     public bool IsMouseInRange(Vector2 mousePos, bool alreadyControlled)

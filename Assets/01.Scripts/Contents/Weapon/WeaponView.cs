@@ -49,7 +49,7 @@ public class WeaponView : MonoBehaviour
         }
     }
 
-    public void RenderConnectionLine(Vector3 playerPos, Vector3 weaponPos, bool isVisible)
+    public void RenderConnectionLine(Vector3 playerPos, Vector3 weaponPos, bool isVisible, Color color)
     {
         if (_connectionLine == null) return;
 
@@ -60,6 +60,8 @@ public class WeaponView : MonoBehaviour
         }
 
         _connectionLine.enabled = true;
+        _connectionLine.startColor = color;
+        _connectionLine.endColor = color;
         _connectionLine.positionCount = 2;
         _connectionLine.SetPosition(0, playerPos);
         _connectionLine.SetPosition(1, weaponPos);

@@ -4,7 +4,7 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     private PlatformerMotor2D _motor;
-    [SerializeField] private float _controlRadius = 10f;
+    [SerializeField] private float _controlRadius = 20f;
     [SerializeField] private bool _showControlRadiusGizmo = true;
 
     public float ControlRadius => _controlRadius;

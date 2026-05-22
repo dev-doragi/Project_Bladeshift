@@ -30,12 +30,27 @@ public class WeaponCapture : MonoBehaviour
             rb.bodyType = RigidbodyType2D.Kinematic;
     }
 
-    public void UnbindAll()
+    public void UnbindAll(bool forcePhysicsRestore = false)
     {
         foreach (var enemy in _capturedEnemies)
         {
-            if (enemy != null)
-                enemy.transform.SetParent(null);
+            if (enemy == null) continue;
+
+            Transform enemyTransform = enemy.transform;
+            enemyTransform.SetParent(null);
+
+            if (forcePhysicsRestore && enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
+            {
+                rb.bodyType = RigidbodyType2D.Dynamic;
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+
+            if (forcePhysicsRestore && enemyTransform.TryGetComponent<Collider2D>(out var col))
+            {
+                col.enabled = true;
+                col.isTrigger = false;
+            }
         }
         _capturedEnemies.Clear();
     }

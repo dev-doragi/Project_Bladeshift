@@ -3,7 +3,6 @@ using UnityEngine;
 [DefaultExecutionOrder(-140)]
 public class PauseManager : Singleton<PauseManager>
 {
-    private bool _isPaused;
     private GameState _pauseRestoreState = GameState.Playing;
 
     protected override void OnBootstrap()
@@ -59,12 +58,9 @@ public class PauseManager : Singleton<PauseManager>
     {
         if (evt.NewState == GameState.Paused)
         {
-            _isPaused = true;
             _pauseRestoreState = evt.PreviousState;
             return;
         }
-
-        _isPaused = false;
     }
 
     public void TogglePause(bool pause)

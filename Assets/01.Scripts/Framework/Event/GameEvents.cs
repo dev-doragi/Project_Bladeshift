@@ -127,6 +127,16 @@ public struct CameraShakeEvent
 {
     public ShakeIntensity Intensity;
 }
+
+public struct LinkEnergyChangedEvent
+{
+    public float Current;
+    public float Max;
+    public float Normalized;
+    public float DistanceRatio;
+    public bool IsRecovering;
+    public bool IsDraining;
+}
 #endregion
 
 #region [6. Audio & Camera Events]
@@ -138,3 +148,4 @@ public struct PlaySFXEvent
 
 public struct CameraManipulationEvent { }
 #endregion
+
