@@ -59,6 +59,7 @@ public class WeaponController : MonoBehaviour
     private float _dockWaitTimer;
 
     public float RecallEnergyCost => _recallEnergyCost;
+    public float ControlRadius => _controlRadius;
     public WeaponState CurrentState => _currentState;
     public bool IsAttacking => _isAttacking;
     public bool IsThrustAiming => _isThrustAiming;

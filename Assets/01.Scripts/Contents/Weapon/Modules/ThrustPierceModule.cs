@@ -102,6 +102,12 @@ public class ThrustPierceModule : WeaponActionModule
             Combat.PinSpeed,
             Combat.EnemyLayer,
             Controller.WallAndEnvironmentLayer,
+            () =>
+            {
+                Transform player = Sensor.GetPlayerTransform();
+                return player != null ? (Vector2)player.position : (Vector2)Controller.transform.position;
+            },
+            Controller.ControlRadius,
             targetTransform =>
             {
                 if (!Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, Controller.HitTargets)) return false;
@@ -116,6 +122,11 @@ public class ThrustPierceModule : WeaponActionModule
                 EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
                 Controller.SetAttackingFlag(false);
                 Controller.ChangeStateFromModule(WeaponState.Pinned);
+            },
+            () =>
+            {
+                Controller.SetAttackingFlag(false);
+                Controller.ExecutePinnedRecall();
             });
     }
 }
