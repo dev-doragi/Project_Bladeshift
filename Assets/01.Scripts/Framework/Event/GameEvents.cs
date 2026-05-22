@@ -1,18 +1,24 @@
 using UnityEngine;
 
 /// <summary>
-/// [BladeShift PoC] 씬/상태/입력/오디오/전투 흐름에서 사용하는 공통 이벤트 정의입니다.
+/// [BladeShift PoC] ����/�Է�/��/���� �帧���� ����ϴ� ���� �̺�Ʈ �����Դϴ�.
 /// </summary>
 
-#region [1. Core State Events (코어 상태)]
+#region [1. Core State Events]
 public struct GameStateChangedEvent
 {
+    public GameState PreviousState;
     public GameState NewState;
 }
 
 public struct InGameStateChangedEvent
 {
     public InGameState NewState;
+}
+
+public struct PauseRequestedEvent
+{
+    public bool Pause;
 }
 
 public struct SlowMotionEvent
@@ -22,7 +28,21 @@ public struct SlowMotionEvent
 }
 #endregion
 
-#region [2. Stage & Wave Flow Events (스테이지 및 웨이브 흐름)]
+#region [2. Scene Events]
+public struct SceneLoadRequestedEvent
+{
+    public string SceneName;
+    public bool HasPostLoadState;
+    public GameState PostLoadState;
+}
+
+public struct SceneLoadedEvent
+{
+    public string SceneName;
+}
+#endregion
+
+#region [3. Stage & Wave Flow Events]
 public struct StageLoadedEvent
 {
     public int StageIndex;
@@ -61,7 +81,7 @@ public struct WaveWaitTimerTickEvent
 }
 #endregion
 
-#region [3. Input Events (조작 및 입력)]
+#region [4. Input Events]
 public struct MoveInputEvent
 {
     public Vector2 Direction;
@@ -74,12 +94,12 @@ public struct JumpInputEvent
 
 public struct PrimaryAttackEvent
 {
-    public bool IsStarted; // true: 클릭/홀드 시작, false: 해제
+    public bool IsStarted;
 }
 
 public struct SecondaryAttackEvent
 {
-    public bool IsStarted; // true: 홀드 시작(태깅), false: 해제(사출)
+    public bool IsStarted;
 }
 
 public struct RotateEvent { }
@@ -92,7 +112,7 @@ public struct ScrollEvent
 public struct PausePressedEvent { }
 #endregion
 
-#region [4. Combat & Weapon Events (전투 및 메카닉)]
+#region [5. Combat & Weapon Events]
 public struct WeaponStateChangeEvent
 {
     public WeaponState NewState;
@@ -109,7 +129,7 @@ public struct CameraShakeEvent
 }
 #endregion
 
-#region [5. Audio & Camera Events (시청각 연출)]
+#region [6. Audio & Camera Events]
 public struct PlaySFXEvent
 {
     public AudioClip Clip;

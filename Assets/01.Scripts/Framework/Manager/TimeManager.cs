@@ -21,7 +21,7 @@ public class TimeManager : Singleton<TimeManager>
             EventBus.Instance.Subscribe<SlowMotionEvent>(OnSlowMotion);
         }
 
-        CalculateTimeScale();
+        ResetTime();
     }
 
     private void OnDisable()
@@ -54,6 +54,16 @@ public class TimeManager : Singleton<TimeManager>
         _hitStopTimer = 0f;
         _slowMoTimer = 0f;
         _slowMoTargetTimeScale = 1f;
+
+        if (GameManager.Instance != null)
+        {
+            _isSystemPaused = IsSystemPausedState(GameManager.Instance.CurrentState);
+        }
+        else
+        {
+            _isSystemPaused = false;
+        }
+
         CalculateTimeScale();
     }
 
@@ -96,12 +106,14 @@ public class TimeManager : Singleton<TimeManager>
         if (!Mathf.Approximately(Time.timeScale, newTimeScale))
         {
             Time.timeScale = newTimeScale;
-            Time.fixedDeltaTime = 0.02f * Time.timeScale;
+            Time.fixedDeltaTime = 0.02f * Mathf.Max(newTimeScale, 0f);
         }
     }
 
     private bool IsSystemPausedState(GameState state)
     {
-        return state == GameState.Paused || state == GameState.GameOver || state == GameState.GameClear;
+        return state == GameState.Paused
+            || state == GameState.GameOver
+            || state == GameState.GameClear;
     }
 }

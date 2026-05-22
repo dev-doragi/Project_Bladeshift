@@ -1,26 +1,17 @@
 using UnityEngine;
 
-/// <summary>
-/// 게임 내 일시정지 요청을 수신하고 상태를 토글하는 매니저입니다.
-/// </summary>
-/// <remarks>
-/// [주요 역할]
-/// - 키보드 입력(Input System) 또는 UI 버튼에 의한 일시정지 트리거 처리
-/// - GameManager에 상태 변경(Paused <-> Playing) 요청
-///
-/// [이벤트 흐름]
-/// - Subscribe: PausePressedEvent, GameStateChangedEvent
-/// </remarks>
 [DefaultExecutionOrder(-140)]
 public class PauseManager : Singleton<PauseManager>
 {
-    private bool _isPaused = false;
+    private bool _isPaused;
+    private GameState _pauseRestoreState = GameState.Playing;
 
-    private void OnEnable()
+    protected override void OnBootstrap()
     {
         if (EventBus.Instance != null)
         {
             EventBus.Instance.Subscribe<PausePressedEvent>(OnPausePressed);
+            EventBus.Instance.Subscribe<PauseRequestedEvent>(OnPauseRequested);
             EventBus.Instance.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
         }
     }
@@ -30,35 +21,79 @@ public class PauseManager : Singleton<PauseManager>
         if (EventBus.Instance != null)
         {
             EventBus.Instance.Unsubscribe<PausePressedEvent>(OnPausePressed);
+            EventBus.Instance.Unsubscribe<PauseRequestedEvent>(OnPauseRequested);
             EventBus.Instance.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
         }
     }
 
     private void OnPausePressed(PausePressedEvent evt)
     {
-        GameState currentState = GameManager.Instance.CurrentState;
+        if (GameManager.Instance == null)
+        {
+            return;
+        }
 
-        if (currentState == GameState.Playing)
+        GameState current = GameManager.Instance.CurrentState;
+
+        if (current == GameState.GameOver || current == GameState.GameClear)
         {
-            TogglePause(true);
+            return;
         }
-        else if (currentState == GameState.Paused)
+
+        if (current == GameState.Playing)
         {
-            TogglePause(false);
+            EventBus.Instance?.Publish(new PauseRequestedEvent { Pause = true });
         }
+        else if (current == GameState.Paused)
+        {
+            EventBus.Instance?.Publish(new PauseRequestedEvent { Pause = false });
+        }
+    }
+
+    private void OnPauseRequested(PauseRequestedEvent evt)
+    {
+        TogglePause(evt.Pause);
     }
 
     private void OnGameStateChanged(GameStateChangedEvent evt)
     {
-        if (evt.NewState != GameState.Paused)
+        if (evt.NewState == GameState.Paused)
         {
-            _isPaused = false;
+            _isPaused = true;
+            _pauseRestoreState = evt.PreviousState;
+            return;
         }
+
+        _isPaused = false;
     }
 
     public void TogglePause(bool pause)
     {
-        _isPaused = pause;
-        GameManager.Instance.ChangeState(_isPaused ? GameState.Paused : GameState.Playing);
+        if (GameManager.Instance == null)
+        {
+            return;
+        }
+
+        GameState current = GameManager.Instance.CurrentState;
+
+        if (current == GameState.GameOver || current == GameState.GameClear)
+        {
+            return;
+        }
+
+        if (pause)
+        {
+            if (current == GameState.Playing)
+            {
+                GameManager.Instance.ChangeState(GameState.Paused);
+            }
+
+            return;
+        }
+
+        if (current == GameState.Paused && _pauseRestoreState == GameState.Playing)
+        {
+            GameManager.Instance.ChangeState(GameState.Playing);
+        }
     }
 }

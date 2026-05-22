@@ -1,20 +1,11 @@
 using UnityEngine;
 
-/// <summary>
-/// 게임의 전역 생명주기 및 최고 수준의 상태(GameState)를 관리하는 코어 매니저입니다.
-/// </summary>
-/// <remarks>
-/// [주요 역할]
-/// - Ready, Playing, Paused, GameOver, GameClear 상태 전환 및 관리
-///
-/// [이벤트 흐름]
-/// - Subscribe: StageLoadedEvent, StageClearedEvent, StageFailedEvent
-/// - Publish: GameStateChangedEvent
-/// </remarks>
-
 [DefaultExecutionOrder(-170)]
 public class GameManager : Singleton<GameManager>
 {
+    [Header("Debug")]
+    [SerializeField] private bool _forcePlayingOnBootstrap = false;
+
     public GameState CurrentState { get; private set; } = GameState.Ready;
 
     protected override void OnBootstrap()
@@ -26,6 +17,11 @@ public class GameManager : Singleton<GameManager>
             EventBus.Instance.Subscribe<StageLoadedEvent>(OnStageLoaded);
             EventBus.Instance.Subscribe<StageClearedEvent>(OnStageCleared);
             EventBus.Instance.Subscribe<StageFailedEvent>(OnStageFailed);
+        }
+
+        if (_forcePlayingOnBootstrap)
+        {
+            ChangeState(GameState.Playing);
         }
     }
 
@@ -61,12 +57,21 @@ public class GameManager : Singleton<GameManager>
 
     public void ChangeState(GameState newState)
     {
-        if (CurrentState == newState) return;
+        if (CurrentState == newState)
+        {
+            return;
+        }
 
-        Debug.Log($"[GameManager] State Changed: {CurrentState} -> {newState}");
+        GameState previousState = CurrentState;
         CurrentState = newState;
 
-        EventBus.Instance.Publish(new GameStateChangedEvent { NewState = CurrentState });
+        Debug.Log($"[GameManager] State Changed: {previousState} -> {newState}");
+
+        EventBus.Instance?.Publish(new GameStateChangedEvent
+        {
+            PreviousState = previousState,
+            NewState = newState
+        });
     }
 
     public void ExitGame()

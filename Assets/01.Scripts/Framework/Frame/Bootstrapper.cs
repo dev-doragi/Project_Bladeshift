@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Îß§ÎãàÏ†Ä Ïù∏Ïä§ÌÑ¥Ïä§ Î≥¥Ïû•Í≥º Ï¥àÍ∏∞Ìôî ÏàúÏÑúÎ•º Ï§ëÏïôÏóêÏÑú Ï†úÏñ¥Ìï©ÎãàÎã§.
+/// ∏≈¥œ¿˙ ¿ŒΩ∫≈œΩ∫ ∫∏¿Â π◊ √ ±‚»≠ º¯º≠∏¶ ¡ﬂæ”ø°º≠ ¡¶æÓ«’¥œ¥Ÿ.
 /// </summary>
 [DefaultExecutionOrder(-500)]
 public class Bootstrapper : MonoBehaviour
@@ -9,17 +9,16 @@ public class Bootstrapper : MonoBehaviour
     [Header("Strict Validation")]
     [SerializeField] private bool _strictMode = true;
 
-    [Header("Global Managers (DDOL)")]
-    [SerializeField] private InputReader _inputReaderPrefab;
+    [Header("Required Managers (DDOL)")]
     [SerializeField] private GameManager _gameManagerPrefab;
-    [SerializeField] private GameFlowManager _gameFlowManagerPrefab;
     [SerializeField] private TimeManager _timeManagerPrefab;
     [SerializeField] private SceneLoader _sceneLoaderPrefab;
+    [SerializeField] private InputReader _inputReaderPrefab;
     [SerializeField] private PauseManager _pauseManagerPrefab;
+    [SerializeField] private GameFlowManager _gameFlowManagerPrefab;
+
+    [Header("Optional Managers")]
     [SerializeField] private SoundManager _soundManagerPrefab;
-
-
-    [Header("Scene Specific Managers (Non-DDOL)")]
     [SerializeField] private CameraManager _cameraManagerPrefab;
     [SerializeField] private UIManager _uiManagerPrefab;
     [SerializeField] private PoolManager _poolManagerPrefab;
@@ -28,15 +27,14 @@ public class Bootstrapper : MonoBehaviour
     {
         ValidateRequiredPrefabs();
 
-        EnsureInstance(_inputReaderPrefab);
         EnsureInstance(_gameManagerPrefab);
-        EnsureInstance(_gameFlowManagerPrefab);
         EnsureInstance(_timeManagerPrefab);
         EnsureInstance(_sceneLoaderPrefab);
+        EnsureInstance(_inputReaderPrefab);
         EnsureInstance(_pauseManagerPrefab);
-        EnsureInstance(_soundManagerPrefab);
+        EnsureInstance(_gameFlowManagerPrefab);
 
-        // Scene scope
+        EnsureInstance(_soundManagerPrefab);
         EnsureInstance(_cameraManagerPrefab);
         EnsureInstance(_uiManagerPrefab);
         EnsureInstance(_poolManagerPrefab);
@@ -44,30 +42,57 @@ public class Bootstrapper : MonoBehaviour
 
     private void Start()
     {
-        InitializeLogic();
+        BootstrapManagers();
     }
 
-    private void InitializeLogic()
+    private void BootstrapManagers()
     {
-        // Phase 1: CoreData
-        if (InputReader.Instance != null) InputReader.Instance.BootstrapIfNeeded();
-        if (SceneLoader.Instance != null) SceneLoader.Instance.BootstrapIfNeeded();
+        bool success = true;
 
-        // Phase 2: CoreState
-        if (GameManager.Instance != null) GameManager.Instance.BootstrapIfNeeded();
-        if (GameFlowManager.Instance != null) GameFlowManager.Instance.BootstrapIfNeeded();
-        if (TimeManager.Instance != null) TimeManager.Instance.BootstrapIfNeeded();
+        success &= BootstrapRequired(GameManager.Instance, nameof(GameManager));
+        success &= BootstrapRequired(TimeManager.Instance, nameof(TimeManager));
+        success &= BootstrapRequired(SceneLoader.Instance, nameof(SceneLoader));
+        success &= BootstrapRequired(InputReader.Instance, nameof(InputReader));
+        success &= BootstrapRequired(PauseManager.Instance, nameof(PauseManager));
+        success &= BootstrapRequired(GameFlowManager.Instance, nameof(GameFlowManager));
 
-        // Phase 3: World
-        //if (CameraManager.Instance != null) CameraManager.Instance.BootstrapIfNeeded();
-        if (PauseManager.Instance != null) PauseManager.Instance.BootstrapIfNeeded();
+        success &= BootstrapOptional(SoundManager.Instance, nameof(SoundManager));
+        success &= BootstrapOptional(CameraManager.Instance, nameof(CameraManager));
+        success &= BootstrapOptional(UIManager.Instance, nameof(UIManager));
+        success &= BootstrapOptional(PoolManager.Instance, nameof(PoolManager));
 
-        // Phase 4: Presentation
-        if (PoolManager.Instance != null) PoolManager.Instance.BootstrapIfNeeded();
-        if (UIManager.Instance != null) UIManager.Instance.BootstrapIfNeeded();
-        if (SoundManager.Instance != null) SoundManager.Instance.BootstrapIfNeeded();
+        if (success)
+        {
+            Debug.Log("<color=green>[Bootstrapper]</color> manager bootstrapping completed.");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>[Bootstrapper]</color> manager bootstrapping completed with missing required managers.");
+        }
+    }
 
-        Debug.Log("<color=green>[Bootstrapper]</color> manager initialization completed.");
+    private bool BootstrapRequired(ISingletonBootstrap manager, string managerName)
+    {
+        if (manager == null)
+        {
+            Debug.LogError($"[Bootstrapper] Missing required manager instance: {managerName}", this);
+            return false;
+        }
+
+        manager.BootstrapIfNeeded();
+        return true;
+    }
+
+    private bool BootstrapOptional(ISingletonBootstrap manager, string managerName)
+    {
+        if (manager == null)
+        {
+            Debug.LogWarning($"[Bootstrapper] Optional manager instance not found: {managerName}", this);
+            return true;
+        }
+
+        manager.BootstrapIfNeeded();
+        return true;
     }
 
     private void ValidateRequiredPrefabs()
@@ -77,14 +102,12 @@ public class Bootstrapper : MonoBehaviour
             return;
         }
 
-        ValidateRequiredPrefab(_inputReaderPrefab, nameof(_inputReaderPrefab));
         ValidateRequiredPrefab(_gameManagerPrefab, nameof(_gameManagerPrefab));
-        ValidateRequiredPrefab(_gameFlowManagerPrefab, nameof(_gameFlowManagerPrefab));
         ValidateRequiredPrefab(_timeManagerPrefab, nameof(_timeManagerPrefab));
         ValidateRequiredPrefab(_sceneLoaderPrefab, nameof(_sceneLoaderPrefab));
+        ValidateRequiredPrefab(_inputReaderPrefab, nameof(_inputReaderPrefab));
         ValidateRequiredPrefab(_pauseManagerPrefab, nameof(_pauseManagerPrefab));
-        ValidateRequiredPrefab(_soundManagerPrefab, nameof(_soundManagerPrefab));
-        ValidateRequiredPrefab(_poolManagerPrefab, nameof(_poolManagerPrefab));
+        ValidateRequiredPrefab(_gameFlowManagerPrefab, nameof(_gameFlowManagerPrefab));
     }
 
     private void ValidateRequiredPrefab(Object prefab, string fieldName)
@@ -97,8 +120,16 @@ public class Bootstrapper : MonoBehaviour
 
     private void EnsureInstance<T>(T prefab) where T : MonoBehaviour
     {
-        if (prefab == null) return;
-        if (FindAnyObjectByType<T>() != null) return;
+        if (prefab == null)
+        {
+            return;
+        }
+
+        if (FindAnyObjectByType<T>() != null)
+        {
+            return;
+        }
+
         Instantiate(prefab);
     }
 }
