@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc1521c1e36a47939e898bd5f714f2e3, type: 3}
+  m_Name: HeavyEnemyData
+  m_EditorClassIdentifier: 
+  _enemyId: Heavy
+  _category: 1
+  _maxHealth: 200
+  _weight: 4
+  _canBeCaptured: 1
+  _captureWeight: 4
+  _canBeExecuted: 1
+  _usesGroggy: 1
+  _groggyThresholdRatio: 0.1
+  _groggyInvulnerableDuration: 0.75
+  _groggyDuration: 3
+  _groggyRecoveryTargetHealthRatio: 0.5
+  _groggyRecoveryDuration: 5
+  _canDieFromBasicAttackWhileGroggy: 1
+  _groggyRightClickAction: 1
+  _piercingAttackPolicy: 2
+  _usesEmbeddedAttackMechanic: 0
+  _requiredEmbeddedAttackCount: 0
