@@ -20,6 +20,7 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private ShakeIntensity _finisherShakeIntensity = ShakeIntensity.Strong;
 
     private readonly HashSet<IDamageable> _pierceHitTargets = new HashSet<IDamageable>();
+    private readonly HashSet<EnemyBase> _groggyEnteredDuringCurrentPin = new HashSet<EnemyBase>();
     private Vector2 _aimLockPosition;
     private Vector2 _aimMouseStartPosition;
     private bool _isAiming;
@@ -190,7 +191,10 @@ public class ThrustPierceModule : WeaponActionModule
     private void HandleLinkEnergyDepleted()
     {
         EndAiming();
-        Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
+        Vector2 deathKnockback = Controller.PlayerTransform != null
+            ? ((Vector2)Controller.transform.position - (Vector2)Controller.PlayerTransform.position).normalized * 8f
+            : Vector2.zero;
+        Controller.Capture?.ExecuteCapturedEnemies(deathKnockback);
         Controller.transform.SetParent(null, true);
         Controller.ChangeState(WeaponState.Grounded);
 
@@ -290,6 +294,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (Controller.Movement == null || Controller.Combat == null || Controller.Capture == null || Controller.StateMachine == null) return;
 
         _pierceHitTargets.Clear();
+        _groggyEnteredDuringCurrentPin.Clear();
         Controller.StateMachine.ClearPinSource();
         Controller.ChangeState(WeaponState.PinningFlight);
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
@@ -307,13 +312,25 @@ public class ThrustPierceModule : WeaponActionModule
             targetTransform =>
             {
                 if (targetTransform == null) return false;
+                if (!targetTransform.TryGetComponent<EnemyBase>(out var enemy))
+                    return false;
+
+                if (enemy.IsGroggy)
+                {
+                    if (_groggyEnteredDuringCurrentPin.Contains(enemy))
+                        return false;
+
+                    return TryHandleGroggyEnemyPierce(enemy, targetTransform);
+                }
 
                 bool damageApplied = Controller.Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, _pierceHitTargets);
                 if (!damageApplied)
                     return false;
-
-                if (!targetTransform.TryGetComponent<EnemyBase>(out var enemy))
+                if (enemy.IsGroggy)
+                {
+                    _groggyEnteredDuringCurrentPin.Add(enemy);
                     return false;
+                }
 
                 if (enemy.ShouldPiercePassThrough())
                     return false;
@@ -405,6 +422,36 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.transform.SetParent(dock, true);
         _dockWaitTimer = 0f;
         _isDockWaiting = true;
+    }
+
+    private bool TryHandleGroggyEnemyPierce(EnemyBase enemy, Transform enemyTransform)
+    {
+        if (enemy == null || enemyTransform == null)
+            return false;
+
+        switch (enemy.GroggyRightClickAction)
+        {
+            case GroggyRightClickActionType.Capture:
+                if (!enemy.TryHandleGroggyPierceInteraction())
+                    return false;
+
+                Controller.Capture.BindEnemy(enemyTransform);
+                Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                Controller.ChangeState(WeaponState.Pinned);
+                return true;
+
+            case GroggyRightClickActionType.EmbeddedAttack:
+                if (!enemy.TryHandleGroggyPierceInteraction())
+                    return false;
+
+                Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                Controller.ChangeState(WeaponState.Pinned);
+                return true;
+
+            case GroggyRightClickActionType.None:
+            default:
+                return false;
+        }
     }
 
     private void EndAiming()

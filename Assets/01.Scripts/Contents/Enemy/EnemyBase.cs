@@ -15,9 +15,11 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected Coroutine _blinkRoutine;
     protected Coroutine _groggyRoutine;
     protected Coroutine _groggyRecoveryRoutine;
+    protected Coroutine _groggyVisualRoutine;
     protected bool _isGroggy;
     protected bool _isGroggyInvulnerable;
     protected bool _isRecoveringFromGroggy;
+    protected bool _isCaptured;
     protected bool _hasHitWallAfterDeath = false;
 
     public virtual TeamType Team => TeamType.Enemy;
@@ -28,6 +30,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public bool IsGroggy => _isGroggy;
     public bool IsGroggyInvulnerable => _isGroggyInvulnerable;
     public bool IsRecoveringFromGroggy => _isRecoveringFromGroggy;
+    public bool IsCaptured => _isCaptured;
     public virtual EnemyCategory Category => _enemyData != null ? _enemyData.Category : EnemyCategory.Normal;
     public virtual float Weight => _enemyData != null ? _enemyData.Weight : 0f;
     public virtual bool CanBeCaptured => _enemyData != null && _enemyData.CanBeCaptured;
@@ -61,7 +64,10 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual void TakeDamage(DamageData damageData)
     {
         if (IsDead) return;
+        if (_isGroggy && damageData.IsPiercing && !damageData.IsExecution) return;
         if (_isGroggyInvulnerable) return;
+
+        StopRecoveryOnDamage();
 
         float previousHealth = _currentHealth;
 
@@ -125,22 +131,14 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     protected virtual bool TryHandleGroggyAfterDamage(float previousHealth, DamageData damageData)
     {
-        if (_enemyData == null || !_enemyData.UsesGroggy)
+        if (_isGroggy)
             return false;
 
-        if (_isGroggy)
-        {
-            if (_currentHealth <= 0f)
-            {
-                if (_enemyData.CanDieFromBasicAttackWhileGroggy)
-                    return false;
+        if (damageData.IsExecution)
+            return false;
 
-                _currentHealth = 1f;
-            }
-
-            RestartGroggyHold();
-            return true;
-        }
+        if (_enemyData == null || !_enemyData.UsesGroggy)
+            return false;
 
         bool crossedThreshold = previousHealth > _enemyData.GroggyThresholdHealth &&
                                 _currentHealth <= _enemyData.GroggyThresholdHealth;
@@ -174,12 +172,22 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             _rb.angularVelocity = 0f;
         }
 
+        if (_blinkRoutine != null)
+        {
+            StopCoroutine(_blinkRoutine);
+            _blinkRoutine = null;
+        }
+
         OnGroggyEntered(damageData);
+        StartGroggyVisual();
         RestartGroggyHold();
     }
 
     protected virtual void RestartGroggyHold()
     {
+        if (_isCaptured)
+            return;
+
         if (_groggyRoutine != null)
             StopCoroutine(_groggyRoutine);
 
@@ -198,6 +206,12 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
         yield return new WaitForSeconds(groggyDuration);
 
+        if (_isCaptured)
+        {
+            _groggyRoutine = null;
+            yield break;
+        }
+
         _groggyRoutine = null;
         ExitGroggyAndRecover();
     }
@@ -206,6 +220,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     {
         _isGroggy = false;
         _isGroggyInvulnerable = false;
+        StopGroggyVisual(true);
         OnGroggyExited();
 
         if (gameObject.activeInHierarchy)
@@ -214,6 +229,9 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     protected virtual IEnumerator GroggyRecoveryRoutine()
     {
+        if (_isCaptured)
+            yield break;
+
         _isRecoveringFromGroggy = true;
         OnGroggyRecoveryStarted();
 
@@ -240,6 +258,13 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
                 yield break;
             }
 
+            if (_isCaptured)
+            {
+                _isRecoveringFromGroggy = false;
+                _groggyRecoveryRoutine = null;
+                yield break;
+            }
+
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / recoveryDuration);
             _currentHealth = Mathf.Lerp(startHealth, targetHealth, t);
@@ -259,6 +284,100 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected virtual void OnGroggyRecoveryStarted() { }
 
     protected virtual void OnGroggyRecoveryCompleted() { }
+
+    protected virtual void StopRecoveryOnDamage()
+    {
+        if (_groggyRecoveryRoutine == null)
+            return;
+
+        StopCoroutine(_groggyRecoveryRoutine);
+        _groggyRecoveryRoutine = null;
+        _isRecoveringFromGroggy = false;
+    }
+
+    protected virtual void StartGroggyVisual()
+    {
+        if (_spriteRenderer == null)
+            return;
+
+        StopGroggyVisual(false);
+        if (gameObject.activeInHierarchy)
+            _groggyVisualRoutine = StartCoroutine(GroggyVisualRoutine());
+    }
+
+    protected virtual void StopGroggyVisual(bool restoreColor)
+    {
+        if (_groggyVisualRoutine != null)
+        {
+            StopCoroutine(_groggyVisualRoutine);
+            _groggyVisualRoutine = null;
+        }
+
+        if (restoreColor && _spriteRenderer != null)
+            _spriteRenderer.color = _originalColor;
+    }
+
+    protected virtual IEnumerator GroggyVisualRoutine()
+    {
+        Color groggyColor = Color.yellow;
+
+        while (_isGroggy)
+        {
+            float t = Mathf.PingPong(Time.time * 2f, 1f);
+            float easedT = Mathf.SmoothStep(0f, 1f, t);
+            _spriteRenderer.color = Color.Lerp(_originalColor, groggyColor, easedT);
+            yield return null;
+        }
+
+        _groggyVisualRoutine = null;
+    }
+
+    public virtual bool TryHandleGroggyPierceInteraction()
+    {
+        if (!_isGroggy || _enemyData == null)
+            return false;
+
+        switch (_enemyData.GroggyRightClickAction)
+        {
+            case GroggyRightClickActionType.Capture:
+                return CanBeCaptured;
+            case GroggyRightClickActionType.EmbeddedAttack:
+                if (!UsesEmbeddedAttackMechanic)
+                    return false;
+
+                OnEmbeddedAttackRequested();
+                return true;
+            case GroggyRightClickActionType.None:
+            default:
+                return false;
+        }
+    }
+
+    protected virtual void OnEmbeddedAttackRequested() { }
+
+    public virtual void SetCaptured(bool isCaptured)
+    {
+        _isCaptured = isCaptured;
+
+        if (_isCaptured)
+        {
+            StopGroggyTimerOnly();
+            _isGroggyInvulnerable = false;
+            _isRecoveringFromGroggy = false;
+            return;
+        }
+
+        if (_isGroggy && gameObject.activeInHierarchy)
+            RestartGroggyHold();
+    }
+
+    public virtual void ExecuteDeath(Vector2 knockbackForce)
+    {
+        if (IsDead) return;
+
+        _currentHealth = 0f;
+        Die(knockbackForce);
+    }
 
     protected virtual void Die(Vector2 knockbackForce)
     {
@@ -364,9 +483,26 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             _groggyRecoveryRoutine = null;
         }
 
+        StopGroggyVisual(false);
         _isGroggy = false;
         _isGroggyInvulnerable = false;
         _isRecoveringFromGroggy = false;
+        _isCaptured = false;
+    }
+
+    protected virtual void StopGroggyTimerOnly()
+    {
+        if (_groggyRoutine != null)
+        {
+            StopCoroutine(_groggyRoutine);
+            _groggyRoutine = null;
+        }
+
+        if (_groggyRecoveryRoutine != null)
+        {
+            StopCoroutine(_groggyRecoveryRoutine);
+            _groggyRecoveryRoutine = null;
+        }
     }
 
     protected virtual void OnCollisionEnter2D(Collision2D collision)

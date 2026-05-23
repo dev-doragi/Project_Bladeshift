@@ -141,14 +141,8 @@ public class WeaponCombat : MonoBehaviour
             if (enemy == pinnedTarget)
             {
                 // 즉사 + 무기 정면 15배 넉백
-                enemy.TakeDamage(new DamageData
-                {
-                    Damage = 9999f,
-                    AttackerTeam = TeamType.Player,
-                    HitPoint = col.ClosestPoint(center),
-                    KnockbackForce = forward.normalized * _knockbackPower * 15f,
-                    IsPiercing = true
-                });
+                if (enemy.CanExecuteCaptureFinisher())
+                    enemy.ExecuteDeath(forward.normalized * _knockbackPower * 15f);
             }
             else
             {
@@ -176,9 +170,6 @@ public class WeaponCombat : MonoBehaviour
             if (!col.TryGetComponent<EnemyBase>(out var other) || other.IsDead)
                 continue;
 
-            if (!other.CanExecuteCaptureFinisher())
-                continue;
-
             Vector2 baseDir = ((Vector2)col.transform.position - (Vector2)position).normalized;
             if (baseDir.sqrMagnitude <= 0.0001f)
                 baseDir = Vector2.right;
@@ -190,7 +181,6 @@ public class WeaponCombat : MonoBehaviour
             ).normalized;
 
             bool isPinnedTarget = pinnedTargets != null && pinnedTargets.Contains(col.transform);
-            float damage = isPinnedTarget ? 9999f : _slashDamage;
             float forceMultiplier = isPinnedTarget ? 10f : 5f;
 
             Vector2 correctedKnockback = CalculateFinisherKnockback(
@@ -200,13 +190,21 @@ public class WeaponCombat : MonoBehaviour
                 wallMask
             );
 
+            if (isPinnedTarget)
+            {
+                if (other.CanExecuteCaptureFinisher())
+                    other.ExecuteDeath(correctedKnockback);
+
+                continue;
+            }
+
             other.TakeDamage(new DamageData
             {
-                Damage = damage,
+                Damage = _slashDamage,
                 AttackerTeam = TeamType.Player,
                 HitPoint = col.ClosestPoint(position),
                 KnockbackForce = correctedKnockback,
-                IsPiercing = isPinnedTarget
+                IsPiercing = false
             });
         }
     }
