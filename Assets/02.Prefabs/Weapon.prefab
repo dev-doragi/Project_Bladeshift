@@ -397,8 +397,6 @@ GameObject:
   - component: {fileID: 6705958014074586991}
   - component: {fileID: 620977729684863863}
   - component: {fileID: 5063814875019817314}
-  - component: {fileID: 5687514990631879681}
-  - component: {fileID: 6149882478709522482}
   - component: {fileID: 6756426515201821374}
   - component: {fileID: 7554338162925912487}
   - component: {fileID: 3241085922754617426}
@@ -565,7 +563,7 @@ MonoBehaviour:
   _modeController: {fileID: 303466040254391467}
   _remotePrimaryModule: {fileID: 3241085922754617426}
   _remoteSecondaryModule: {fileID: 5259452382723162312}
-  _meleePrimaryModule: {fileID: 5687514990631879681}
+  _meleePrimaryModule: {fileID: 0}
   _meleeSecondaryModule: {fileID: 0}
 --- !u!114 &5723434080366493270
 MonoBehaviour:
@@ -670,50 +668,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0caef6ba42d000c40a072204f09d138e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponCapture
---- !u!114 &5687514990631879681
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8857529888259376973}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
-  _meleePivot: {fileID: 0}
-  _swingAngle: 90
-  _swingDuration: 0.18
-  _returnDuration: 0.08
-  _damage: 1
-  _targetLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  _hitRadius: 1.2
-  _hitTimeNormalized: 0.45
---- !u!114 &6149882478709522482
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8857529888259376973}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
-  _meleePivot: {fileID: 0}
-  _swingAngle: 90
-  _swingDuration: 0.18
-  _returnDuration: 0.08
-  _damage: 1
-  _targetLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  _hitRadius: 1.2
-  _hitTimeNormalized: 0.45
 --- !u!114 &6756426515201821374
 MonoBehaviour:
   m_ObjectHideFlags: 0
