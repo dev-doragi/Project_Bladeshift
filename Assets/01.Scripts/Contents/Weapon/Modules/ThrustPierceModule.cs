@@ -99,12 +99,14 @@ public class ThrustPierceModule : WeaponActionModule
     {
         if (Controller.CurrentMode != WeaponMode.Remote) return;
         if (_isAutoReturning || _isDockWaiting) return;
+        if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall) return;
 
         Vector2 mouseWorldPos = Controller.Sensor.GetMouseWorldPosition();
-        bool hasEnemy = Controller.Capture != null && Controller.Capture.GetCapturedEnemies().Count > 0;
+        bool isEnemyPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy;
+        bool hasEnemyCapture = Controller.Capture != null && Controller.Capture.HasCapturedEnemy;
         bool canHover = Controller.CurrentState == WeaponState.Controlled ||
                         Controller.CurrentState == WeaponState.Slashing ||
-                        (Controller.CurrentState == WeaponState.Pinned && hasEnemy);
+                        (Controller.CurrentState == WeaponState.Pinned && (isEnemyPinned || hasEnemyCapture));
 
         if (!_isAiming && canHover)
         {
@@ -130,6 +132,7 @@ public class ThrustPierceModule : WeaponActionModule
     {
         WeaponLinkEnergy linkEnergy = Controller.LinkEnergy;
         if (linkEnergy == null || Controller.PlayerTransform == null) return;
+        bool isWallPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall;
 
         bool isRemoteControlling =
             Controller.CurrentMode == WeaponMode.Remote &&
@@ -140,6 +143,7 @@ public class ThrustPierceModule : WeaponActionModule
         float distance = Vector2.Distance(Controller.PlayerTransform.position, Controller.transform.position);
         linkEnergy.Tick(distance, Controller.ControlRadius, isRemoteControlling, Time.fixedDeltaTime);
         linkEnergy.ClearFrameSpendFlag();
+        if (isWallPinned) return;
 
         if (!linkEnergy.IsControlLocked || !isRemoteControlling) return;
         HandleLinkEnergyDepleted();
@@ -148,7 +152,10 @@ public class ThrustPierceModule : WeaponActionModule
     private void TickPinnedCaptureDrain()
     {
         if (Controller.CurrentState != WeaponState.Pinned) return;
-        if (Controller.Capture == null || Controller.Capture.GetCapturedEnemies().Count == 0) return;
+        if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall) return;
+        bool isEnemyPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy;
+        if (!isEnemyPinned) return;
+        if (Controller.Capture == null || !Controller.Capture.HasCapturedEnemy) return;
         if (Controller.LinkEnergy == null) return;
 
         bool keepCapturing = Controller.LinkEnergy.SpendEnergyOverTime(_captureHoldCostPerSecond, _captureHoldSpendMode);
@@ -191,9 +198,23 @@ public class ThrustPierceModule : WeaponActionModule
     {
         if (Controller == null) return false;
         if (Controller.CurrentState != WeaponState.Pinned) return false;
+
+        if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall)
+        {
+            if (!Controller.Sensor.IsPlayerInRange(Controller.transform.position))
+                return true;
+
+            StartReturnToPlayer();
+            return true;
+        }
+
+        bool isEnemyPinned = (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy) ||
+                             (Controller.Capture != null && Controller.Capture.HasCapturedEnemy);
+        if (!isEnemyPinned) return false;
+
         if (!Controller.Sensor.IsPlayerInRange(Controller.transform.position)) return true;
 
-        if (Controller.Capture != null && Controller.Capture.GetCapturedEnemies().Count > 0)
+        if (Controller.Capture != null && Controller.Capture.HasCapturedEnemy)
         {
             WeaponActionModule remotePrimary = GetComponent<SpinSlashModule>();
             if (remotePrimary != null && remotePrimary.TryExecutePinnedFinisher()) return true;
@@ -205,9 +226,10 @@ public class ThrustPierceModule : WeaponActionModule
 
     private void StartPinSequence(Vector2 direction)
     {
-        if (Controller.Movement == null || Controller.Combat == null || Controller.Capture == null) return;
+        if (Controller.Movement == null || Controller.Combat == null || Controller.Capture == null || Controller.StateMachine == null) return;
 
         _pierceHitTargets.Clear();
+        Controller.StateMachine.ClearPinSource();
         Controller.ChangeState(WeaponState.PinningFlight);
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
 
@@ -223,33 +245,60 @@ public class ThrustPierceModule : WeaponActionModule
             null,
             targetTransform =>
             {
-                if (!Controller.Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, _pierceHitTargets))
+                if (targetTransform == null) return false;
+
+                bool damageApplied = Controller.Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, _pierceHitTargets);
+                if (!damageApplied)
                     return false;
 
-                if (targetTransform != null)
+                if (!targetTransform.TryGetComponent<EnemyBase>(out var enemy))
+                    return false;
+
+                if (enemy.ShouldPiercePassThrough())
+                    return false;
+
+                if (enemy.ShouldPierceStick() && enemy.CanBeCapturedByPierce())
+                {
                     Controller.Capture.BindEnemy(targetTransform);
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                    // Keep flying while carrying captured enemy.
+                    // Pinned state is finalized only on wall hit or range-end.
+                    return false;
+                }
 
                 return false;
             },
             _ =>
             {
                 EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
-                Controller.ChangeState(WeaponState.Pinned);
-            },
-            () =>
-            {
-                if (Controller.Capture != null && Controller.Capture.GetCapturedEnemies().Count > 0)
+                if (Controller.Capture.HasCapturedEnemy)
                 {
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
                     Controller.ChangeState(WeaponState.Pinned);
                     return;
                 }
 
+                Controller.Capture.UnbindAll(forcePhysicsRestore: true);
+                Controller.StateMachine.SetPinSource(WeaponPinSource.Wall);
+                Controller.ChangeState(WeaponState.Pinned);
+            },
+            () =>
+            {
+                if (Controller.Capture.HasCapturedEnemy)
+                {
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                    Controller.ChangeState(WeaponState.Pinned);
+                    return;
+                }
+
+                Controller.StateMachine.ClearPinSource();
                 StartReturnToPlayer();
             });
     }
 
     private void StartReturnToPlayer()
     {
+        Controller.StateMachine?.ClearPinSource();
         Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
         Controller.ChangeState(WeaponState.Returning);
         Controller.Movement.ExecuteReturn(

@@ -118,8 +118,7 @@ public class WeaponController : MonoBehaviour
         _meleeAttachment.Initialize(_playerController, _rb, _weaponCollider);
         _modeController.Initialize(_stateMachine);
         _sensor.Initialize(_playerTransform, _mainCamera, ControlRadius);
-        _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat);
-        _view.Initialize(_playerTransform, _stateMachine, _modeController, _linkEnergy);
+        _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);
         _actionRouter.Initialize(this, _modeController);
         _stateMachine.ChangeState(WeaponState.Grounded);
         _modeController.ApplyCurrentMode();

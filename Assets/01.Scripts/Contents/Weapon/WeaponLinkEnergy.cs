@@ -15,6 +15,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     private const float Epsilon = 0.0001f;
     private bool _isRecoveryBlocked;
     private bool _spentEnergyThisFrame;
+    private bool _isDepletedRechargeMode;
 
     public float MaxEnergy => _maxEnergy;
     public float CurrentEnergy => _currentEnergy;
@@ -27,6 +28,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     public bool CanStartControl => !IsControlLocked && !IsEmpty && !_isRecoveryBlocked;
     public bool SpentEnergyThisFrame => _spentEnergyThisFrame;
     public LinkEnergyDepletionMode DepletionMode => _depletionMode;
+    public bool IsDepletedRechargeMode => _isDepletedRechargeMode;
 
     private void Awake()
     {
@@ -49,8 +51,17 @@ public class WeaponLinkEnergy : MonoBehaviour
         float recoverRadius = safeControlRadius * Mathf.Clamp01(_recoverRadiusRatio);
         bool insideRecoverRadius = safeDistance <= recoverRadius;
 
-        IsRecovering = !_isRecoveryBlocked && !_spentEnergyThisFrame && insideRecoverRadius;
-        IsDraining = !_isRecoveryBlocked && !insideRecoverRadius && isRemoteControlling;
+        IsRecovering =
+            !_isRecoveryBlocked &&
+            !_isDepletedRechargeMode &&
+            !IsControlLocked &&
+            !_spentEnergyThisFrame &&
+            insideRecoverRadius;
+        IsDraining =
+            !_isRecoveryBlocked &&
+            !_isDepletedRechargeMode &&
+            !insideRecoverRadius &&
+            isRemoteControlling;
 
         float previousEnergy = _currentEnergy;
 
@@ -69,10 +80,12 @@ public class WeaponLinkEnergy : MonoBehaviour
         if (_currentEnergy <= Epsilon)
         {
             IsControlLocked = true;
+            if (!_isDepletedRechargeMode)
+                EnterDepletedRechargeMode();
         }
-        else if (IsControlLocked && insideRecoverRadius && Normalized >= _reactivationEnergyRatio)
+        else if (!IsControlLocked && _isDepletedRechargeMode)
         {
-            IsControlLocked = false;
+            ExitDepletedRechargeMode();
         }
 
         if (!Mathf.Approximately(previousEnergy, _currentEnergy))
@@ -179,6 +192,8 @@ public class WeaponLinkEnergy : MonoBehaviour
     {
         _currentEnergy = 0f;
         IsControlLocked = true;
+        if (!_isDepletedRechargeMode)
+            EnterDepletedRechargeMode();
         EventBus.Instance?.Publish(new LinkEnergyChangedEvent
         {
             Current = _currentEnergy,
@@ -200,11 +215,12 @@ public class WeaponLinkEnergy : MonoBehaviour
     public void RestoreFullAndUnlock()
     {
         _currentEnergy = _maxEnergy;
-        _isRecoveryBlocked = false;
         IsControlLocked = false;
-        _spentEnergyThisFrame = false;
+        _isRecoveryBlocked = false;
+        _isDepletedRechargeMode = false;
         IsRecovering = false;
         IsDraining = false;
+        _spentEnergyThisFrame = false;
         EventBus.Instance?.Publish(new LinkEnergyChangedEvent
         {
             Current = _currentEnergy,
@@ -219,5 +235,25 @@ public class WeaponLinkEnergy : MonoBehaviour
     public void ClearFrameSpendFlag()
     {
         _spentEnergyThisFrame = false;
+    }
+
+    public void ClearRuntimeFlagsWithoutChangingEnergy()
+    {
+        IsRecovering = false;
+        IsDraining = false;
+    }
+
+    public void EnterDepletedRechargeMode()
+    {
+        _isDepletedRechargeMode = true;
+        _isRecoveryBlocked = true;
+        IsRecovering = false;
+        IsDraining = false;
+    }
+
+    public void ExitDepletedRechargeMode()
+    {
+        _isDepletedRechargeMode = false;
+        _isRecoveryBlocked = false;
     }
 }

@@ -93,10 +93,34 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     public virtual bool ShouldPiercingAttackStick()
     {
-        if (_enemyData == null)
-            return true;
+        return ShouldPierceStick();
+    }
 
-        return _enemyData.ShouldPiercingAttackStick(_isGroggy);
+    public virtual bool CanBeCapturedByPierce()
+    {
+        // Conservative default for generic enemies without policy data.
+        if (_enemyData == null) return false;
+        return _enemyData.CanBeCapturedByPierce(_isGroggy);
+    }
+
+    public virtual bool ShouldPierceStick()
+    {
+        // Conservative default for generic enemies without policy data.
+        if (_enemyData == null) return false;
+        return _enemyData.ShouldPierceStick(_isGroggy);
+    }
+
+    public virtual bool ShouldPiercePassThrough()
+    {
+        // Conservative default for generic enemies without policy data.
+        if (_enemyData == null) return true;
+        return _enemyData.ShouldPiercePassThrough(_isGroggy);
+    }
+
+    public virtual bool CanExecuteCaptureFinisher()
+    {
+        if (_enemyData == null) return false;
+        return CanBeCapturedByPierce() && CanBeExecuted;
     }
 
     protected virtual bool TryHandleGroggyAfterDamage(float previousHealth, DamageData damageData)

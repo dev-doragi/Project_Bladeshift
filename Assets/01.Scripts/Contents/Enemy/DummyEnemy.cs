@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-
 public class DummyEnemy : EnemyBase
 {
     private bool _isDowned;
@@ -13,7 +12,29 @@ public class DummyEnemy : EnemyBase
         _originalLayer = gameObject.layer;
     }
 
-    // 추후 AI 등 고유 로직만 이곳에 작성
+    public override bool CanBeCapturedByPierce()
+    {
+        if (Data != null) return base.CanBeCapturedByPierce();
+        return true;
+    }
+
+    public override bool ShouldPierceStick()
+    {
+        if (Data != null) return base.ShouldPierceStick();
+        return true;
+    }
+
+    public override bool ShouldPiercePassThrough()
+    {
+        if (Data != null) return base.ShouldPiercePassThrough();
+        return false;
+    }
+
+    public override bool CanExecuteCaptureFinisher()
+    {
+        if (Data != null) return base.CanExecuteCaptureFinisher();
+        return true;
+    }
 
     public override void TakeDamage(DamageData damageData)
     {
@@ -46,7 +67,6 @@ public class DummyEnemy : EnemyBase
         _isDowned = true;
         _hasHitWallAfterDeath = false;
 
-        // 무기 자식 해제 로직
         int weaponLayer = LayerMask.NameToLayer("Weapon");
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
@@ -58,7 +78,7 @@ public class DummyEnemy : EnemyBase
         if (_rb != null)
         {
             _rb.bodyType = RigidbodyType2D.Dynamic;
-            _rb.freezeRotation = false; // 자유롭게 회전하며 날아감
+            _rb.freezeRotation = false;
             _rb.linearDamping = 1.5f;
             _rb.angularDamping = 1.0f;
             _rb.linearVelocity = Vector2.zero;
@@ -77,7 +97,6 @@ public class DummyEnemy : EnemyBase
 
     private IEnumerator DummyReviveRoutine()
     {
-        // 1. 물리 정지 대기 (날아가는 동안 기다림)
         yield return new WaitForSeconds(0.5f);
 
         if (_rb != null)
@@ -92,7 +111,6 @@ public class DummyEnemy : EnemyBase
 
         yield return new WaitForSeconds(0.5f);
 
-        // 2. 다시 일어나는 애니메이션 (Rotation Reset)
         if (_rb != null)
         {
             _rb.bodyType = RigidbodyType2D.Kinematic;
@@ -105,21 +123,17 @@ public class DummyEnemy : EnemyBase
         float reviveDuration = 0.6f;
         float elapsed = 0f;
         Quaternion startRotation = transform.rotation;
-        Quaternion targetRotation = Quaternion.identity; // 0도
+        Quaternion targetRotation = Quaternion.identity;
 
         while (elapsed < reviveDuration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / reviveDuration;
-
-            // 커스텀 이징(EaseOutBack) 느낌으로 부드럽게 회전
             float curve = 1f - Mathf.Pow(1f - t, 3f);
             transform.rotation = Quaternion.Slerp(startRotation, targetRotation, curve);
-
             yield return null;
         }
 
-        // 3. 상태 복구
         transform.rotation = targetRotation;
 
         if (_spriteRenderer != null)
@@ -140,7 +154,7 @@ public class DummyEnemy : EnemyBase
 
         if (_originalLayer != -1) gameObject.layer = _originalLayer;
 
-        _currentHealth = _maxHealth; // 체력 완전 회복
+        _currentHealth = _maxHealth;
         _isDowned = false;
     }
 }

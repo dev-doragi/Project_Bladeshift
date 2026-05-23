@@ -10,6 +10,9 @@ public class WeaponStateMachine : MonoBehaviour
     private Collider2D _collider;
 
     public WeaponState CurrentState { get; private set; } = WeaponState.Grounded;
+    public WeaponPinSource PinSource { get; private set; } = WeaponPinSource.None;
+    public bool IsPinnedToWall => CurrentState == WeaponState.Pinned && PinSource == WeaponPinSource.Wall;
+    public bool IsPinnedToEnemy => CurrentState == WeaponState.Pinned && PinSource == WeaponPinSource.Enemy;
     public event Action<WeaponState, WeaponState> StateChanged;
 
     private void Awake()
@@ -33,9 +36,21 @@ public class WeaponStateMachine : MonoBehaviour
 
         WeaponState previousState = CurrentState;
         CurrentState = newState;
+        if (CurrentState != WeaponState.Pinned)
+            ClearPinSource();
         EventBus.Instance?.Publish(new WeaponStateChangeEvent { NewState = CurrentState });
         ApplyPhysicsMode(CurrentState);
         StateChanged?.Invoke(previousState, CurrentState);
+    }
+
+    public void SetPinSource(WeaponPinSource source)
+    {
+        PinSource = source;
+    }
+
+    public void ClearPinSource()
+    {
+        PinSource = WeaponPinSource.None;
     }
 
     public void ForceApplyCurrentState()

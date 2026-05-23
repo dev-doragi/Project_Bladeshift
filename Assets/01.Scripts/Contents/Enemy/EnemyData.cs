@@ -72,6 +72,22 @@ public class EnemyData : ScriptableObject
         }
     }
 
+    public bool ShouldPierceStick(bool isGroggy)
+    {
+        return ShouldPiercingAttackStick(isGroggy);
+    }
+
+    public bool ShouldPiercePassThrough(bool isGroggy)
+    {
+        return !ShouldPierceStick(isGroggy);
+    }
+
+    public bool CanBeCapturedByPierce(bool isGroggy)
+    {
+        if (!_canBeCaptured) return false;
+        return ShouldPierceStick(isGroggy);
+    }
+
     private void OnValidate()
     {
         _maxHealth = Mathf.Max(1f, _maxHealth);

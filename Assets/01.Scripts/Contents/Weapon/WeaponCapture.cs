@@ -6,6 +6,8 @@ public class WeaponCapture : MonoBehaviour
 {
     private readonly List<EnemyBase> _capturedEnemies = new List<EnemyBase>();
     private Transform _weaponTransform;
+    public bool HasCapturedEnemy => _capturedEnemies.Count > 0;
+    public int CapturedCount => _capturedEnemies.Count;
 
     private void Awake()
     {

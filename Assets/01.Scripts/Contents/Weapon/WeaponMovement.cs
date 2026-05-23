@@ -166,6 +166,9 @@ public class WeaponMovement : MonoBehaviour
                 foreach (Collider2D target in targets)
                 {
                     if (target == null) continue;
+                    // onCheckTarget contract:
+                    // true  -> stop pin flight
+                    // false -> continue pin flight
                     if (onCheckTarget(target.transform))
                     {
                         yield break;
@@ -257,6 +260,9 @@ public class WeaponMovement : MonoBehaviour
 
                 for (int i = 0; i < sweepTargets.Count; i++)
                 {
+                    // onCheckTarget contract:
+                    // true  -> stop pin flight
+                    // false -> continue pin flight
                     if (onCheckTarget(sweepTargets[i].target))
                     {
                         yield break;

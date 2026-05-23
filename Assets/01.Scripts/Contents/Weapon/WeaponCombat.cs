@@ -168,6 +168,10 @@ public class WeaponCombat : MonoBehaviour
         {
             if (!col.TryGetComponent<EnemyBase>(out var other) || other.IsDead)
                 continue;
+
+            if (!other.CanExecuteCaptureFinisher())
+                continue;
+
             Vector2 dir = ((Vector2)col.transform.position - (Vector2)position).normalized;
             float angleOffset = Random.Range(-8f, 8f) * Mathf.Deg2Rad;
             Vector2 knockbackDir = new Vector2(

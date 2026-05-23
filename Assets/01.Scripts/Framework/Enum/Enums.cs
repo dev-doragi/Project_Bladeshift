@@ -22,6 +22,13 @@ public enum WeaponState
     Returning
 }
 
+public enum WeaponPinSource
+{
+    None = 0,
+    Wall = 1,
+    Enemy = 2
+}
+
 public enum ShakeIntensity
 {
     Weak,

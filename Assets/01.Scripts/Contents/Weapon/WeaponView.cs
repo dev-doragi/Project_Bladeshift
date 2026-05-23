@@ -46,6 +46,18 @@ public class WeaponView : MonoBehaviour
         _linkEnergy = linkEnergy;
     }
 
+    public void Initialize(
+        Transform playerTransform,
+        float controlRadius,
+        WeaponCombat combat,
+        WeaponStateMachine stateMachine,
+        WeaponModeController modeController,
+        WeaponLinkEnergy linkEnergy)
+    {
+        Initialize(playerTransform, controlRadius, combat);
+        Initialize(playerTransform, stateMachine, modeController, linkEnergy);
+    }
+
     private void LateUpdate()
     {
         RefreshConnectionLine();
@@ -142,11 +154,14 @@ public class WeaponView : MonoBehaviour
         if (currentState == WeaponState.Grounded)
             return false;
 
+        if (_stateMachine.IsPinnedToWall)
+            return false;
+
         bool isLinkedState = currentState == WeaponState.Controlled
             || currentState == WeaponState.Slashing
             || currentState == WeaponState.PinningFlight
-            || currentState == WeaponState.Pinned
-            || currentState == WeaponState.Returning;
+            || currentState == WeaponState.Returning
+            || (currentState == WeaponState.Pinned && _stateMachine.IsPinnedToEnemy);
 
         if (!isLinkedState)
             return false;
@@ -169,9 +184,6 @@ public class WeaponView : MonoBehaviour
         if (normalized > _blinkEnergyRatio)
             return false;
 
-        if (!_linkEnergy.IsDraining)
-            return false;
-
         if (_blinkInterval <= 0f)
             return false;
 
@@ -184,15 +196,20 @@ public class WeaponView : MonoBehaviour
             return _stableColor;
 
         float normalized = _linkEnergy.Normalized;
+        float blinkThreshold = Mathf.Clamp01(_blinkEnergyRatio);
+        float criticalThreshold = Mathf.Clamp01(_criticalEnergyRatio);
 
-        if (_linkEnergy.IsEmpty || normalized <= _blinkEnergyRatio)
+        if (_linkEnergy.IsEmpty || normalized <= blinkThreshold)
             return _criticalColor;
 
-        if (normalized <= _criticalEnergyRatio)
-            return Color.Lerp(_drainColor, _criticalColor, Mathf.InverseLerp(_blinkEnergyRatio, _criticalEnergyRatio, normalized));
+        if (normalized <= criticalThreshold)
+        {
+            float t = Mathf.InverseLerp(criticalThreshold, blinkThreshold, normalized);
+            return Color.Lerp(_drainColor, _criticalColor, t);
+        }
 
         if (_linkEnergy.IsDraining)
-            return _drainColor;
+            return Color.Lerp(_stableColor, _drainColor, Mathf.Clamp01(_linkEnergy.DistanceRatio));
 
         if (_linkEnergy.IsRecovering)
             return _recoverColor;

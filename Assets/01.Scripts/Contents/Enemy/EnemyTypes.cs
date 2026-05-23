@@ -19,3 +19,10 @@ public enum PiercingAttackPolicy
     PassThroughToWall = 1,
     StickOnlyWhileGroggy = 2
 }
+
+public enum PierceContactResult
+{
+    WallPinned = 0,
+    EnemyCaptured = 1,
+    PassThrough = 2
+}
