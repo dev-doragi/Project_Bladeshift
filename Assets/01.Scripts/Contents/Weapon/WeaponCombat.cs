@@ -13,6 +13,11 @@ public class WeaponCombat : MonoBehaviour
     [SerializeField] private float _spinSpeed = 720f;
     [SerializeField] private float _pinSpeed = 24f;
 
+    [Header("Finisher Wall Correction")]
+    [SerializeField] private float _finisherWallProbeDistance = 3f;
+    [SerializeField] private float _finisherWallSkinWidth = 0.25f;
+    [SerializeField, Range(0.05f, 1f)] private float _finisherBlockedForceRatio = 0.2f;
+
     private float _lastTickTime;
 
     public float SlashRadius => _slashRadius;
@@ -160,45 +165,95 @@ public class WeaponCombat : MonoBehaviour
             }
         }
     }
-    public void PerformSpinFinisher(Vector3 position, List<Transform> pinnedTargets)
+    public void PerformSpinFinisher(Vector3 position, List<Transform> pinnedTargets, LayerMask wallMask)
     {
         float radius = 7f;
         Collider2D[] hits = Physics2D.OverlapCircleAll(position, radius, _enemyLayer);
+
         foreach (var col in hits)
         {
+            if (col == null) continue;
             if (!col.TryGetComponent<EnemyBase>(out var other) || other.IsDead)
                 continue;
 
             if (!other.CanExecuteCaptureFinisher())
                 continue;
 
-            Vector2 dir = ((Vector2)col.transform.position - (Vector2)position).normalized;
+            Vector2 baseDir = ((Vector2)col.transform.position - (Vector2)position).normalized;
+            if (baseDir.sqrMagnitude <= 0.0001f)
+                baseDir = Vector2.right;
+
             float angleOffset = Random.Range(-8f, 8f) * Mathf.Deg2Rad;
             Vector2 knockbackDir = new Vector2(
-                dir.x * Mathf.Cos(angleOffset) - dir.y * Mathf.Sin(angleOffset),
-                dir.x * Mathf.Sin(angleOffset) + dir.y * Mathf.Cos(angleOffset));
-            if (pinnedTargets != null && pinnedTargets.Contains(col.transform))
+                baseDir.x * Mathf.Cos(angleOffset) - baseDir.y * Mathf.Sin(angleOffset),
+                baseDir.x * Mathf.Sin(angleOffset) + baseDir.y * Mathf.Cos(angleOffset)
+            ).normalized;
+
+            bool isPinnedTarget = pinnedTargets != null && pinnedTargets.Contains(col.transform);
+            float damage = isPinnedTarget ? 9999f : _slashDamage;
+            float forceMultiplier = isPinnedTarget ? 10f : 5f;
+
+            Vector2 correctedKnockback = CalculateFinisherKnockback(
+                col,
+                knockbackDir,
+                forceMultiplier,
+                wallMask
+            );
+
+            other.TakeDamage(new DamageData
             {
-                other.TakeDamage(new DamageData
-                {
-                    Damage = 9999f,
-                    AttackerTeam = TeamType.Player,
-                    HitPoint = col.ClosestPoint(position),
-                    KnockbackForce = knockbackDir * _knockbackPower * 10f,
-                    IsPiercing = true
-                });
-            }
-            else
-            {
-                other.TakeDamage(new DamageData
-                {
-                    Damage = _slashDamage,
-                    AttackerTeam = TeamType.Player,
-                    HitPoint = col.ClosestPoint(position),
-                    KnockbackForce = knockbackDir * _knockbackPower * 5f,
-                    IsPiercing = false
-                });
-            }
+                Damage = damage,
+                AttackerTeam = TeamType.Player,
+                HitPoint = col.ClosestPoint(position),
+                KnockbackForce = correctedKnockback,
+                IsPiercing = isPinnedTarget
+            });
         }
+    }
+
+    private Vector2 CalculateFinisherKnockback(
+    Collider2D targetCollider,
+    Vector2 knockbackDirection,
+    float forceMultiplier,
+    LayerMask wallMask)
+    {
+        Vector2 safeDirection = knockbackDirection.sqrMagnitude > 0.0001f
+            ? knockbackDirection.normalized
+            : Vector2.right;
+
+        float baseForce = _knockbackPower * Mathf.Max(0f, forceMultiplier);
+
+        if (targetCollider == null || wallMask.value == 0)
+            return safeDirection * baseForce;
+
+        Bounds bounds = targetCollider.bounds;
+        Vector2 castOrigin = bounds.center;
+        float castRadius = Mathf.Max(0.1f, Mathf.Min(bounds.extents.x, bounds.extents.y));
+        float probeDistance = Mathf.Max(_finisherWallSkinWidth, _finisherWallProbeDistance);
+
+        RaycastHit2D wallHit = Physics2D.CircleCast(
+            castOrigin,
+            castRadius,
+            safeDirection,
+            probeDistance,
+            wallMask
+        );
+
+        if (wallHit.collider == null)
+            return safeDirection * baseForce;
+
+        float allowedDistance = Mathf.Max(0f, wallHit.distance - _finisherWallSkinWidth);
+        float distanceRatio = Mathf.Clamp01(allowedDistance / probeDistance);
+        float forceRatio = Mathf.Lerp(_finisherBlockedForceRatio, 1f, distanceRatio);
+
+        Vector2 tangent = new Vector2(-wallHit.normal.y, wallHit.normal.x);
+        if (Vector2.Dot(tangent, safeDirection) < 0f)
+            tangent = -tangent;
+
+        Vector2 correctedDirection = Vector2.Lerp(tangent, safeDirection, distanceRatio);
+        if (correctedDirection.sqrMagnitude <= 0.0001f)
+            correctedDirection = tangent;
+
+        return correctedDirection.normalized * (baseForce * forceRatio);
     }
 }

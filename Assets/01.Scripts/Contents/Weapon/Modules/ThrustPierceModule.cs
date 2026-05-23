@@ -13,6 +13,11 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private float _rangeBrakeDeceleration = 45f;
     [SerializeField] private float _rangeAutoReturnSpeedThreshold = 2f;
     [SerializeField] private float _dockArrivalDistance = 0.6f;
+    [Header("Finisher Tuning")]
+    [SerializeField] private float _finisherHitStopDuration = 0.2f;
+    [SerializeField] private float _finisherRadiusMultiplier = 1.8f;
+    [SerializeField] private float _finisherOrbitDuration = 0.35f;
+    [SerializeField] private ShakeIntensity _finisherShakeIntensity = ShakeIntensity.Strong;
 
     private readonly HashSet<IDamageable> _pierceHitTargets = new HashSet<IDamageable>();
     private Vector2 _aimLockPosition;
@@ -20,6 +25,7 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _isAiming;
     private bool _isAutoReturning;
     private bool _isDockWaiting;
+    private bool _isFinisherRunning;
     private float _dockWaitTimer;
 
     public override bool TryHandlePinnedPrimary() => TryHandlePinnedAction();
@@ -216,11 +222,66 @@ public class ThrustPierceModule : WeaponActionModule
 
         if (Controller.Capture != null && Controller.Capture.HasCapturedEnemy)
         {
-            WeaponActionModule remotePrimary = GetComponent<SpinSlashModule>();
-            if (remotePrimary != null && remotePrimary.TryExecutePinnedFinisher()) return true;
+            if (TryExecuteCaptureFinisher()) return true;
         }
 
         StartReturnToPlayer();
+        return true;
+    }
+
+    private bool TryExecuteCaptureFinisher()
+    {
+        if (Controller == null) return false;
+        if (Controller.StateMachine == null) return false;
+        if (Controller.CurrentState != WeaponState.Pinned) return false;
+        if (!Controller.StateMachine.IsPinnedToEnemy) return false;
+        if (Controller.Capture == null || !Controller.Capture.HasCapturedEnemy) return false;
+        if (_isFinisherRunning) return true;
+
+        WeaponSensor sensor = Controller.Sensor;
+        WeaponCombat combat = Controller.Combat;
+        WeaponMovement movement = Controller.Movement;
+        WeaponCapture capture = Controller.Capture;
+        if (sensor == null || combat == null || movement == null || capture == null) return false;
+
+        _isFinisherRunning = true;
+        EventBus.Instance?.Publish(new HitStopEvent { Duration = _finisherHitStopDuration });
+        EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _finisherShakeIntensity });
+
+        Vector2 pivot = sensor.GetMouseWorldPosition();
+        float radius = Vector2.Distance(pivot, Controller.transform.position);
+        radius = Mathf.Max(radius, combat.SlashRadius * Mathf.Max(0.1f, _finisherRadiusMultiplier));
+
+        var captured = capture.GetCapturedEnemies();
+        List<Transform> pinnedTargets = new List<Transform>(captured.Count);
+        foreach (var enemy in captured)
+        {
+            if (enemy == null) continue;
+            if (!enemy.CanExecuteCaptureFinisher()) continue;
+            pinnedTargets.Add(enemy.transform);
+        }
+
+        if (pinnedTargets.Count == 0)
+        {
+            _isFinisherRunning = false;
+            return false;
+        }
+
+        movement.ExecuteOrbitFinisher(
+            pivot,
+            radius,
+            Mathf.Max(0.01f, _finisherOrbitDuration),
+            () =>
+            {
+                combat.PerformSpinFinisher(Controller.transform.position, pinnedTargets, Controller.WallAndEnvironmentLayer);
+                capture.UnbindAll();
+            },
+            () =>
+            {
+                _isFinisherRunning = false;
+                Controller.ChangeState(WeaponState.Controlled);
+            });
+
         return true;
     }
 

@@ -397,6 +397,7 @@ GameObject:
   - component: {fileID: 6705958014074586991}
   - component: {fileID: 620977729684863863}
   - component: {fileID: 5063814875019817314}
+  - component: {fileID: 5687514990631879681}
   - component: {fileID: 6149882478709522482}
   - component: {fileID: 6756426515201821374}
   - component: {fileID: 7554338162925912487}
@@ -520,10 +521,6 @@ MonoBehaviour:
     m_Bits: 128
   _thrustDragThreshold: 6
   _recallEnergyCost: 0
-  _remotePrimaryModule: {fileID: 3241085922754617426}
-  _remoteSecondaryModule: {fileID: 5259452382723162312}
-  _meleePrimaryModule: {fileID: 6149882478709522482}
-  _meleeSecondaryModule: {fileID: 0}
 --- !u!114 &5923836136970560632
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -568,7 +565,7 @@ MonoBehaviour:
   _modeController: {fileID: 303466040254391467}
   _remotePrimaryModule: {fileID: 3241085922754617426}
   _remoteSecondaryModule: {fileID: 5259452382723162312}
-  _meleePrimaryModule: {fileID: 6149882478709522482}
+  _meleePrimaryModule: {fileID: 5687514990631879681}
   _meleeSecondaryModule: {fileID: 0}
 --- !u!114 &5723434080366493270
 MonoBehaviour:
@@ -614,6 +611,9 @@ MonoBehaviour:
   _pinDamage: 30
   _spinSpeed: 2500
   _pinSpeed: 150
+  _finisherWallProbeDistance: 3
+  _finisherWallSkinWidth: 0.25
+  _finisherBlockedForceRatio: 0.2
 --- !u!114 &6705958014074586991
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -645,6 +645,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponView
   _trajectoryLine: {fileID: 2569365098588121344}
   _connectionLine: {fileID: 1315615289495745954}
+  _recoverColor: {r: 0, g: 1, b: 1, a: 1}
+  _stableColor: {r: 1, g: 1, b: 1, a: 1}
+  _drainColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  _criticalColor: {r: 1, g: 0, b: 0, a: 1}
+  _criticalEnergyRatio: 0.2
+  _blinkEnergyRatio: 0.1
+  _blinkInterval: 0.12
   _showControlRadius: 1
   _showMouseCaptureRadius: 1
   _showMouseCaptureMaintainRadius: 1
@@ -663,6 +670,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0caef6ba42d000c40a072204f09d138e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponCapture
+--- !u!114 &5687514990631879681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
+  _meleePivot: {fileID: 0}
+  _swingAngle: 90
+  _swingDuration: 0.18
+  _returnDuration: 0.08
+  _damage: 1
+  _targetLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  _hitRadius: 1.2
+  _hitTimeNormalized: 0.45
 --- !u!114 &6149882478709522482
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -736,10 +765,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpinSlashModule
   _slashHoldCostPerSecond: 25
   _slashHoldSpendMode: 1
-  _finisherHitStopDuration: 0.2
-  _finisherRadiusMultiplier: 1.8
-  _finisherOrbitDuration: 0.35
-  _finisherShakeIntensity: 2
 --- !u!114 &5259452382723162312
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -761,6 +786,10 @@ MonoBehaviour:
   _rangeBrakeDeceleration: 2000
   _rangeAutoReturnSpeedThreshold: 2
   _dockArrivalDistance: 0.6
+  _finisherHitStopDuration: 0.2
+  _finisherRadiusMultiplier: 1.8
+  _finisherOrbitDuration: 0.35
+  _finisherShakeIntensity: 2
 --- !u!114 &4215078335511638844
 MonoBehaviour:
   m_ObjectHideFlags: 0
