@@ -92,6 +92,11 @@ public struct JumpInputEvent
     public bool IsStarted;
 }
 
+public struct DashInputEvent
+{
+    public bool IsStarted;
+}
+
 public struct PrimaryAttackEvent
 {
     public bool IsStarted;

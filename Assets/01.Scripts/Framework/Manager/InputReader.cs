@@ -16,6 +16,7 @@ public class InputReader : Singleton<InputReader>
     [Header("Player Actions")]
     [SerializeField] private string _moveActionName = "Move";
     [SerializeField] private string _jumpActionName = "Jump";
+    [SerializeField] private string _dashActionName = "Dash";
     [SerializeField] private string _primaryAttackActionName = "PrimaryAttack";     // 좌클릭/기본공격
     [SerializeField] private string _secondaryAttackActionName = "SecondaryAttack"; // 우클릭/특수공격
     [SerializeField] private string _toggleWeaponModeActionName = "ToggleWeaponMode";
@@ -36,6 +37,7 @@ public class InputReader : Singleton<InputReader>
     // Actions
     private InputAction _moveAction;
     private InputAction _jumpAction;
+    private InputAction _dashAction;
     private InputAction _primaryAttackAction;
     private InputAction _secondaryAttackAction;
     private InputAction _toggleWeaponModeAction;
@@ -67,6 +69,7 @@ public class InputReader : Singleton<InputReader>
         {
             _moveAction = _playerMap.FindAction(_moveActionName, false);
             _jumpAction = _playerMap?.FindAction(_jumpActionName, false);
+            _dashAction = _playerMap.FindAction(_dashActionName, false);
             _primaryAttackAction = _playerMap.FindAction(_primaryAttackActionName, false);
             _secondaryAttackAction = _playerMap.FindAction(_secondaryAttackActionName, false);
             _toggleWeaponModeAction = _playerMap.FindAction(_toggleWeaponModeActionName, false);
@@ -126,6 +129,11 @@ public class InputReader : Singleton<InputReader>
             _jumpAction.canceled += OnJumpCanceled;
         }
 
+        if (_dashAction != null)
+        {
+            _dashAction.started += OnDashStarted;
+        }
+
         if (_primaryAttackAction != null)
         {
             _primaryAttackAction.started += OnPrimaryAttackStarted;
@@ -158,6 +166,11 @@ public class InputReader : Singleton<InputReader>
             _jumpAction.canceled -= OnJumpCanceled;
         }
 
+        if (_dashAction != null)
+        {
+            _dashAction.started -= OnDashStarted;
+        }
+
         if (_primaryAttackAction != null)
         {
             _primaryAttackAction.started -= OnPrimaryAttackStarted;
@@ -183,7 +196,8 @@ public class InputReader : Singleton<InputReader>
 
     private void OnJumpStarted(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = true });
     private void OnJumpCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = false });
-
+    private void OnDashStarted(InputAction.CallbackContext _) => PublishIfAllowed(new DashInputEvent { IsStarted = true });
+    
     private void OnPrimaryAttackStarted(InputAction.CallbackContext _) => PublishIfAllowed(new PrimaryAttackEvent { IsStarted = true });
     private void OnPrimaryAttackCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new PrimaryAttackEvent { IsStarted = false });
 

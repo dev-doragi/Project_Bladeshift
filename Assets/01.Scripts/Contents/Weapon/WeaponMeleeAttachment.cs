@@ -9,6 +9,10 @@ public class WeaponMeleeAttachment : MonoBehaviour
     [SerializeField] private Rigidbody2D _weaponRigidbody;
     [SerializeField] private Collider2D _weaponCollider;
 
+    [Header("Aim")]
+    [SerializeField] private bool _rotatePivotToAim = true;
+    [SerializeField] private float _aimRotationOffset = 0f;
+
     private Vector3 _originalPivotLocalPosition;
     private Vector3 _originalPivotLocalScale = Vector3.one;
     private bool _hasOriginalPivotValues;
@@ -38,7 +42,7 @@ public class WeaponMeleeAttachment : MonoBehaviour
     {
         if (!_isAttached) return;
 
-        UpdateFacing();
+        UpdateAimRotation();
         SyncToHoldPoint();
     }
 
@@ -48,7 +52,7 @@ public class WeaponMeleeAttachment : MonoBehaviour
         if (holdPoint == null) return;
 
         _isAttached = true;
-        UpdateFacing();
+        UpdateAimRotation();
 
         transform.SetParent(holdPoint, false);
         SyncToHoldPoint();
@@ -78,20 +82,17 @@ public class WeaponMeleeAttachment : MonoBehaviour
         transform.rotation = holdPoint.rotation;
     }
 
-    private void UpdateFacing()
+    private void UpdateAimRotation()
     {
+        if (!_rotatePivotToAim) return;
         if (_meleePivot == null || _playerController == null) return;
-        CachePivotDefaults();
 
-        int facingSign = _playerController.FacingSign >= 0 ? 1 : -1;
+        Vector2 aimDirection = _playerController.AimDirection;
+        if (aimDirection.sqrMagnitude <= 0.0001f)
+            return;
 
-        Vector3 position = _originalPivotLocalPosition;
-        position.x = Mathf.Abs(position.x) * facingSign;
-        _meleePivot.localPosition = position;
-
-        Vector3 scale = _originalPivotLocalScale;
-        scale.x = Mathf.Abs(scale.x) * facingSign;
-        _meleePivot.localScale = scale;
+        float angle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        _meleePivot.rotation = Quaternion.Euler(0f, 0f, angle + _aimRotationOffset);
     }
 
     private Transform GetHoldPoint()

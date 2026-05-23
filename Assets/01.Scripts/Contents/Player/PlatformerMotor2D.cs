@@ -14,6 +14,12 @@ public class PlatformerMotor2D : MonoBehaviour
     [SerializeField] private float _lowJumpGravityMultiplier = 3f;
     [SerializeField] private float _apexBonus = 0.5f;
 
+    [Header("Dash")]
+    [SerializeField] private float _dashSpeed = 18f;
+    [SerializeField] private float _dashDuration = 0.16f;
+    [SerializeField] private float _dashCooldown = 0.45f;
+    [SerializeField] private bool _dashLocksGravity = true;
+
     [Header("Forgiveness")]
     [SerializeField] private float _coyoteTime = 0.15f;
     [SerializeField] private float _jumpBufferTime = 0.15f;
@@ -29,6 +35,15 @@ public class PlatformerMotor2D : MonoBehaviour
     private float _jumpBufferTimer;
     private bool _isJumpHeld;
     private bool _jumpRequestPending; // 점프 실행 신호 보관용
+
+    private bool _isDashing;
+    private float _lastDashTime = -999f;
+    private float _dashTimer;
+    private Vector2 _dashDirection;
+
+    public bool IsDashing => _isDashing;
+    public Vector2 Velocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
+    public float HorizontalInput => _horizontalInput;
 
     private void Awake()
     {
@@ -49,6 +64,14 @@ public class PlatformerMotor2D : MonoBehaviour
     private void FixedUpdate()
     {
         _velocity = _rb.linearVelocity;
+
+        // 0. 대시 로직 처리
+        if (_isDashing)
+        {
+            TickDash();
+            _rb.linearVelocity = _velocity;
+            return;
+        }
 
         // 1. 점프 로직 처리 (입력 버퍼와 코요테 타임 확인)
         if (_jumpRequestPending && _coyoteTimer > 0f)
@@ -85,6 +108,48 @@ public class PlatformerMotor2D : MonoBehaviour
         _jumpBufferTimer = 0f;
         _coyoteTimer = 0f;
         _velocity.y = _jumpForce;
+    }
+
+    public void RequestDash(Vector2 direction)
+    {
+        if (_isDashing) return;
+        if (Time.time < _lastDashTime + _dashCooldown) return;
+
+        Vector2 dashDir = direction.sqrMagnitude > 0.0001f
+            ? direction.normalized
+            : Vector2.right;
+
+        _isDashing = true;
+        _dashTimer = _dashDuration;
+        _lastDashTime = Time.time;
+        _dashDirection = dashDir;
+
+        _jumpRequestPending = false;
+        _jumpBufferTimer = 0f;
+        _isJumpHeld = false;
+
+        if (_dashLocksGravity)
+            _rb.gravityScale = 0f;
+    }
+
+    private void OnDisable()
+    {
+        if (_rb != null)
+            _rb.gravityScale = _defaultGravityScale;
+    }
+
+    private void TickDash()
+    {
+        _dashTimer -= Time.fixedDeltaTime;
+
+        _velocity = _dashDirection * _dashSpeed;
+
+        if (_dashTimer > 0f)
+            return;
+
+        _isDashing = false;
+        _velocity = Vector2.zero;
+        _rb.gravityScale = _defaultGravityScale;
     }
 
     private void HandleHorizontalMovement()
