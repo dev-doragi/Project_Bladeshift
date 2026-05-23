@@ -2,7 +2,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 [RequireComponent(typeof(WeaponStateMachine), typeof(WeaponModeController), typeof(WeaponActionRouter))]
-[RequireComponent(typeof(WeaponMeleeAttachment))]
+[RequireComponent(typeof(WeaponMeleeHoverFollow))]
 [RequireComponent(typeof(WeaponMovement), typeof(WeaponCombat))]
 [RequireComponent(typeof(WeaponSensor), typeof(WeaponView))]
 [RequireComponent(typeof(WeaponCapture), typeof(WeaponLinkEnergy))]
@@ -32,7 +32,7 @@ public class WeaponController : MonoBehaviour
     private WeaponStateMachine _stateMachine;
     private WeaponModeController _modeController;
     private WeaponActionRouter _actionRouter;
-    private WeaponMeleeAttachment _meleeAttachment;
+    private WeaponMeleeHoverFollow _meleeHoverFollow;
     private PlayerController _playerController;
     private Camera _mainCamera;
 
@@ -48,7 +48,7 @@ public class WeaponController : MonoBehaviour
     public WeaponStateMachine StateMachine => _stateMachine;
     public WeaponModeController ModeController => _modeController;
     public WeaponActionRouter ActionRouter => _actionRouter;
-    public WeaponMeleeAttachment MeleeAttachment => _meleeAttachment;
+    public WeaponMeleeHoverFollow MeleeHoverFollow => _meleeHoverFollow;
     public Transform PlayerTransform => _playerTransform;
     public Transform DroneDockPivot => _droneDockPivot;
     public float ControlRadius => _playerController != null ? _playerController.ControlRadius : 0f;
@@ -88,7 +88,7 @@ public class WeaponController : MonoBehaviour
         _stateMachine = GetComponent<WeaponStateMachine>();
         _modeController = GetComponent<WeaponModeController>();
         _actionRouter = GetComponent<WeaponActionRouter>();
-        _meleeAttachment = GetComponent<WeaponMeleeAttachment>();
+        _meleeHoverFollow = GetComponent<WeaponMeleeHoverFollow>();
         _mainCamera = Camera.main;
     }
 
@@ -121,7 +121,7 @@ public class WeaponController : MonoBehaviour
     {
         _movement.CacheRigidbody(_rb);
         _stateMachine.Initialize(_rb, _weaponCollider);
-        _meleeAttachment.Initialize(_playerController, _rb, _weaponCollider);
+        _meleeHoverFollow.Initialize(_playerController, _rb, _weaponCollider);
         _modeController.Initialize(_stateMachine);
         _sensor.Initialize(_playerTransform, _mainCamera, ControlRadius);
         _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);

@@ -23,7 +23,6 @@ public class MeleeAttackModule : WeaponActionModule
     private Quaternion _swingRotation;
     private float _phaseTime;
     private bool _didHit;
-    private bool _hasRestRotation;
 
     private void Awake()
     {
@@ -39,6 +38,7 @@ public class MeleeAttackModule : WeaponActionModule
         if (_meleePivot == null) return;
 
         CacheRestRotation();
+        Controller.MeleeHoverFollow?.SetFollowLocked(true);
         float facingSign = ResolveFacingSign();
         _swingRotation = _restRotation * Quaternion.Euler(0f, 0f, _swingAngle * facingSign);
         _phaseTime = 0f;
@@ -50,6 +50,13 @@ public class MeleeAttackModule : WeaponActionModule
     {
         if (Controller == null || _meleePivot == null) return;
         if (_phase == AttackPhase.Idle) return;
+        if (Controller.CurrentMode != WeaponMode.Melee)
+        {
+            _phase = AttackPhase.Idle;
+            _phaseTime = 0f;
+            Controller.MeleeHoverFollow?.SetFollowLocked(false);
+            return;
+        }
 
         if (_phase == AttackPhase.Swing)
         {
@@ -81,6 +88,7 @@ public class MeleeAttackModule : WeaponActionModule
             _meleePivot.localRotation = _restRotation;
             _phase = AttackPhase.Idle;
             _phaseTime = 0f;
+            Controller.MeleeHoverFollow?.SetFollowLocked(false);
         }
     }
 
@@ -104,16 +112,14 @@ public class MeleeAttackModule : WeaponActionModule
     {
         if (_meleePivot != null) return;
 
-        WeaponMeleeAttachment attachment = Controller != null ? Controller.MeleeAttachment : null;
-        if (attachment != null) _meleePivot = attachment.MeleePivot;
+        WeaponMeleeHoverFollow hoverFollow = Controller != null ? Controller.MeleeHoverFollow : null;
+        if (hoverFollow != null) _meleePivot = hoverFollow.MeleePivot;
     }
 
     private void CacheRestRotation()
     {
-        if (_hasRestRotation || _meleePivot == null) return;
-
+        if (_meleePivot == null) return;
         _restRotation = _meleePivot.localRotation;
-        _hasRestRotation = true;
     }
 
     private void EnsureDefaultTargetLayer()

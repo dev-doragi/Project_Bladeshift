@@ -3,8 +3,6 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerController))]
 public class PlayerVisualController : MonoBehaviour
 {
-    private const float MIN_AIM_X = 0.0001f;
-
     [Header("References")]
     [SerializeField] private SpriteRenderer _bodyRenderer;
     [SerializeField] private Transform _weaponVisualRoot;
@@ -27,13 +25,7 @@ public class PlayerVisualController : MonoBehaviour
 
     private void UpdateVisualDirection()
     {
-        Vector2 aimDirection = _controller.AimDirection;
-
-        if (Mathf.Abs(aimDirection.x) <= MIN_AIM_X)
-            return;
-
-        bool isFacingLeft = aimDirection.x < 0f;
-        _controller.SetFacingLeft(isFacingLeft);
+        bool isFacingLeft = _controller != null && _controller.IsFacingLeft;
 
         if (_bodyRenderer != null)
             _bodyRenderer.flipX = isFacingLeft;

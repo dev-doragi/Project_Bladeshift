@@ -1,11 +1,13 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class WeaponModeController : MonoBehaviour
 {
     [SerializeField] private WeaponMode _initialMode = WeaponMode.Remote;
     [SerializeField] private WeaponStateMachine _stateMachine;
-    [SerializeField] private WeaponMeleeAttachment _meleeAttachment;
+    [FormerlySerializedAs("_meleeAttachment")]
+    [SerializeField] private WeaponMeleeHoverFollow _meleeHoverFollow;
 
     public WeaponMode CurrentMode { get; private set; } = WeaponMode.Remote;
     public event Action<WeaponMode, WeaponMode> ModeChanged;
@@ -18,7 +20,7 @@ public class WeaponModeController : MonoBehaviour
     public void Initialize(WeaponStateMachine stateMachine)
     {
         _stateMachine = stateMachine != null ? stateMachine : GetComponent<WeaponStateMachine>();
-        if (_meleeAttachment == null) _meleeAttachment = GetComponent<WeaponMeleeAttachment>();
+        if (_meleeHoverFollow == null) _meleeHoverFollow = GetComponent<WeaponMeleeHoverFollow>();
         CurrentMode = _initialMode;
         ApplyCurrentMode();
     }
@@ -38,11 +40,11 @@ public class WeaponModeController : MonoBehaviour
         if (CurrentMode == WeaponMode.Melee)
         {
             _stateMachine?.ChangeState(WeaponState.Grounded);
-            _meleeAttachment?.Attach();
+            _meleeHoverFollow?.EnableFollow();
             return;
         }
 
-        _meleeAttachment?.Detach();
+        _meleeHoverFollow?.DisableFollow();
         _stateMachine?.ChangeState(WeaponState.Grounded);
         _stateMachine?.ForceApplyCurrentState();
     }

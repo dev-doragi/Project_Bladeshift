@@ -15,7 +15,7 @@ public class PlayerController : MonoBehaviour
     public Vector2 AimDirection { get; private set; } = Vector2.right;
     public bool IsMoving => Mathf.Abs(MoveInput.x) > 0.01f;
     public bool IsDashing => _motor != null && _motor.IsDashing;
-    public bool IsFacingLeft { get; private set; }
+    public bool IsFacingLeft => FacingSign < 0;
 
     private void Awake()
     {
@@ -93,22 +93,7 @@ public class PlayerController : MonoBehaviour
             return;
 
         AimDirection = dir.normalized;
-
-        if (AimDirection.x > 0.01f)
-        {
-            FacingSign = 1;
-            IsFacingLeft = false;
-        }
-        else if (AimDirection.x < -0.01f)
-        {
-            FacingSign = -1;
-            IsFacingLeft = true;
-        }
-    }
-
-    public void SetFacingLeft(bool isFacingLeft)
-    {
-        IsFacingLeft = isFacingLeft;
+        FacingSign = AimDirection.x >= 0f ? 1 : -1;
     }
 
     private void OnDrawGizmos()
