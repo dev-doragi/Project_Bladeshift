@@ -26,7 +26,19 @@ public enum WeaponPinSource
 {
     None = 0,
     Wall = 1,
-    Enemy = 2
+    Enemy = 2,
+    EnemyCapture = 2,
+    EnemyEmbedded = 3
+}
+
+public enum WeaponAttackKind
+{
+    None = 0,
+    SpinSlash = 1,
+    ThrustPierce = 2,
+    Execution = 3,
+    EmbeddedAttack = 4,
+    EmbeddedTearOut = 5
 }
 
 public enum ShakeIntensity

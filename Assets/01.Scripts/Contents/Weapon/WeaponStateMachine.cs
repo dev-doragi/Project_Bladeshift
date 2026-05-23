@@ -12,7 +12,10 @@ public class WeaponStateMachine : MonoBehaviour
     public WeaponState CurrentState { get; private set; } = WeaponState.Grounded;
     public WeaponPinSource PinSource { get; private set; } = WeaponPinSource.None;
     public bool IsPinnedToWall => CurrentState == WeaponState.Pinned && PinSource == WeaponPinSource.Wall;
-    public bool IsPinnedToEnemy => CurrentState == WeaponState.Pinned && PinSource == WeaponPinSource.Enemy;
+    public bool IsPinnedToEnemy => IsPinnedToCaptureEnemy || IsPinnedToEmbeddedEnemy;
+    public bool IsPinnedToCaptureEnemy => CurrentState == WeaponState.Pinned &&
+                                          (PinSource == WeaponPinSource.Enemy || PinSource == WeaponPinSource.EnemyCapture);
+    public bool IsPinnedToEmbeddedEnemy => CurrentState == WeaponState.Pinned && PinSource == WeaponPinSource.EnemyEmbedded;
     public event Action<WeaponState, WeaponState> StateChanged;
 
     private void Awake()

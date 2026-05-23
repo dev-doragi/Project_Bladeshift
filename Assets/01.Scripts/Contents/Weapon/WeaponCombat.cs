@@ -7,9 +7,11 @@ public class WeaponCombat : MonoBehaviour
     [SerializeField] private LayerMask _projectileLayer;
     [SerializeField] private float _knockbackPower = 15f;
     [SerializeField] private float _slashDamage = 15f;
+    [SerializeField] private float _spinSlashGroggyDamage = 3f;
     [SerializeField] private float _slashRadius = 3.5f;
     [SerializeField] private float _tickDamageInterval = 0.2f;
     [SerializeField] private float _pinDamage = 30f;
+    [SerializeField] private float _thrustPierceGroggyDamage = 20f;
     [SerializeField] private float _spinSpeed = 720f;
     [SerializeField] private float _pinSpeed = 24f;
 
@@ -38,10 +40,12 @@ public class WeaponCombat : MonoBehaviour
                 damageable.TakeDamage(new DamageData
                 {
                     Damage = damage,
+                    GroggyDamage = _spinSlashGroggyDamage,
                     AttackerTeam = TeamType.Player,
                     HitPoint = hitPoint,
                     KnockbackForce = knockbackDirection * _knockbackPower,
-                    IsPiercing = false
+                    IsPiercing = false,
+                    AttackKind = WeaponAttackKind.SpinSlash
                 });
             }
         }
@@ -96,10 +100,12 @@ public class WeaponCombat : MonoBehaviour
         damageable.TakeDamage(new DamageData
         {
             Damage = _pinDamage,
+            GroggyDamage = _thrustPierceGroggyDamage,
             AttackerTeam = TeamType.Player,
             HitPoint = hitPoint,
             KnockbackForce = knockbackDirection * (_knockbackPower * 3f),
-            IsPiercing = true
+            IsPiercing = true,
+            AttackKind = WeaponAttackKind.ThrustPierce
         });
 
         return !damageable.IsDead;
@@ -124,7 +130,8 @@ public class WeaponCombat : MonoBehaviour
                 AttackerTeam = TeamType.Player,
                 HitPoint = hit.ClosestPoint(center),
                 KnockbackForce = knockbackDirection * _knockbackPower,
-                IsPiercing = false
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
             });
         }
     }
@@ -141,14 +148,8 @@ public class WeaponCombat : MonoBehaviour
             if (enemy == pinnedTarget)
             {
                 // 즉사 + 무기 정면 15배 넉백
-                enemy.TakeDamage(new DamageData
-                {
-                    Damage = 9999f,
-                    AttackerTeam = TeamType.Player,
-                    HitPoint = col.ClosestPoint(center),
-                    KnockbackForce = forward.normalized * _knockbackPower * 15f,
-                    IsPiercing = true
-                });
+                if (enemy.CanExecuteCaptureFinisher())
+                    enemy.ExecuteDeath(forward.normalized * _knockbackPower * 15f);
             }
             else
             {
@@ -160,7 +161,8 @@ public class WeaponCombat : MonoBehaviour
                     AttackerTeam = TeamType.Player,
                     HitPoint = col.ClosestPoint(center),
                     KnockbackForce = dir * _knockbackPower * 5f,
-                    IsPiercing = false
+                    IsPiercing = false,
+                    AttackKind = WeaponAttackKind.None
                 });
             }
         }
@@ -176,9 +178,6 @@ public class WeaponCombat : MonoBehaviour
             if (!col.TryGetComponent<EnemyBase>(out var other) || other.IsDead)
                 continue;
 
-            if (!other.CanExecuteCaptureFinisher())
-                continue;
-
             Vector2 baseDir = ((Vector2)col.transform.position - (Vector2)position).normalized;
             if (baseDir.sqrMagnitude <= 0.0001f)
                 baseDir = Vector2.right;
@@ -190,7 +189,6 @@ public class WeaponCombat : MonoBehaviour
             ).normalized;
 
             bool isPinnedTarget = pinnedTargets != null && pinnedTargets.Contains(col.transform);
-            float damage = isPinnedTarget ? 9999f : _slashDamage;
             float forceMultiplier = isPinnedTarget ? 10f : 5f;
 
             Vector2 correctedKnockback = CalculateFinisherKnockback(
@@ -200,13 +198,22 @@ public class WeaponCombat : MonoBehaviour
                 wallMask
             );
 
+            if (isPinnedTarget)
+            {
+                if (other.CanExecuteCaptureFinisher())
+                    other.ExecuteDeath(correctedKnockback);
+
+                continue;
+            }
+
             other.TakeDamage(new DamageData
             {
-                Damage = damage,
+                Damage = _slashDamage,
                 AttackerTeam = TeamType.Player,
                 HitPoint = col.ClosestPoint(position),
                 KnockbackForce = correctedKnockback,
-                IsPiercing = isPinnedTarget
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
             });
         }
     }

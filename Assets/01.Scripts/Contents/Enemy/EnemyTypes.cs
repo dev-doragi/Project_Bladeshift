@@ -13,6 +13,13 @@ public enum GroggyRightClickActionType
     EmbeddedAttack = 2
 }
 
+public enum GroggyTriggerMode
+{
+    None = 0,
+    HealthThreshold = 1,
+    Gauge = 2
+}
+
 public enum PiercingAttackPolicy
 {
     StickToEnemy = 0,

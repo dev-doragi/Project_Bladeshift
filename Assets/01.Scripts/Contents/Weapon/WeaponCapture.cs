@@ -27,6 +27,8 @@ public class WeaponCapture : MonoBehaviour
         {
             if (!_capturedEnemies.Contains(enemy))
                 _capturedEnemies.Add(enemy);
+
+            enemy.SetCaptured(true);
         }
         if (enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
             rb.bodyType = RigidbodyType2D.Kinematic;
@@ -40,6 +42,7 @@ public class WeaponCapture : MonoBehaviour
 
             Transform enemyTransform = enemy.transform;
             enemyTransform.SetParent(null);
+            enemy.SetCaptured(false);
 
             if (enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
             {
@@ -57,6 +60,19 @@ public class WeaponCapture : MonoBehaviour
                 col.isTrigger = false;
             }
         }
+        _capturedEnemies.Clear();
+    }
+
+    public void ExecuteCapturedEnemies(Vector2 knockbackForce)
+    {
+        foreach (var enemy in _capturedEnemies)
+        {
+            if (enemy == null) continue;
+
+            enemy.transform.SetParent(null);
+            enemy.ExecuteDeath(knockbackForce);
+        }
+
         _capturedEnemies.Clear();
     }
 

@@ -20,13 +20,20 @@ MonoBehaviour:
   _captureWeight: 1
   _canBeExecuted: 1
   _usesGroggy: 0
+  _groggyTriggerMode: 0
   _groggyThresholdRatio: 0.1
+  _maxGroggyGauge: 100
+  _resetGroggyGaugeOnEnter: 1
+  _resetGroggyGaugeOnExit: 1
   _groggyInvulnerableDuration: 0.75
   _groggyDuration: 3
+  _usesGroggyRecovery: 1
   _groggyRecoveryTargetHealthRatio: 0.5
   _groggyRecoveryDuration: 5
   _canDieFromBasicAttackWhileGroggy: 1
   _groggyRightClickAction: 1
   _piercingAttackPolicy: 0
   _usesEmbeddedAttackMechanic: 0
-  _requiredEmbeddedAttackCount: 0
+  _embeddedTearOutDamage: 50
+  _embeddedAttackDamage: 100
+  _embeddedAttackRange: 2
