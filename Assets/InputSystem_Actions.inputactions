@@ -70,6 +70,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ToggleWeaponMode",
+                    "type": "Button",
+                    "id": "6b9f7972-53c2-4d99-a4fb-4b0fb4d06d22",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Interact",
                     "type": "Button",
                     "id": "852140f2-7766-474d-8707-702459ba45f3",
@@ -331,6 +340,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Rotate",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5ad72896-a86c-4d78-918e-b92c2bc25f37",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ToggleWeaponMode",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

@@ -389,14 +389,20 @@ GameObject:
   - component: {fileID: 1167539912637657977}
   - component: {fileID: 4511589942336969059}
   - component: {fileID: 2485444516966444499}
-  - component: {fileID: 8890931883336942143}
-  - component: {fileID: 5063814875019817314}
-  - component: {fileID: 6705958014074586991}
+  - component: {fileID: 5923836136970560632}
+  - component: {fileID: 303466040254391467}
+  - component: {fileID: 6088404281793045894}
   - component: {fileID: 5723434080366493270}
+  - component: {fileID: 8890931883336942143}
+  - component: {fileID: 6705958014074586991}
   - component: {fileID: 620977729684863863}
+  - component: {fileID: 5063814875019817314}
+  - component: {fileID: 6149882478709522482}
   - component: {fileID: 6756426515201821374}
+  - component: {fileID: 7554338162925912487}
   - component: {fileID: 3241085922754617426}
   - component: {fileID: 5259452382723162312}
+  - component: {fileID: 4215078335511638844}
   m_Layer: 6
   m_Name: Weapon
   m_TagString: Untagged
@@ -508,22 +514,81 @@ MonoBehaviour:
   _playerTransform: {fileID: 0}
   _droneDockPivot: {fileID: 0}
   _slowMotionScale: 0.2
+  _slowMotionHoldDuration: 999
   _wallAndEnvironmentLayer:
     serializedVersion: 2
     m_Bits: 128
   _thrustDragThreshold: 6
-  _returnCompleteDistance: 0.7
-  _fullRechargeDelayAfterReturn: 1
-  _primaryModule: {fileID: 3241085922754617426}
-  _secondaryModule: {fileID: 5259452382723162312}
   _recallEnergyCost: 0
-  _recoverColor: {r: 0, g: 1, b: 1, a: 1}
-  _stableColor: {r: 1, g: 1, b: 1, a: 1}
-  _drainColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  _criticalColor: {r: 1, g: 0, b: 0, a: 1}
-  _criticalEnergyRatio: 0.2
-  _blinkEnergyRatio: 0.1
-  _blinkInterval: 0.12
+  _remotePrimaryModule: {fileID: 3241085922754617426}
+  _remoteSecondaryModule: {fileID: 5259452382723162312}
+  _meleePrimaryModule: {fileID: 6149882478709522482}
+  _meleeSecondaryModule: {fileID: 0}
+--- !u!114 &5923836136970560632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42c2fdbf93384e9795f70fdc4c27684d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponStateMachine
+  _initialState: 0
+--- !u!114 &303466040254391467
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80f4745e9cc441e39b27f0ed60c4314b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
+  _initialMode: 0
+  _stateMachine: {fileID: 5923836136970560632}
+  _meleeAttachment: {fileID: 7554338162925912487}
+--- !u!114 &6088404281793045894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e6bafbe9ef3494f8755c7ef50326149, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponActionRouter
+  _controller: {fileID: 2485444516966444499}
+  _modeController: {fileID: 303466040254391467}
+  _remotePrimaryModule: {fileID: 3241085922754617426}
+  _remoteSecondaryModule: {fileID: 5259452382723162312}
+  _meleePrimaryModule: {fileID: 6149882478709522482}
+  _meleeSecondaryModule: {fileID: 0}
+--- !u!114 &5723434080366493270
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d4d7e3d9a9a4d6c9e2f4d7f3e5a1b11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponMovement
+  _weaponRadius: 0.73
+  _skinWidth: 0.05
+  _followSmoothTime: 0.1
+  _spinFollowSmoothTime: 0.4
+  _minReturnSpeed: 10
+  _maxReturnSpeed: 50
+  _returnStopDistance: 0.5
 --- !u!114 &8890931883336942143
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -549,18 +614,6 @@ MonoBehaviour:
   _pinDamage: 30
   _spinSpeed: 2500
   _pinSpeed: 150
---- !u!114 &5063814875019817314
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8857529888259376973}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0caef6ba42d000c40a072204f09d138e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponCapture
 --- !u!114 &6705958014074586991
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -573,25 +626,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a7dbf3c51d34c49b67c3f5b4a3a0c55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSensor
---- !u!114 &5723434080366493270
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8857529888259376973}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d4d7e3d9a9a4d6c9e2f4d7f3e5a1b11, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponMovement
-  _weaponRadius: 0.73
-  _skinWidth: 0.05
-  _followSmoothTime: 0.1
-  _spinFollowSmoothTime: 0.4
-  _minReturnSpeed: 10
-  _maxReturnSpeed: 30
-  _returnStopDistance: 0.5
+  _acquireRadiusRatio: 1
+  _releaseRadiusRatio: 1.2
+  _mouseCaptureRadius: 1
+  _mouseCaptureMaintainRadius: 1.5
+  _lineOfSightMargin: 0.35
 --- !u!114 &620977729684863863
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -606,6 +645,46 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponView
   _trajectoryLine: {fileID: 2569365098588121344}
   _connectionLine: {fileID: 1315615289495745954}
+  _showControlRadius: 1
+  _showMouseCaptureRadius: 1
+  _showMouseCaptureMaintainRadius: 1
+  _showSlashRadius: 1
+  _mouseCaptureRadius: 0
+  _mouseCaptureMaintainRadius: 0
+--- !u!114 &5063814875019817314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0caef6ba42d000c40a072204f09d138e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponCapture
+--- !u!114 &6149882478709522482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
+  _meleePivot: {fileID: 0}
+  _swingAngle: 90
+  _swingDuration: 0.18
+  _returnDuration: 0.08
+  _damage: 1
+  _targetLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  _hitRadius: 1.2
+  _hitTimeNormalized: 0.45
 --- !u!114 &6756426515201821374
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -626,6 +705,23 @@ MonoBehaviour:
   _recoverRadiusRatio: 0.35
   _reactivationEnergyRatio: 0.2
   _depletionMode: 1
+--- !u!114 &7554338162925912487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 642362fa38104b26a385953e0a0bc7aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttachment
+  _meleePivot: {fileID: 0}
+  _meleeHoldPoint: {fileID: 0}
+  _playerController: {fileID: 0}
+  _weaponRigidbody: {fileID: 1167539912637657977}
+  _weaponCollider: {fileID: 4511589942336969059}
 --- !u!114 &3241085922754617426
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -640,6 +736,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpinSlashModule
   _slashHoldCostPerSecond: 25
   _slashHoldSpendMode: 1
+  _finisherHitStopDuration: 0.2
+  _finisherRadiusMultiplier: 1.8
+  _finisherOrbitDuration: 0.35
+  _finisherShakeIntensity: 2
 --- !u!114 &5259452382723162312
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -655,3 +755,31 @@ MonoBehaviour:
   _thrustFireCost: 18
   _captureHoldCostPerSecond: 25
   _captureHoldSpendMode: 1
+  _pinStartHitStopDuration: 0.15
+  _pinWallHitShakeIntensity: 0
+  _extraFlightRangeRatio: 0.1
+  _rangeBrakeDeceleration: 2000
+  _rangeAutoReturnSpeedThreshold: 2
+  _dockArrivalDistance: 0.6
+--- !u!114 &4215078335511638844
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
+  _meleePivot: {fileID: 0}
+  _swingAngle: 90
+  _swingDuration: 0.18
+  _returnDuration: 0.08
+  _damage: 1
+  _targetLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  _hitRadius: 1.2
+  _hitTimeNormalized: 0.45

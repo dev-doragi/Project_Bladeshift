@@ -99,6 +99,31 @@ public class WeaponCombat : MonoBehaviour
 
         return !damageable.IsDead;
     }
+
+    public void PerformMeleeDamage(Vector2 center, float radius, float damage, LayerMask targetLayer, Vector2 forward)
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(center, Mathf.Max(0f, radius), targetLayer);
+        HashSet<IDamageable> damagedTargets = new HashSet<IDamageable>();
+        Vector2 knockbackDirection = forward.sqrMagnitude > 0f ? forward.normalized : Vector2.right;
+
+        foreach (Collider2D hit in hits)
+        {
+            if (hit == null) continue;
+            if (!hit.TryGetComponent<IDamageable>(out var damageable)) continue;
+            if (damageable.IsDead) continue;
+            if (!damagedTargets.Add(damageable)) continue;
+
+            damageable.TakeDamage(new DamageData
+            {
+                Damage = damage,
+                AttackerTeam = TeamType.Player,
+                HitPoint = hit.ClosestPoint(center),
+                KnockbackForce = knockbackDirection * _knockbackPower,
+                IsPiercing = false
+            });
+        }
+    }
+
     public void PerformExplosiveFinisher(Vector2 center, Vector2 forward, EnemyBase pinnedTarget)
     {
         float radius = 7f;

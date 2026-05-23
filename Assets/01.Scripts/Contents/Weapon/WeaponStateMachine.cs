@@ -1,0 +1,82 @@
+using System;
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
+public class WeaponStateMachine : MonoBehaviour
+{
+    [SerializeField] private WeaponState _initialState = WeaponState.Grounded;
+
+    private Rigidbody2D _rb;
+    private Collider2D _collider;
+
+    public WeaponState CurrentState { get; private set; } = WeaponState.Grounded;
+    public event Action<WeaponState, WeaponState> StateChanged;
+
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody2D>();
+        _collider = GetComponent<Collider2D>();
+        CurrentState = _initialState;
+    }
+
+    public void Initialize(Rigidbody2D rb, Collider2D weaponCollider)
+    {
+        _rb = rb != null ? rb : GetComponent<Rigidbody2D>();
+        _collider = weaponCollider != null ? weaponCollider : GetComponent<Collider2D>();
+        CurrentState = _initialState;
+        ApplyPhysicsMode(CurrentState);
+    }
+
+    public void ChangeState(WeaponState newState)
+    {
+        if (CurrentState == newState) return;
+
+        WeaponState previousState = CurrentState;
+        CurrentState = newState;
+        EventBus.Instance?.Publish(new WeaponStateChangeEvent { NewState = CurrentState });
+        ApplyPhysicsMode(CurrentState);
+        StateChanged?.Invoke(previousState, CurrentState);
+    }
+
+    public void ForceApplyCurrentState()
+    {
+        ApplyPhysicsMode(CurrentState);
+    }
+
+    private void ApplyPhysicsMode(WeaponState state)
+    {
+        if (_rb == null || _collider == null) return;
+
+        UpdateCollisionInteractions();
+
+        switch (state)
+        {
+            case WeaponState.Grounded:
+                _rb.bodyType = RigidbodyType2D.Dynamic;
+                _collider.isTrigger = false;
+                break;
+
+            case WeaponState.Controlled:
+            case WeaponState.Slashing:
+            case WeaponState.Thrusting:
+            case WeaponState.PinningFlight:
+            case WeaponState.Pinned:
+            case WeaponState.Returning:
+                _rb.bodyType = RigidbodyType2D.Kinematic;
+                _rb.linearVelocity = Vector2.zero;
+                _rb.angularVelocity = 0f;
+                _collider.isTrigger = true;
+                break;
+        }
+    }
+
+    private void UpdateCollisionInteractions()
+    {
+        int weaponLayer = gameObject.layer;
+        int enemyLayer = LayerMask.NameToLayer("Enemy");
+        int environmentLayer = LayerMask.NameToLayer("Environment");
+
+        if (enemyLayer >= 0) Physics2D.IgnoreLayerCollision(weaponLayer, enemyLayer, true);
+        if (environmentLayer >= 0) Physics2D.IgnoreLayerCollision(weaponLayer, environmentLayer, false);
+    }
+}

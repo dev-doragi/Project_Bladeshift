@@ -8,6 +8,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool _showControlRadiusGizmo = true;
 
     public float ControlRadius => _controlRadius;
+    public int FacingSign { get; private set; } = 1;
 
     private void Awake()
     {
@@ -35,6 +36,9 @@ public class PlayerController : MonoBehaviour
 
     private void OnMoveInput(MoveInputEvent evt)
     {
+        if (evt.Direction.x > 0.01f) FacingSign = 1;
+        else if (evt.Direction.x < -0.01f) FacingSign = -1;
+
         _motor.SetHorizontalInput(evt.Direction.x);
     }
 

@@ -9,51 +9,69 @@ public class SpinSlashModule : WeaponActionModule
     [SerializeField] private float _finisherRadiusMultiplier = 1.8f;
     [SerializeField] private float _finisherOrbitDuration = 0.35f;
     [SerializeField] private ShakeIntensity _finisherShakeIntensity = ShakeIntensity.Strong;
+    private bool _isSlashing;
+    private bool _isFinisherRunning;
 
     public override void OnPress()
     {
         if (Controller == null) return;
-        if (!Controller.CanStartSpinSlash()) return;
+        if (Controller.CurrentMode != WeaponMode.Remote) return;
+        if (Controller.CurrentState != WeaponState.Controlled) return;
+        if (_isSlashing || _isFinisherRunning) return;
 
-        Controller.BeginSpinSlash();
+        _isSlashing = true;
+        Controller.Combat.ResetTickTimer();
+        Controller.ChangeState(WeaponState.Slashing);
     }
 
     public override void OnTick()
     {
         if (Controller == null) return;
-        if (Controller.CurrentState != WeaponState.Slashing) return;
+        if (Controller.CurrentMode != WeaponMode.Remote) return;
+        if (Controller.CurrentState != WeaponState.Slashing || !_isSlashing) return;
 
-        if (LinkEnergy != null && !LinkEnergy.SpendEnergyOverTime(_slashHoldCostPerSecond, _slashHoldSpendMode))
+        WeaponLinkEnergy energy = Controller.LinkEnergy;
+        if (energy != null && !energy.SpendEnergyOverTime(_slashHoldCostPerSecond, _slashHoldSpendMode))
         {
-            Controller.EndSpinSlash();
+            EndSpinSlash();
             return;
         }
 
-        Controller.TickSpinSlashCombat();
+        Controller.Combat.TryTickSpinDamage(Controller.transform.position, Controller.transform.eulerAngles.z);
+        Controller.Combat.DefendProjectiles(Controller.transform.position);
+        Controller.Movement.HandleHoverMovement(
+            Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
+            true,
+            Controller.WallAndEnvironmentLayer);
+        Controller.Movement.ApplySpinRotation(Controller.Combat.SpinSpeed);
     }
 
     public override void OnRelease()
     {
-        if (Controller == null) return;
-        Controller.EndSpinSlash();
+        EndSpinSlash();
     }
 
     public override bool TryExecutePinnedFinisher()
     {
-        if (Controller == null || Sensor == null || Combat == null || Movement == null || Capture == null) return false;
+        if (Controller == null) return false;
+        WeaponSensor sensor = Controller.Sensor;
+        WeaponCombat combat = Controller.Combat;
+        WeaponMovement movement = Controller.Movement;
+        WeaponCapture capture = Controller.Capture;
+        if (sensor == null || combat == null || movement == null || capture == null) return false;
         if (Controller.CurrentState != WeaponState.Pinned) return false;
-        if (!Controller.HasCapturedEnemies()) return false;
-        if (Controller.IsAttacking) return true;
+        if (capture.GetCapturedEnemies().Count <= 0) return false;
+        if (_isFinisherRunning) return true;
 
-        Controller.SetAttackingFlag(true);
+        _isFinisherRunning = true;
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _finisherHitStopDuration });
         EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _finisherShakeIntensity });
 
-        Vector2 pivot = Sensor.GetMouseWorldPosition();
+        Vector2 pivot = sensor.GetMouseWorldPosition();
         float radius = Vector2.Distance(pivot, Controller.transform.position);
-        radius = Mathf.Max(radius, Combat.SlashRadius * Mathf.Max(0.1f, _finisherRadiusMultiplier));
+        radius = Mathf.Max(radius, combat.SlashRadius * Mathf.Max(0.1f, _finisherRadiusMultiplier));
 
-        var captured = Capture.GetCapturedEnemies();
+        var captured = capture.GetCapturedEnemies();
         System.Collections.Generic.List<Transform> pinnedTargets = new System.Collections.Generic.List<Transform>(captured.Count);
         foreach (var enemy in captured)
         {
@@ -61,21 +79,31 @@ public class SpinSlashModule : WeaponActionModule
                 pinnedTargets.Add(enemy.transform);
         }
 
-        Movement.ExecuteOrbitFinisher(
+        movement.ExecuteOrbitFinisher(
             pivot,
             radius,
             Mathf.Max(0.01f, _finisherOrbitDuration),
             () =>
             {
-                Combat.PerformSpinFinisher(Controller.transform.position, pinnedTargets);
-                Capture.UnbindAll();
+                combat.PerformSpinFinisher(Controller.transform.position, pinnedTargets);
+                capture.UnbindAll();
             },
             () =>
             {
-                Controller.SetAttackingFlag(false);
-                Controller.ChangeStateFromModule(WeaponState.Controlled);
+                _isFinisherRunning = false;
+                Controller.ChangeState(WeaponState.Controlled);
             });
 
         return true;
+    }
+
+    private void EndSpinSlash()
+    {
+        if (Controller == null) return;
+        if (!_isSlashing) return;
+
+        _isSlashing = false;
+        if (Controller.CurrentState == WeaponState.Slashing)
+            Controller.ChangeState(WeaponState.Controlled);
     }
 }

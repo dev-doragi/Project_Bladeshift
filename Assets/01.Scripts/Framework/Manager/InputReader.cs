@@ -18,6 +18,7 @@ public class InputReader : Singleton<InputReader>
     [SerializeField] private string _jumpActionName = "Jump";
     [SerializeField] private string _primaryAttackActionName = "PrimaryAttack";     // 좌클릭/기본공격
     [SerializeField] private string _secondaryAttackActionName = "SecondaryAttack"; // 우클릭/특수공격
+    [SerializeField] private string _toggleWeaponModeActionName = "ToggleWeaponMode";
     [SerializeField] private string _pointActionName = "Point";
     [SerializeField] private string _scrollActionName = "Scroll";
     [SerializeField] private string _rotateActionName = "Rotate";
@@ -37,6 +38,7 @@ public class InputReader : Singleton<InputReader>
     private InputAction _jumpAction;
     private InputAction _primaryAttackAction;
     private InputAction _secondaryAttackAction;
+    private InputAction _toggleWeaponModeAction;
     private InputAction _pointAction;
     private InputAction _scrollAction;
     private InputAction _rotateAction;
@@ -67,6 +69,7 @@ public class InputReader : Singleton<InputReader>
             _jumpAction = _playerMap?.FindAction(_jumpActionName, false);
             _primaryAttackAction = _playerMap.FindAction(_primaryAttackActionName, false);
             _secondaryAttackAction = _playerMap.FindAction(_secondaryAttackActionName, false);
+            _toggleWeaponModeAction = _playerMap.FindAction(_toggleWeaponModeActionName, false);
             _pointAction = _playerMap.FindAction(_pointActionName, false);
             _scrollAction = _playerMap.FindAction(_scrollActionName, false);
             _rotateAction = _playerMap.FindAction(_rotateActionName, false);
@@ -135,6 +138,7 @@ public class InputReader : Singleton<InputReader>
             _secondaryAttackAction.canceled += OnSecondaryAttackCanceled;
         }
 
+        if (_toggleWeaponModeAction != null) _toggleWeaponModeAction.performed += OnToggleWeaponModePerformed;
         if (_rotateAction != null) _rotateAction.performed += OnRotatePerformed;
         if (_scrollAction != null) _scrollAction.performed += OnScrollPerformed;
         if (_pauseAction != null) _pauseAction.performed += OnPausePerformed;
@@ -166,6 +170,7 @@ public class InputReader : Singleton<InputReader>
             _secondaryAttackAction.canceled -= OnSecondaryAttackCanceled;
         }
 
+        if (_toggleWeaponModeAction != null) _toggleWeaponModeAction.performed -= OnToggleWeaponModePerformed;
         if (_rotateAction != null) _rotateAction.performed -= OnRotatePerformed;
         if (_scrollAction != null) _scrollAction.performed -= OnScrollPerformed;
         if (_pauseAction != null) _pauseAction.performed -= OnPausePerformed;
@@ -193,6 +198,8 @@ public class InputReader : Singleton<InputReader>
     }
 
     private void OnRotatePerformed(InputAction.CallbackContext _) => PublishIfAllowed(new RotateEvent());
+
+    private void OnToggleWeaponModePerformed(InputAction.CallbackContext _) => PublishIfAllowed(new WeaponModeToggleEvent());
 
     private void OnScrollPerformed(InputAction.CallbackContext ctx)
     {

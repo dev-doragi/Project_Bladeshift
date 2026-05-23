@@ -7,6 +7,7 @@ public class WeaponMovement : MonoBehaviour
 {
     private Rigidbody2D _rb;
     private Vector2 _currentVelocity;
+    private Coroutine _activeMovementRoutine;
     private const float DefaultFollowSmoothTime = 0.1f;
     private const float DefaultFollowMaxSpeed = 100f;
     [SerializeField] private float _weaponRadius = 0.3f;
@@ -18,6 +19,7 @@ public class WeaponMovement : MonoBehaviour
     [SerializeField] private float _returnStopDistance = 0.5f;
 
     public float WeaponRadius => _weaponRadius;
+    public bool IsManagedMovementRunning => _activeMovementRoutine != null;
 
     public void CacheRigidbody(Rigidbody2D rb)
     {
@@ -58,6 +60,7 @@ public class WeaponMovement : MonoBehaviour
 
     public void HandleHoverMovement(Vector2 targetPos, bool isSpinning, LayerMask wallMask)
     {
+        if (IsManagedMovementRunning) return;
         float smoothTime = isSpinning ? _spinFollowSmoothTime : _followSmoothTime;
         FollowMouseHover(targetPos, smoothTime, wallMask);
     }
@@ -83,12 +86,12 @@ public class WeaponMovement : MonoBehaviour
         Action<Transform> onPinned,
         Action onRangeExceeded)
     {
-        StartCoroutine(PinFlightRoutine(direction, speed, enemyMask, wallMask, getRangeCenter, maxRange, rangeBrakeDeceleration, rangeAutoReturnSpeedThreshold, onEnterRangeBraking, onCheckTarget, onPinned, onRangeExceeded));
+        StartManagedMovement(PinFlightRoutine(direction, speed, enemyMask, wallMask, getRangeCenter, maxRange, rangeBrakeDeceleration, rangeAutoReturnSpeedThreshold, onEnterRangeBraking, onCheckTarget, onPinned, onRangeExceeded));
     }
 
     public void ExecuteOrbitFinisher(Vector2 pivot, float radius, float duration, Action onReleasePoint, Action onComplete)
     {
-        StartCoroutine(OrbitRoutine(pivot, radius, duration, onReleasePoint, onComplete));
+        StartManagedMovement(OrbitRoutine(pivot, radius, duration, onReleasePoint, onComplete));
     }
 
     public void StopFollow()
@@ -98,7 +101,32 @@ public class WeaponMovement : MonoBehaviour
 
     public void ExecuteReturn(Func<Vector2> getTargetPos, float controlRadius, Func<Vector2, Vector2, bool> checkIntercept, Action<bool> onReturnComplete)
     {
-        StartCoroutine(ReturnRoutine(getTargetPos, _minReturnSpeed, _maxReturnSpeed, controlRadius, _returnStopDistance, checkIntercept, onReturnComplete));
+        StartManagedMovement(ReturnRoutine(getTargetPos, _minReturnSpeed, _maxReturnSpeed, controlRadius, _returnStopDistance, checkIntercept, onReturnComplete));
+    }
+
+    public void StopActiveMovement()
+    {
+        if (_activeMovementRoutine == null) return;
+        StopCoroutine(_activeMovementRoutine);
+        _activeMovementRoutine = null;
+    }
+
+    public void HoldPosition(Vector2 position)
+    {
+        if (_rb == null || IsManagedMovementRunning) return;
+        _rb.MovePosition(position);
+    }
+
+    private void StartManagedMovement(IEnumerator routine)
+    {
+        StopActiveMovement();
+        _activeMovementRoutine = StartCoroutine(ManagedRoutine(routine));
+    }
+
+    private IEnumerator ManagedRoutine(IEnumerator routine)
+    {
+        yield return StartCoroutine(routine);
+        _activeMovementRoutine = null;
     }
 
     private IEnumerator PinFlightRoutine(
