@@ -1,10 +1,15 @@
 using System.Collections;
+using System;
 using UnityEngine;
 
 public abstract class EnemyBase : MonoBehaviour, IDamageable
 {
     [SerializeField] protected EnemyData _enemyData;
     [SerializeField] protected float _maxHealth = 50f;
+    [Header("Groggy Motion")]
+    [SerializeField] private float _groggyLeanAngle = 10f;
+    [SerializeField] private float _groggyPoseDuration = 0.18f;
+    [SerializeField] private float _groggyRecoilForce = 3f;
     protected float _currentHealth;
 
     protected Rigidbody2D _rb;
@@ -16,11 +21,14 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected Coroutine _groggyRoutine;
     protected Coroutine _groggyRecoveryRoutine;
     protected Coroutine _groggyVisualRoutine;
+    protected Coroutine _groggyPoseRoutine;
     protected bool _isGroggy;
     protected bool _isGroggyInvulnerable;
     protected bool _isRecoveringFromGroggy;
     protected bool _isCaptured;
     protected bool _hasHitWallAfterDeath = false;
+    protected float _currentGroggyGauge;
+    private Quaternion _originalRotation;
 
     public virtual TeamType Team => TeamType.Enemy;
     public virtual bool IsDead => _currentHealth <= 0f;
@@ -31,6 +39,8 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public bool IsGroggyInvulnerable => _isGroggyInvulnerable;
     public bool IsRecoveringFromGroggy => _isRecoveringFromGroggy;
     public bool IsCaptured => _isCaptured;
+    public float CurrentGroggyGauge => _currentGroggyGauge;
+    public float MaxGroggyGauge => _enemyData != null ? _enemyData.MaxGroggyGauge : 0f;
     public virtual EnemyCategory Category => _enemyData != null ? _enemyData.Category : EnemyCategory.Normal;
     public virtual float Weight => _enemyData != null ? _enemyData.Weight : 0f;
     public virtual bool CanBeCaptured => _enemyData != null && _enemyData.CanBeCaptured;
@@ -38,7 +48,10 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual bool CanBeExecuted => _enemyData == null || _enemyData.CanBeExecuted;
     public virtual GroggyRightClickActionType GroggyRightClickAction => _enemyData != null ? _enemyData.GroggyRightClickAction : GroggyRightClickActionType.None;
     public virtual bool UsesEmbeddedAttackMechanic => _enemyData != null && _enemyData.UsesEmbeddedAttackMechanic;
-    public virtual int RequiredEmbeddedAttackCount => _enemyData != null ? _enemyData.RequiredEmbeddedAttackCount : 0;
+    public virtual float EmbeddedTearOutDamage => _enemyData != null ? _enemyData.EmbeddedTearOutDamage : 50f;
+    public virtual float EmbeddedAttackDamage => _enemyData != null ? _enemyData.EmbeddedAttackDamage : 100f;
+    public virtual float EmbeddedAttackRange => _enemyData != null ? _enemyData.EmbeddedAttackRange : 2f;
+    public event Action<EnemyBase> GroggyStateExited;
 
     protected virtual void Awake()
     {
@@ -49,6 +62,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         _rb = GetComponent<Rigidbody2D>();
         _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
         _collider = GetComponent<Collider2D>();
+        _originalRotation = transform.rotation;
 
         if (_spriteRenderer != null)
             _originalColor = _spriteRenderer.color;
@@ -65,7 +79,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     {
         if (IsDead) return;
         if (_isGroggy && damageData.IsPiercing && !damageData.IsExecution) return;
-        if (_isGroggyInvulnerable) return;
+        if (_isGroggyInvulnerable && !CanBypassGroggyInvulnerability(damageData)) return;
 
         StopRecoveryOnDamage();
 
@@ -140,6 +154,20 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         if (_enemyData == null || !_enemyData.UsesGroggy)
             return false;
 
+        switch (_enemyData.GroggyTriggerMode)
+        {
+            case GroggyTriggerMode.HealthThreshold:
+                return TryHandleHealthThresholdGroggy(previousHealth, damageData);
+            case GroggyTriggerMode.Gauge:
+                return TryHandleGaugeGroggy(damageData);
+            case GroggyTriggerMode.None:
+            default:
+                return false;
+        }
+    }
+
+    protected virtual bool TryHandleHealthThresholdGroggy(float previousHealth, DamageData damageData)
+    {
         bool crossedThreshold = previousHealth > _enemyData.GroggyThresholdHealth &&
                                 _currentHealth <= _enemyData.GroggyThresholdHealth;
         bool recoveryHitBelowThreshold = _isRecoveringFromGroggy &&
@@ -154,11 +182,40 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         return true;
     }
 
+    protected virtual bool TryHandleGaugeGroggy(DamageData damageData)
+    {
+        if (_currentHealth <= 0f)
+            return false;
+
+        if (damageData.GroggyDamage <= 0f)
+            return false;
+
+        _currentGroggyGauge = Mathf.Min(_currentGroggyGauge + damageData.GroggyDamage, _enemyData.MaxGroggyGauge);
+        if (_currentGroggyGauge < _enemyData.MaxGroggyGauge)
+            return false;
+
+        EnterGroggy(damageData);
+        return true;
+    }
+
+    protected virtual bool CanBypassGroggyInvulnerability(DamageData damageData)
+    {
+        if (damageData.IsExecution)
+            return true;
+
+        return damageData.AttackKind == WeaponAttackKind.Execution ||
+               damageData.AttackKind == WeaponAttackKind.EmbeddedAttack ||
+               damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut;
+    }
+
     protected virtual void EnterGroggy(DamageData damageData)
     {
         _isGroggy = true;
         _isGroggyInvulnerable = true;
         _isRecoveringFromGroggy = false;
+
+        if (_enemyData != null && _enemyData.ResetGroggyGaugeOnEnter)
+            _currentGroggyGauge = 0f;
 
         if (_groggyRecoveryRoutine != null)
         {
@@ -170,6 +227,10 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         {
             _rb.linearVelocity = Vector2.zero;
             _rb.angularVelocity = 0f;
+            Vector2 recoilDirection = damageData.KnockbackForce.sqrMagnitude > 0.0001f
+                ? damageData.KnockbackForce.normalized
+                : -Vector2.right;
+            _rb.AddForce(recoilDirection * _groggyRecoilForce, ForceMode2D.Impulse);
         }
 
         if (_blinkRoutine != null)
@@ -179,6 +240,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         }
 
         OnGroggyEntered(damageData);
+        StartGroggyPose();
         StartGroggyVisual();
         RestartGroggyHold();
     }
@@ -218,10 +280,26 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     protected virtual void ExitGroggyAndRecover()
     {
+        ExitGroggy(true);
+    }
+
+    protected virtual void ExitGroggy(bool allowRecovery)
+    {
         _isGroggy = false;
         _isGroggyInvulnerable = false;
+        StopGroggyPose(true);
         StopGroggyVisual(true);
         OnGroggyExited();
+        GroggyStateExited?.Invoke(this);
+
+        if (_enemyData != null && _enemyData.ResetGroggyGaugeOnExit)
+            _currentGroggyGauge = 0f;
+
+        if (!allowRecovery)
+            return;
+
+        if (_enemyData != null && !_enemyData.UsesGroggyRecovery)
+            return;
 
         if (gameObject.activeInHierarchy)
             _groggyRecoveryRoutine = StartCoroutine(GroggyRecoveryRoutine());
@@ -284,6 +362,20 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected virtual void OnGroggyRecoveryStarted() { }
 
     protected virtual void OnGroggyRecoveryCompleted() { }
+
+    public virtual void ForceExitGroggy(bool allowRecovery)
+    {
+        if (!_isGroggy)
+            return;
+
+        if (_groggyRoutine != null)
+        {
+            StopCoroutine(_groggyRoutine);
+            _groggyRoutine = null;
+        }
+
+        ExitGroggy(allowRecovery);
+    }
 
     protected virtual void StopRecoveryOnDamage()
     {
@@ -465,7 +557,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         if (_spriteRenderer != null)
             _spriteRenderer.color = _originalColor;
 
-        transform.rotation = Quaternion.identity;
+        transform.rotation = _originalRotation;
         _blinkRoutine = null;
     }
 
@@ -484,10 +576,58 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         }
 
         StopGroggyVisual(false);
+        StopGroggyPose(false);
         _isGroggy = false;
         _isGroggyInvulnerable = false;
         _isRecoveringFromGroggy = false;
         _isCaptured = false;
+        _currentGroggyGauge = 0f;
+    }
+
+    protected virtual void StartGroggyPose()
+    {
+        StopGroggyPose(false);
+        if (gameObject.activeInHierarchy)
+            _groggyPoseRoutine = StartCoroutine(GroggyPoseRoutine(GetGroggyLeanRotation()));
+    }
+
+    protected virtual void StopGroggyPose(bool restoreRotation)
+    {
+        if (_groggyPoseRoutine != null)
+        {
+            StopCoroutine(_groggyPoseRoutine);
+            _groggyPoseRoutine = null;
+        }
+
+        if (restoreRotation && gameObject.activeInHierarchy)
+            _groggyPoseRoutine = StartCoroutine(GroggyPoseRoutine(_originalRotation));
+        else if (restoreRotation)
+            transform.rotation = _originalRotation;
+    }
+
+    protected virtual Quaternion GetGroggyLeanRotation()
+    {
+        float direction = _spriteRenderer != null && _spriteRenderer.flipX ? 1f : -1f;
+        return _originalRotation * Quaternion.Euler(0f, 0f, _groggyLeanAngle * direction);
+    }
+
+    protected virtual IEnumerator GroggyPoseRoutine(Quaternion targetRotation)
+    {
+        Quaternion startRotation = transform.rotation;
+        float elapsed = 0f;
+
+        float safeDuration = Mathf.Max(0.01f, _groggyPoseDuration);
+        while (elapsed < safeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / safeDuration);
+            float easedT = 1f - Mathf.Pow(1f - t, 3f);
+            transform.rotation = Quaternion.Slerp(startRotation, targetRotation, easedT);
+            yield return null;
+        }
+
+        transform.rotation = targetRotation;
+        _groggyPoseRoutine = null;
     }
 
     protected virtual void StopGroggyTimerOnly()

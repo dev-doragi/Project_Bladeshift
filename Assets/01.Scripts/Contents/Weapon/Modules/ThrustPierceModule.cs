@@ -110,10 +110,11 @@ public class ThrustPierceModule : WeaponActionModule
 
         Vector2 mouseWorldPos = Controller.Sensor.GetMouseWorldPosition();
         bool isEnemyPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy;
+        bool isEmbeddedPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEmbeddedEnemy;
         bool hasEnemyCapture = Controller.Capture != null && Controller.Capture.HasCapturedEnemy;
         bool canHover = Controller.CurrentState == WeaponState.Controlled ||
                         Controller.CurrentState == WeaponState.Slashing ||
-                        (Controller.CurrentState == WeaponState.Pinned && (isEnemyPinned || hasEnemyCapture));
+                        (Controller.CurrentState == WeaponState.Pinned && !isEmbeddedPinned && (isEnemyPinned || hasEnemyCapture));
 
         if (!_isAiming && canHover)
         {
@@ -194,6 +195,7 @@ public class ThrustPierceModule : WeaponActionModule
         Vector2 deathKnockback = Controller.PlayerTransform != null
             ? ((Vector2)Controller.transform.position - (Vector2)Controller.PlayerTransform.position).normalized * 8f
             : Vector2.zero;
+        Controller.EmbeddedAttack?.ReleaseWithoutDamage();
         Controller.Capture?.ExecuteCapturedEnemies(deathKnockback);
         Controller.transform.SetParent(null, true);
         Controller.ChangeState(WeaponState.Grounded);
@@ -221,6 +223,14 @@ public class ThrustPierceModule : WeaponActionModule
         bool isEnemyPinned = (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy) ||
                              (Controller.Capture != null && Controller.Capture.HasCapturedEnemy);
         if (!isEnemyPinned) return false;
+
+        if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEmbeddedEnemy)
+        {
+            if (Controller.EmbeddedAttack != null)
+                return Controller.EmbeddedAttack.TryHandlePinnedAction();
+
+            return true;
+        }
 
         if (!Controller.Sensor.IsPlayerInRange(Controller.transform.position)) return true;
 
@@ -338,7 +348,7 @@ public class ThrustPierceModule : WeaponActionModule
                 if (enemy.ShouldPierceStick() && enemy.CanBeCapturedByPierce())
                 {
                     Controller.Capture.BindEnemy(targetTransform);
-                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     // Keep flying while carrying captured enemy.
                     // Pinned state is finalized only on wall hit or range-end.
                     return false;
@@ -351,7 +361,7 @@ public class ThrustPierceModule : WeaponActionModule
                 EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
                 if (Controller.Capture.HasCapturedEnemy)
                 {
-                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     Controller.ChangeState(WeaponState.Pinned);
                     return;
                 }
@@ -364,7 +374,7 @@ public class ThrustPierceModule : WeaponActionModule
             {
                 if (Controller.Capture.HasCapturedEnemy)
                 {
-                    Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                    Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     Controller.ChangeState(WeaponState.Pinned);
                     return;
                 }
@@ -436,7 +446,7 @@ public class ThrustPierceModule : WeaponActionModule
                     return false;
 
                 Controller.Capture.BindEnemy(enemyTransform);
-                Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                 Controller.ChangeState(WeaponState.Pinned);
                 return true;
 
@@ -444,7 +454,10 @@ public class ThrustPierceModule : WeaponActionModule
                 if (!enemy.TryHandleGroggyPierceInteraction())
                     return false;
 
-                Controller.StateMachine.SetPinSource(WeaponPinSource.Enemy);
+                if (Controller.EmbeddedAttack == null || !Controller.EmbeddedAttack.BeginEmbeddedPin(enemy))
+                    return false;
+
+                Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyEmbedded);
                 Controller.ChangeState(WeaponState.Pinned);
                 return true;
 

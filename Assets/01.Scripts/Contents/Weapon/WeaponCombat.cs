@@ -7,9 +7,11 @@ public class WeaponCombat : MonoBehaviour
     [SerializeField] private LayerMask _projectileLayer;
     [SerializeField] private float _knockbackPower = 15f;
     [SerializeField] private float _slashDamage = 15f;
+    [SerializeField] private float _spinSlashGroggyDamage = 3f;
     [SerializeField] private float _slashRadius = 3.5f;
     [SerializeField] private float _tickDamageInterval = 0.2f;
     [SerializeField] private float _pinDamage = 30f;
+    [SerializeField] private float _thrustPierceGroggyDamage = 20f;
     [SerializeField] private float _spinSpeed = 720f;
     [SerializeField] private float _pinSpeed = 24f;
 
@@ -38,10 +40,12 @@ public class WeaponCombat : MonoBehaviour
                 damageable.TakeDamage(new DamageData
                 {
                     Damage = damage,
+                    GroggyDamage = _spinSlashGroggyDamage,
                     AttackerTeam = TeamType.Player,
                     HitPoint = hitPoint,
                     KnockbackForce = knockbackDirection * _knockbackPower,
-                    IsPiercing = false
+                    IsPiercing = false,
+                    AttackKind = WeaponAttackKind.SpinSlash
                 });
             }
         }
@@ -96,10 +100,12 @@ public class WeaponCombat : MonoBehaviour
         damageable.TakeDamage(new DamageData
         {
             Damage = _pinDamage,
+            GroggyDamage = _thrustPierceGroggyDamage,
             AttackerTeam = TeamType.Player,
             HitPoint = hitPoint,
             KnockbackForce = knockbackDirection * (_knockbackPower * 3f),
-            IsPiercing = true
+            IsPiercing = true,
+            AttackKind = WeaponAttackKind.ThrustPierce
         });
 
         return !damageable.IsDead;
@@ -124,7 +130,8 @@ public class WeaponCombat : MonoBehaviour
                 AttackerTeam = TeamType.Player,
                 HitPoint = hit.ClosestPoint(center),
                 KnockbackForce = knockbackDirection * _knockbackPower,
-                IsPiercing = false
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
             });
         }
     }
@@ -154,7 +161,8 @@ public class WeaponCombat : MonoBehaviour
                     AttackerTeam = TeamType.Player,
                     HitPoint = col.ClosestPoint(center),
                     KnockbackForce = dir * _knockbackPower * 5f,
-                    IsPiercing = false
+                    IsPiercing = false,
+                    AttackKind = WeaponAttackKind.None
                 });
             }
         }
@@ -204,7 +212,8 @@ public class WeaponCombat : MonoBehaviour
                 AttackerTeam = TeamType.Player,
                 HitPoint = col.ClosestPoint(position),
                 KnockbackForce = correctedKnockback,
-                IsPiercing = false
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
             });
         }
     }
