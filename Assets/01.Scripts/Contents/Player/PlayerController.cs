@@ -15,6 +15,7 @@ public class PlayerController : MonoBehaviour
     public Vector2 AimDirection { get; private set; } = Vector2.right;
     public bool IsMoving => Mathf.Abs(MoveInput.x) > 0.01f;
     public bool IsDashing => _motor != null && _motor.IsDashing;
+    public bool IsJumping => _motor != null && _motor.IsJumping;
     public bool IsFacingLeft => FacingSign < 0;
 
     private void Awake()

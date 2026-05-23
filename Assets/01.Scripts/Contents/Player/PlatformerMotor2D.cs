@@ -42,6 +42,7 @@ public class PlatformerMotor2D : MonoBehaviour
     private Vector2 _dashDirection;
 
     public bool IsDashing => _isDashing;
+    public bool IsJumping => !_isDashing && _sensor != null && !_sensor.IsGrounded;
     public Vector2 Velocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
     public float HorizontalInput => _horizontalInput;
 

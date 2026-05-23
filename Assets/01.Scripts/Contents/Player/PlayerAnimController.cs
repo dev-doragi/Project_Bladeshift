@@ -8,6 +8,7 @@ public class PlayerAnimController : MonoBehaviour
     [Header("Parameter Names")]
     [SerializeField] private string _isMovingParam = "IsMoving";
     [SerializeField] private string _isDashingParam = "IsDashing";
+    [SerializeField] private string _isJumpingParam = "IsJumping";
     [SerializeField] private string _isBackwardMoveParam = "IsBackwardMove";
     [SerializeField] private string _deadParam = "Dead";
 
@@ -34,6 +35,7 @@ public class PlayerAnimController : MonoBehaviour
 
         bool isMoving = _controller.IsMoving;
         bool isDashing = _controller.IsDashing;
+        bool isJumping = _controller.IsJumping;
         bool isBackwardMove = false;
 
         if (moveInput.sqrMagnitude > 0.0001f && aimDirection.sqrMagnitude > 0.0001f)
@@ -44,6 +46,7 @@ public class PlayerAnimController : MonoBehaviour
 
         _animator.SetBool(_isMovingParam, isMoving);
         _animator.SetBool(_isDashingParam, isDashing);
+        _animator.SetBool(_isJumpingParam, isJumping);
         _animator.SetBool(_isBackwardMoveParam, isBackwardMove);
     }
 

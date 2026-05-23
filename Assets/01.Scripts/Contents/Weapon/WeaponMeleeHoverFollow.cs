@@ -1,226 +1,240 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
-[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class WeaponMeleeHoverFollow : MonoBehaviour
 {
-    [FormerlySerializedAs("_meleePivot")]
-    [SerializeField] private Transform _meleeHoverPivot;
-    [FormerlySerializedAs("_meleeHoverAnchor")]
-    [FormerlySerializedAs("_meleeHoldPoint")]
-    [SerializeField] private Transform _meleeHoverHoldPoint;
+    [Header("References")]
     [SerializeField] private PlayerController _playerController;
-    [SerializeField] private Rigidbody2D _weaponRigidbody;
-    [SerializeField] private Collider2D _weaponCollider;
+    [SerializeField] private Transform _meleeHoverPivot;
+    [SerializeField] private Transform _meleeHoverHoldPoint;
+    [SerializeField] private Rigidbody2D _rigidbody;
+    [SerializeField] private Collider2D _collider;
 
-    [Header("Hover Follow")]
+    [Header("Follow")]
+    [SerializeField] private bool _snapFollow = true;
     [SerializeField] private float _followSmoothTime = 0.08f;
     [SerializeField] private float _followMaxSpeed = 30f;
 
-    [Header("Aim Pivot")]
-    [SerializeField] private bool _rotatePivotToAim = true;
-    [SerializeField] private float _aimRotationOffset = 0f;
+    [Header("Hover Bob")]
+    [SerializeField] private float _bobAmplitude = 0.08f;
+    [SerializeField] private float _bobFrequency = 4f;
 
-    private Vector2 _followVelocity;
-    private Vector3 _initialPivotLocalPosition;
-    private Vector3 _initialPivotLocalScale;
-    private Quaternion _initialHoldLocalRotation = Quaternion.identity;
-    private bool _hasCachedInitialPivotLocalPosition;
-    private bool _hasCachedInitialPivotLocalScale;
-    private bool _hasCachedInitialHoldRotation;
+    [Header("Pivot")]
+    [SerializeField] private bool _rotatePivotToAim = false;
+    [SerializeField] private float _pivotRotationOffset = 0f;
+
+    [Header("Physics")]
+    [SerializeField] private bool _disableColliderWhileFollowing = true;
+
+    private Vector3 _followVelocity;
+
+    private RigidbodyType2D _cachedBodyType;
+    private float _cachedGravityScale;
+    private bool _cachedColliderEnabled;
+    private bool _hasCachedPhysics;
+
     private bool _isFollowEnabled;
     private bool _isFollowLocked;
 
     public bool IsFollowEnabled => _isFollowEnabled;
     public bool IsFollowLocked => _isFollowLocked;
     public Transform MeleePivot => _meleeHoverPivot;
-    public Transform MeleeHoverAnchor => _meleeHoverHoldPoint;
-    public Transform MeleeHoverPivot => _meleeHoverPivot;
     public Transform MeleeHoverHoldPoint => _meleeHoverHoldPoint;
-    public PlayerController PlayerController => _playerController;
 
     private void Awake()
     {
-        _weaponRigidbody = _weaponRigidbody != null ? _weaponRigidbody : GetComponent<Rigidbody2D>();
-        _weaponCollider = _weaponCollider != null ? _weaponCollider : GetComponent<Collider2D>();
-        CacheInitialPivotLocalPosition();
-        CacheInitialPivotLocalScale();
-        CacheInitialHoldRotation();
+        if (_rigidbody == null)
+            _rigidbody = GetComponent<Rigidbody2D>();
+
+        if (_collider == null)
+            _collider = GetComponent<Collider2D>();
     }
 
     public void Initialize(PlayerController playerController, Rigidbody2D weaponRigidbody, Collider2D weaponCollider)
     {
-        _playerController = playerController != null ? playerController : _playerController;
-        _weaponRigidbody = weaponRigidbody != null ? weaponRigidbody : GetComponent<Rigidbody2D>();
-        _weaponCollider = weaponCollider != null ? weaponCollider : GetComponent<Collider2D>();
-        CacheInitialPivotLocalPosition();
-        CacheInitialPivotLocalScale();
-        CacheInitialHoldRotation();
-    }
+        if (playerController != null)
+            _playerController = playerController;
 
-    private void FixedUpdate()
-    {
-        TickHoverFollow();
+        if (weaponRigidbody != null)
+            _rigidbody = weaponRigidbody;
+
+        if (weaponCollider != null)
+            _collider = weaponCollider;
     }
 
     private void LateUpdate()
     {
-        ApplyPivotHorizontalFlip();
+        if (_isFollowEnabled)
+            UpdateHoverPivot();
 
-        if (!_isFollowEnabled || _isFollowLocked)
-            return;
-
-        UpdatePivotByAim();
+        TickFollow();
     }
 
     public void EnableFollow()
     {
         _isFollowEnabled = true;
         _isFollowLocked = false;
-        _followVelocity = Vector2.zero;
-        CacheInitialHoldRotation();
-        UpdatePivotByAim();
+        _followVelocity = Vector3.zero;
+
+        EnterFollowPhysics();
+        UpdateHoverPivot();
+        SnapToHoldPoint();
     }
 
     public void DisableFollow()
     {
         _isFollowEnabled = false;
         _isFollowLocked = false;
-        _followVelocity = Vector2.zero;
+        _followVelocity = Vector3.zero;
+
+        ExitFollowPhysics();
     }
 
-    public void Attach() => EnableFollow();
-    public void Detach() => DisableFollow();
-
-    public void SetFollowLocked(bool isLocked)
+    public void Attach()
     {
-        _isFollowLocked = isLocked;
-        if (!isLocked)
-            _followVelocity = Vector2.zero;
+        EnableFollow();
     }
 
-    public void UpdatePivotByAim()
+    public void Detach()
     {
-        if (!_isFollowEnabled || _isFollowLocked)
-            return;
-        if (_meleeHoverPivot == null || _playerController == null)
+        DisableFollow();
+    }
+
+    public void SetFollowLocked(bool locked)
+    {
+        _isFollowLocked = locked;
+
+        if (!locked)
+            _followVelocity = Vector3.zero;
+    }
+
+    private void UpdateHoverPivot()
+    {
+        if (_isFollowLocked)
             return;
 
-        ApplyPivotHorizontalFlip();
+        if (_playerController == null || _meleeHoverPivot == null)
+            return;
 
+        RotatePivotToAim();
+    }
+
+    private void RotatePivotToAim()
+    {
         if (!_rotatePivotToAim)
-        {
-            KeepHoldPointInitialTilt();
             return;
-        }
 
-        Vector2 aimDirection = ResolveAimDirection();
+        Vector2 aimDirection = _playerController.AimDirection;
         if (aimDirection.sqrMagnitude <= 0.0001f)
             return;
 
-        float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
-        float mirroredAngle = aimAngle;
-        if (_playerController.FacingSign < 0)
-            mirroredAngle = 180f - aimAngle;
-        _meleeHoverPivot.rotation = Quaternion.Euler(0f, 0f, mirroredAngle + _aimRotationOffset);
-
-        KeepHoldPointInitialTilt();
+        float angle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        _meleeHoverPivot.rotation = Quaternion.Euler(0f, 0f, angle + _pivotRotationOffset);
     }
 
-    public void TickHoverFollow()
+    private void TickFollow()
     {
         if (!_isFollowEnabled || _isFollowLocked)
             return;
-        if (_weaponRigidbody == null || _meleeHoverHoldPoint == null)
+
+        if (_meleeHoverHoldPoint == null)
             return;
 
-        UpdatePivotByAim();
+        Vector3 targetPosition = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
 
-        Vector2 nextPosition = Vector2.SmoothDamp(
-            _weaponRigidbody.position,
-            _meleeHoverHoldPoint.position,
-            ref _followVelocity,
-            Mathf.Max(0.0001f, _followSmoothTime),
-            Mathf.Max(0.001f, _followMaxSpeed),
-            Time.fixedDeltaTime);
+        if (_snapFollow)
+        {
+            transform.position = targetPosition;
+        }
+        else
+        {
+            transform.position = Vector3.SmoothDamp(
+                transform.position,
+                targetPosition,
+                ref _followVelocity,
+                Mathf.Max(0.0001f, _followSmoothTime),
+                Mathf.Max(0.001f, _followMaxSpeed),
+                Time.deltaTime
+            );
+        }
 
-        _weaponRigidbody.MovePosition(nextPosition);
-        _weaponRigidbody.MoveRotation(_meleeHoverHoldPoint.rotation.eulerAngles.z);
+        transform.rotation = _meleeHoverHoldPoint.rotation;
+
+        if (_rigidbody != null)
+        {
+            _rigidbody.linearVelocity = Vector2.zero;
+            _rigidbody.angularVelocity = 0f;
+        }
     }
 
-    private void KeepHoldPointInitialTilt()
+    private void SnapToHoldPoint()
     {
         if (_meleeHoverHoldPoint == null)
             return;
 
-        CacheInitialHoldRotation();
-        if (!_hasCachedInitialHoldRotation)
-            return;
+        transform.position = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
+        transform.rotation = _meleeHoverHoldPoint.rotation;
 
-        _meleeHoverHoldPoint.localRotation = _initialHoldLocalRotation;
+        if (_rigidbody != null)
+        {
+            _rigidbody.linearVelocity = Vector2.zero;
+            _rigidbody.angularVelocity = 0f;
+        }
     }
 
-    private Vector2 ResolveAimDirection()
+    private void EnterFollowPhysics()
     {
-        if (_playerController == null) return Vector2.right;
-        Vector2 aimDirection = _playerController.AimDirection;
-        if (aimDirection.sqrMagnitude <= 0.0001f) return Vector2.right;
-        return aimDirection.normalized;
+        if (_rigidbody != null)
+        {
+            if (!_hasCachedPhysics)
+            {
+                _cachedBodyType = _rigidbody.bodyType;
+                _cachedGravityScale = _rigidbody.gravityScale;
+            }
+
+            _rigidbody.linearVelocity = Vector2.zero;
+            _rigidbody.angularVelocity = 0f;
+            _rigidbody.gravityScale = 0f;
+            _rigidbody.bodyType = RigidbodyType2D.Kinematic;
+        }
+
+        if (_collider != null && _disableColliderWhileFollowing)
+        {
+            if (!_hasCachedPhysics)
+                _cachedColliderEnabled = _collider.enabled;
+
+            _collider.enabled = false;
+        }
+
+        _hasCachedPhysics = true;
     }
 
-    private void ApplyPivotHorizontalFlip()
+    private void ExitFollowPhysics()
     {
-        if (_meleeHoverPivot == null)
+        if (!_hasCachedPhysics)
             return;
 
-        CacheInitialPivotLocalPosition();
-        if (!_hasCachedInitialPivotLocalPosition)
-            return;
+        if (_rigidbody != null)
+        {
+            _rigidbody.bodyType = _cachedBodyType;
+            _rigidbody.gravityScale = _cachedGravityScale;
+            _rigidbody.linearVelocity = Vector2.zero;
+            _rigidbody.angularVelocity = 0f;
+        }
 
-        int facingSign = _playerController != null ? _playerController.FacingSign : 1;
-        float pivotX = facingSign >= 0
-            ? Mathf.Abs(_initialPivotLocalPosition.x)
-            : -Mathf.Abs(_initialPivotLocalPosition.x);
-        _meleeHoverPivot.localPosition = new Vector3(
-            pivotX,
-            _initialPivotLocalPosition.y,
-            _initialPivotLocalPosition.z);
-
-        CacheInitialPivotLocalScale();
-        if (!_hasCachedInitialPivotLocalScale)
-            return;
-
-        Vector3 nextScale = _initialPivotLocalScale;
-        nextScale.x = facingSign >= 0
-            ? Mathf.Abs(_initialPivotLocalScale.x)
-            : -Mathf.Abs(_initialPivotLocalScale.x);
-        _meleeHoverPivot.localScale = nextScale;
+        if (_collider != null && _disableColliderWhileFollowing)
+            _collider.enabled = _cachedColliderEnabled;
     }
 
-    private void CacheInitialPivotLocalPosition()
+    private Vector2 GetBobOffset()
     {
-        if (_hasCachedInitialPivotLocalPosition || _meleeHoverPivot == null)
-            return;
+        if (_bobAmplitude <= 0f || _bobFrequency <= 0f)
+            return Vector2.zero;
 
-        _initialPivotLocalPosition = _meleeHoverPivot.localPosition;
-        _hasCachedInitialPivotLocalPosition = true;
-    }
+        float phase = Time.time * _bobFrequency;
 
-    private void CacheInitialPivotLocalScale()
-    {
-        if (_hasCachedInitialPivotLocalScale || _meleeHoverPivot == null)
-            return;
-
-        _initialPivotLocalScale = _meleeHoverPivot.localScale;
-        _hasCachedInitialPivotLocalScale = true;
-    }
-
-    private void CacheInitialHoldRotation()
-    {
-        if (_hasCachedInitialHoldRotation || _meleeHoverHoldPoint == null)
-            return;
-
-        _initialHoldLocalRotation = _meleeHoverHoldPoint.localRotation;
-        _hasCachedInitialHoldRotation = true;
+        return new Vector2(
+            Mathf.Cos(phase * 0.7f),
+            Mathf.Sin(phase)
+        ) * _bobAmplitude;
     }
 }
