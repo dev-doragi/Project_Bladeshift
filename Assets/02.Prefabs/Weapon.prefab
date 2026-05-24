@@ -402,6 +402,7 @@ GameObject:
   - component: {fileID: 3241085922754617426}
   - component: {fileID: 5259452382723162312}
   - component: {fileID: 4215078335511638844}
+  - component: {fileID: 8291976222345149367}
   m_Layer: 6
   m_Name: Weapon
   m_TagString: Untagged
@@ -546,7 +547,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
   _initialMode: 0
   _stateMachine: {fileID: 5923836136970560632}
-  _meleeAttachment: {fileID: 7554338162925912487}
+  _meleeHoverFollow: {fileID: 7554338162925912487}
 --- !u!114 &6088404281793045894
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -563,7 +564,7 @@ MonoBehaviour:
   _modeController: {fileID: 303466040254391467}
   _remotePrimaryModule: {fileID: 3241085922754617426}
   _remoteSecondaryModule: {fileID: 5259452382723162312}
-  _meleePrimaryModule: {fileID: 0}
+  _meleePrimaryModule: {fileID: 4215078335511638844}
   _meleeSecondaryModule: {fileID: 0}
 --- !u!114 &5723434080366493270
 MonoBehaviour:
@@ -604,9 +605,11 @@ MonoBehaviour:
     m_Bits: 2048
   _knockbackPower: 15
   _slashDamage: 5
+  _spinSlashGroggyDamage: 3
   _slashRadius: 1.5
   _tickDamageInterval: 0.2
   _pinDamage: 30
+  _thrustPierceGroggyDamage: 20
   _spinSpeed: 2500
   _pinSpeed: 150
   _finisherWallProbeDistance: 3
@@ -700,11 +703,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 642362fa38104b26a385953e0a0bc7aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttachment
-  _meleePivot: {fileID: 0}
-  _meleeHoldPoint: {fileID: 0}
   _playerController: {fileID: 0}
-  _weaponRigidbody: {fileID: 1167539912637657977}
-  _weaponCollider: {fileID: 4511589942336969059}
+  _meleeHoverPivot: {fileID: 0}
+  _meleeHoverHoldPoint: {fileID: 0}
+  _rigidbody: {fileID: 1167539912637657977}
+  _collider: {fileID: 4511589942336969059}
+  _snapFollow: 0
+  _followSmoothTime: 0.1
+  _followMaxSpeed: 25
+  _bobAmplitude: 0.08
+  _bobFrequency: 2
+  _rotatePivotToAim: 0
+  _pivotRotationOffset: 0
+  _disableColliderWhileFollowing: 1
 --- !u!114 &3241085922754617426
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -766,3 +777,21 @@ MonoBehaviour:
     m_Bits: 512
   _hitRadius: 1.2
   _hitTimeNormalized: 0.45
+--- !u!114 &8291976222345149367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8857529888259376973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41f71b9086a14c06a269a817a4db58c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponEmbeddedAttack
+  _embeddedDepth: 0.35
+  _embeddedRotationOffset: 0
+  _embeddedFinisherRadiusMultiplier: 1.8
+  _embeddedFinisherOrbitDuration: 0.35
+  _embeddedFinisherHitStopDuration: 0.2
+  _embeddedFinisherShakeIntensity: 2

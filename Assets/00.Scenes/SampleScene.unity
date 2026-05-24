@@ -267,11 +267,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
---- !u!4 &168173036 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1742740238026972414, guid: 916123afff0eaec4caff932178703efb, type: 3}
-  m_PrefabInstance: {fileID: 1493108795789087930}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &243321240
 GameObject:
   m_ObjectHideFlags: 0
@@ -359,27 +354,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &359448992 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4215078335511638844, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-  m_PrefabInstance: {fileID: 7181595876209411561}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
---- !u!61 &359449006 stripped
-BoxCollider2D:
-  m_CorrespondingSourceObject: {fileID: 4511589942336969059, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-  m_PrefabInstance: {fileID: 7181595876209411561}
-  m_PrefabAsset: {fileID: 0}
---- !u!50 &359449007 stripped
-Rigidbody2D:
-  m_CorrespondingSourceObject: {fileID: 1167539912637657977, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-  m_PrefabInstance: {fileID: 7181595876209411561}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1899,10 +1873,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1382064532308858275, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.18
-      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1947,10 +1917,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 7187840058330926897, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _meleeMirrorRoot
-      value: 
-      objectReference: {fileID: 168173036}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2371,46 +2337,10 @@ PrefabInstance:
       propertyPath: _meleePivot
       value: 
       objectReference: {fileID: 12865730}
-    - target: {fileID: 6088404281793045894, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _meleePrimaryModule
-      value: 
-      objectReference: {fileID: 359448992}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _collider
-      value: 
-      objectReference: {fileID: 359449006}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _rigidbody
-      value: 
-      objectReference: {fileID: 359449007}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _meleePivot
-      value: 
-      objectReference: {fileID: 12865730}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _snapFollow
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _bobFrequency
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _followMaxSpeed
-      value: 25
-      objectReference: {fileID: 0}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _meleeHoldPoint
-      value: 
-      objectReference: {fileID: 1658731599}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeHoverPivot
       value: 
       objectReference: {fileID: 12865730}
-    - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _followSmoothTime
-      value: 0.1
-      objectReference: {fileID: 0}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _playerController
       value: 
