@@ -705,16 +705,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttachment
   _playerController: {fileID: 0}
   _meleeHoverPivot: {fileID: 0}
+  _meleeOrbitRoot: {fileID: 0}
   _meleeHoverHoldPoint: {fileID: 0}
   _rigidbody: {fileID: 1167539912637657977}
   _collider: {fileID: 4511589942336969059}
   _snapFollow: 0
   _followSmoothTime: 0.1
   _followMaxSpeed: 25
-  _bobAmplitude: 0.08
-  _bobFrequency: 2
-  _rotatePivotToAim: 0
-  _pivotRotationOffset: 0
+  _bobAmplitude: 0.03
+  _bobFrequency: 3
+  _enableAimOrbit: 1
+  _maxOrbitAngle: 15
+  _orbitSmoothTime: 0.08
+  _counterRotateHoldPoint: 1
+  _invertOrbitAngle: 0
+  _resetOrbitOnDisable: 1
+  _snapDuringAttack: 1
+  _disableBobDuringAttack: 1
+  _freezeOrbitDuringAttack: 1
   _disableColliderWhileFollowing: 1
 --- !u!114 &3241085922754617426
 MonoBehaviour:
@@ -767,16 +775,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
-  _meleePivot: {fileID: 0}
-  _swingAngle: 90
-  _swingDuration: 0.18
-  _returnDuration: 0.08
-  _damage: 1
+  _comboSteps: []
+  _comboResetDelay: 0.65
+  _defaultDamage: 1
   _targetLayer:
     serializedVersion: 2
     m_Bits: 512
-  _hitRadius: 1.2
-  _hitTimeNormalized: 0.45
+  _defaultHitRadius: 1.2
+  _invertAngleByFacing: 1
+  _invertYOffsetByFacing: 0
+  _slashTrail: {fileID: 0}
+  _useTrail: 1
 --- !u!114 &8291976222345149367
 MonoBehaviour:
   m_ObjectHideFlags: 0
