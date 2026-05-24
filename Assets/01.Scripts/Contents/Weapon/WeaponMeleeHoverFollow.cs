@@ -5,6 +5,7 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     [Header("References")]
     [SerializeField] private PlayerController _playerController;
     [SerializeField] private Transform _meleeHoverPivot;
+    [SerializeField] private Transform _meleeOrbitRoot;
     [SerializeField] private Transform _meleeHoverHoldPoint;
     [SerializeField] private Rigidbody2D _rigidbody;
     [SerializeField] private Collider2D _collider;
@@ -18,14 +19,35 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     [SerializeField] private float _bobAmplitude = 0.08f;
     [SerializeField] private float _bobFrequency = 4f;
 
-    [Header("Pivot")]
-    [SerializeField] private bool _rotatePivotToAim = false;
-    [SerializeField] private float _pivotRotationOffset = 0f;
+    [Header("Aim Orbit")]
+    [SerializeField] private bool _enableAimOrbit = true;
+    [SerializeField] private float _maxOrbitAngle = 18f;
+    [SerializeField] private float _orbitSmoothTime = 0.08f;
+    [SerializeField] private bool _counterRotateHoldPoint = true;
+    [SerializeField] private bool _invertOrbitAngle = false;
+    [SerializeField] private bool _resetOrbitOnDisable = true;
+
+    [Header("Attack Pose")]
+    [SerializeField] private bool _snapDuringAttack = true;
+    [SerializeField] private bool _disableBobDuringAttack = true;
+    [SerializeField] private bool _freezeOrbitDuringAttack = true;
 
     [Header("Physics")]
     [SerializeField] private bool _disableColliderWhileFollowing = true;
 
     private Vector3 _followVelocity;
+
+    private Quaternion _initialOrbitLocalRotation;
+    private Quaternion _initialHoldPointLocalRotation;
+    private bool _hasCachedOrbitRotation;
+    private bool _hasCachedHoldPointRotation;
+
+    private float _currentOrbitAngle;
+    private float _orbitAngleVelocity;
+
+    private Vector2 _attackLocalOffset;
+    private float _attackLocalAngle;
+    private bool _hasAttackPose;
 
     private RigidbodyType2D _cachedBodyType;
     private float _cachedGravityScale;
@@ -37,8 +59,13 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
     public bool IsFollowEnabled => _isFollowEnabled;
     public bool IsFollowLocked => _isFollowLocked;
+    public bool HasAttackPose => _hasAttackPose;
     public Transform MeleePivot => _meleeHoverPivot;
+    public Transform MeleeOrbitRoot => _meleeOrbitRoot;
     public Transform MeleeHoverHoldPoint => _meleeHoverHoldPoint;
+    public Vector3 CurrentTargetPosition { get; private set; }
+    public Quaternion CurrentTargetRotation { get; private set; }
+    public Vector2 CurrentForward => CurrentTargetRotation * Vector3.right;
 
     private void Awake()
     {
@@ -47,6 +74,8 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
         if (_collider == null)
             _collider = GetComponent<Collider2D>();
+
+        CacheOrbitPose();
     }
 
     public void Initialize(PlayerController playerController, Rigidbody2D weaponRigidbody, Collider2D weaponCollider)
@@ -59,12 +88,14 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
         if (weaponCollider != null)
             _collider = weaponCollider;
+
+        CacheOrbitPose();
     }
 
     private void LateUpdate()
     {
-        if (_isFollowEnabled)
-            UpdateHoverPivot();
+        if (_isFollowEnabled && (!_hasAttackPose || !_freezeOrbitDuringAttack))
+            UpdateAimOrbit(false);
 
         TickFollow();
     }
@@ -74,10 +105,12 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         _isFollowEnabled = true;
         _isFollowLocked = false;
         _followVelocity = Vector3.zero;
+        _orbitAngleVelocity = 0f;
 
         EnterFollowPhysics();
-        UpdateHoverPivot();
-        SnapToHoldPoint();
+        CacheOrbitPose();
+        UpdateAimOrbit(true);
+        SnapToTargetPose();
     }
 
     public void DisableFollow()
@@ -85,6 +118,11 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         _isFollowEnabled = false;
         _isFollowLocked = false;
         _followVelocity = Vector3.zero;
+        _orbitAngleVelocity = 0f;
+        ClearAttackPose();
+
+        if (_resetOrbitOnDisable)
+            ResetOrbitPose();
 
         ExitFollowPhysics();
     }
@@ -107,28 +145,82 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
             _followVelocity = Vector3.zero;
     }
 
-    private void UpdateHoverPivot()
+    public void SetAttackPose(Vector2 localOffset, float localAngle)
     {
-        if (_isFollowLocked)
-            return;
+        if (!_hasAttackPose)
+            _followVelocity = Vector3.zero;
 
-        if (_playerController == null || _meleeHoverPivot == null)
-            return;
-
-        RotatePivotToAim();
+        _attackLocalOffset = localOffset;
+        _attackLocalAngle = localAngle;
+        _hasAttackPose = true;
     }
 
-    private void RotatePivotToAim()
+    public void ClearAttackPose()
     {
-        if (!_rotatePivotToAim)
+        _attackLocalOffset = Vector2.zero;
+        _attackLocalAngle = 0f;
+        _hasAttackPose = false;
+        _followVelocity = Vector3.zero;
+    }
+
+    private void UpdateAimOrbit(bool immediate)
+    {
+        if (!_enableAimOrbit)
+        {
+            ApplyOrbitAngle(0f);
             return;
+        }
+
+        if (_playerController == null || _meleeOrbitRoot == null)
+            return;
+
+        CacheOrbitPose();
 
         Vector2 aimDirection = _playerController.AimDirection;
         if (aimDirection.sqrMagnitude <= 0.0001f)
             return;
 
-        float angle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
-        _meleeHoverPivot.rotation = Quaternion.Euler(0f, 0f, angle + _pivotRotationOffset);
+        float targetAngle = Mathf.Clamp(aimDirection.normalized.y, -1f, 1f) * _maxOrbitAngle;
+
+        if (_invertOrbitAngle)
+            targetAngle = -targetAngle;
+
+        if (immediate || _orbitSmoothTime <= 0f)
+        {
+            _currentOrbitAngle = targetAngle;
+        }
+        else
+        {
+            _currentOrbitAngle = Mathf.SmoothDampAngle(
+                _currentOrbitAngle,
+                targetAngle,
+                ref _orbitAngleVelocity,
+                _orbitSmoothTime,
+                Mathf.Infinity,
+                Time.deltaTime
+            );
+        }
+
+        ApplyOrbitAngle(_currentOrbitAngle);
+    }
+
+    private void ApplyOrbitAngle(float angle)
+    {
+        if (_meleeOrbitRoot != null && _hasCachedOrbitRotation)
+            _meleeOrbitRoot.localRotation = _initialOrbitLocalRotation * Quaternion.Euler(0f, 0f, angle);
+
+        if (_meleeHoverHoldPoint == null || !_hasCachedHoldPointRotation)
+            return;
+
+        if (_counterRotateHoldPoint)
+        {
+            _meleeHoverHoldPoint.localRotation =
+                _initialHoldPointLocalRotation * Quaternion.Euler(0f, 0f, -angle);
+        }
+        else
+        {
+            _meleeHoverHoldPoint.localRotation = _initialHoldPointLocalRotation;
+        }
     }
 
     private void TickFollow()
@@ -139,9 +231,11 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         if (_meleeHoverHoldPoint == null)
             return;
 
-        Vector3 targetPosition = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
+        CalculateTargetPose(out Vector3 targetPosition, out Quaternion targetRotation);
 
-        if (_snapFollow)
+        bool snap = _snapFollow || (_hasAttackPose && _snapDuringAttack);
+
+        if (snap)
         {
             transform.position = targetPosition;
         }
@@ -157,28 +251,91 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
             );
         }
 
-        transform.rotation = _meleeHoverHoldPoint.rotation;
+        transform.rotation = targetRotation;
 
-        if (_rigidbody != null)
-        {
-            _rigidbody.linearVelocity = Vector2.zero;
-            _rigidbody.angularVelocity = 0f;
-        }
+        CurrentTargetPosition = targetPosition;
+        CurrentTargetRotation = targetRotation;
+
+        StopPhysicsMotion();
     }
 
-    private void SnapToHoldPoint()
+    private void SnapToTargetPose()
     {
         if (_meleeHoverHoldPoint == null)
             return;
 
-        transform.position = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
-        transform.rotation = _meleeHoverHoldPoint.rotation;
+        CalculateTargetPose(out Vector3 targetPosition, out Quaternion targetRotation);
 
-        if (_rigidbody != null)
+        transform.position = targetPosition;
+        transform.rotation = targetRotation;
+
+        CurrentTargetPosition = targetPosition;
+        CurrentTargetRotation = targetRotation;
+
+        StopPhysicsMotion();
+    }
+
+    private void CalculateTargetPose(out Vector3 targetPosition, out Quaternion targetRotation)
+    {
+        if (_hasAttackPose)
         {
-            _rigidbody.linearVelocity = Vector2.zero;
-            _rigidbody.angularVelocity = 0f;
+            float facingSign = ResolveFacingSign();
+
+            Vector3 attackOffset = new Vector3(
+                _attackLocalOffset.x * facingSign,
+                _attackLocalOffset.y,
+                0f
+            );
+
+            targetPosition = _meleeHoverHoldPoint.position + attackOffset;
+
+            if (!_disableBobDuringAttack)
+                targetPosition += (Vector3)GetBobOffset();
+
+            targetRotation =
+                _meleeHoverHoldPoint.rotation *
+                Quaternion.Euler(0f, 0f, _attackLocalAngle * facingSign);
+
+            return;
         }
+
+        targetPosition = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
+        targetRotation = _meleeHoverHoldPoint.rotation;
+    }
+
+    private float ResolveFacingSign()
+    {
+        if (_playerController == null)
+            return 1f;
+
+        return _playerController.FacingSign >= 0 ? 1f : -1f;
+    }
+
+    private void CacheOrbitPose()
+    {
+        if (_meleeOrbitRoot != null && !_hasCachedOrbitRotation)
+        {
+            _initialOrbitLocalRotation = _meleeOrbitRoot.localRotation;
+            _hasCachedOrbitRotation = true;
+        }
+
+        if (_meleeHoverHoldPoint != null && !_hasCachedHoldPointRotation)
+        {
+            _initialHoldPointLocalRotation = _meleeHoverHoldPoint.localRotation;
+            _hasCachedHoldPointRotation = true;
+        }
+    }
+
+    private void ResetOrbitPose()
+    {
+        _currentOrbitAngle = 0f;
+        _orbitAngleVelocity = 0f;
+
+        if (_meleeOrbitRoot != null && _hasCachedOrbitRotation)
+            _meleeOrbitRoot.localRotation = _initialOrbitLocalRotation;
+
+        if (_meleeHoverHoldPoint != null && _hasCachedHoldPointRotation)
+            _meleeHoverHoldPoint.localRotation = _initialHoldPointLocalRotation;
     }
 
     private void EnterFollowPhysics()
@@ -223,6 +380,15 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
         if (_collider != null && _disableColliderWhileFollowing)
             _collider.enabled = _cachedColliderEnabled;
+    }
+
+    private void StopPhysicsMotion()
+    {
+        if (_rigidbody == null)
+            return;
+
+        _rigidbody.linearVelocity = Vector2.zero;
+        _rigidbody.angularVelocity = 0f;
     }
 
     private Vector2 GetBobOffset()
