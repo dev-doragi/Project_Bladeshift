@@ -58,6 +58,8 @@ public class WeaponActionRouter : MonoBehaviour
 
     private void OnPrimaryAttack(PrimaryAttackEvent evt)
     {
+        if (_controller != null && _controller.IsActionInputBlocked) return;
+
         WeaponActionModule primaryModule = GetPrimaryModule();
         WeaponActionModule secondaryModule = GetSecondaryModule();
 
@@ -86,6 +88,8 @@ public class WeaponActionRouter : MonoBehaviour
 
     private void OnSecondaryAttack(SecondaryAttackEvent evt)
     {
+        if (_controller != null && _controller.IsActionInputBlocked) return;
+
         WeaponActionModule secondaryModule = GetSecondaryModule();
 
         if (evt.IsStarted)

@@ -5,6 +5,7 @@ public class SpinSlashModule : WeaponActionModule
     [SerializeField] private float _slashHoldCostPerSecond = 6f;
     [SerializeField] private ContinuousEnergySpendMode _slashHoldSpendMode = ContinuousEnergySpendMode.DepleteToZero;
     private bool _isSlashing;
+    public bool IsSlashing => _isSlashing;
 
     public override void OnPress()
     {
