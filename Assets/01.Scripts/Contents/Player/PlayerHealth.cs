@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using UnityEngine.Serialization;
 
 [RequireComponent(typeof(PlayerController))]
@@ -11,6 +12,10 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [SerializeField] private int _currentHp;
 
     private bool _isDead;
+
+    [Header("Death")]
+    [SerializeField] private float _deathResultDelay = 1.2f;
+    private Coroutine _deathRoutine;
 
     public TeamType Team => TeamType.Player;
     public int CurrentHp => _currentHp;
@@ -67,26 +72,19 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
         _currentHp = nextHp;
 
-        EventBus.Instance.Publish(new PlayerHealedEvent
-        {
-            HealAmount = amount,
-            CurrentHp = _currentHp,
-            MaxHp = _maxHp
-        });
-
         PublishHpChanged();
     }
 
     public void ResetHp()
     {
+        if (_deathRoutine != null)
+        {
+            StopCoroutine(_deathRoutine);
+            _deathRoutine = null;
+        }
+
         _isDead = false;
         _currentHp = _maxHp;
-
-        EventBus.Instance.Publish(new PlayerHpResetEvent
-        {
-            CurrentHp = _currentHp,
-            MaxHp = _maxHp
-        });
 
         PublishHpChanged();
     }
@@ -99,7 +97,20 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         _isDead = true;
 
         EventBus.Instance.Publish(new PlayerDeathStartedEvent());
+
+        if (_deathRoutine != null)
+            StopCoroutine(_deathRoutine);
+
+        _deathRoutine = StartCoroutine(DeathRoutine());
+    }
+
+    private IEnumerator DeathRoutine()
+    {
+        yield return new WaitForSeconds(_deathResultDelay);
+
         EventBus.Instance.Publish(new StageFailedEvent { StageIndex = 0 });
+
+        _deathRoutine = null;
     }
 
     private void PublishHpChanged()

@@ -154,19 +154,6 @@ public struct PlayerHpChangedEvent
     public int MaxHp;
 }
 
-public struct PlayerHealedEvent
-{
-    public int HealAmount;
-    public int CurrentHp;
-    public int MaxHp;
-}
-
-public struct PlayerHpResetEvent
-{
-    public int CurrentHp;
-    public int MaxHp;
-}
-
 public struct PlayerDamagedEvent
 {
     public int Damage;

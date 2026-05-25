@@ -7,72 +7,27 @@ public class HUD : MonoBehaviour
     private PlayerController _playerController;
     private PlayerHealth _playerHealth;
 
-    private void OnEnable()
-    {
-        EventBus.Instance?.Subscribe<SceneLoadedEvent>(OnSceneLoaded);
-        TryAutoBind();
-    }
-
-    private void Start()
-    {
-        TryAutoBind();
-    }
-
-    private void OnDisable()
-    {
-        EventBus.Instance?.Unsubscribe<SceneLoadedEvent>(OnSceneLoaded);
-        Unbind();
-    }
-
     public void Bind(PlayerController playerController)
     {
         Unbind();
 
+        if (playerController == null)
+            return;
+
         _playerController = playerController;
+        _playerHealth = _playerController.GetComponent<PlayerHealth>();
 
-        if (_playerController != null)
-            _playerHealth = _playerController.GetComponent<PlayerHealth>();
-
-        BindPlayerStatsUI();
-        Refresh();
-    }
-
-    public void Unbind()
-    {
-        UnbindPlayerStatsUI();
-
-        _playerController = null;
-        _playerHealth = null;
-    }
-
-    private void TryAutoBind()
-    {
-        if (_playerController != null && _playerHealth != null)
-            return;
-
-        PlayerController foundPlayer = FindFirstObjectByType<PlayerController>();
-        if (foundPlayer == null)
-            return;
-
-        Bind(foundPlayer);
-    }
-
-    private void OnSceneLoaded(SceneLoadedEvent evt)
-    {
-        TryAutoBind();
-        Refresh();
-    }
-
-    private void BindPlayerStatsUI()
-    {
         if (_hpBar != null)
             _hpBar.Bind(_playerHealth);
     }
 
-    private void UnbindPlayerStatsUI()
+    public void Unbind()
     {
         if (_hpBar != null)
             _hpBar.Unbind();
+
+        _playerController = null;
+        _playerHealth = null;
     }
 
     public void Refresh()
@@ -81,4 +36,3 @@ public class HUD : MonoBehaviour
             _hpBar.Refresh();
     }
 }
-

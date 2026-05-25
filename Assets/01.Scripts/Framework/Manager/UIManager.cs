@@ -52,17 +52,8 @@ public class UIManager : Singleton<UIManager>
 
     private void OnPlayerSpawned(PlayerSpawnedEvent evt)
     {
-        if (_hud == null)
-        {
-            Debug.LogWarning("[UIManager] HUD 참조가 비어 있습니다.", this);
+        if (_hud == null || evt.Player == null)
             return;
-        }
-
-        if (evt.Player == null)
-        {
-            Debug.LogWarning("[UIManager] PlayerSpawnedEvent.Player가 null입니다.", this);
-            return;
-        }
 
         _hud.Bind(evt.Player);
     }

@@ -1032,6 +1032,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 453a8df749292c84ab65600d3ab46633, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+--- !u!114 &1652939333 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+  m_PrefabInstance: {fileID: 1493108795789087930}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a78085862eb22034a928cc091d0fe742, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
 --- !u!1 &1657171133
 GameObject:
   m_ObjectHideFlags: 0
@@ -1242,6 +1253,68 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+--- !u!114 &1938710668 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3734468907785389636, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+  m_PrefabInstance: {fileID: 8864941700989790118}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45f22aebe70d1d04f90acdee232eb3a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PausePanelPresenter
+--- !u!1 &1940820293
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1940820295}
+  - component: {fileID: 1940820294}
+  m_Layer: 0
+  m_Name: Debugger
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1940820294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940820293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5ab2c0ad3e713d4c852226b433ca713, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthDebugInput
+  _playerHealth: {fileID: 1652939333}
+  _damageKey: 94
+  _healKey: 95
+  _resetKey: 96
+  _killKey: 97
+  _damage: 1
+  _healAmount: 1
+--- !u!4 &1940820295
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940820293}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2069730400
 GameObject:
   m_ObjectHideFlags: 0
@@ -1645,18 +1718,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _maxHp
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _currentHp
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _maxHealth
-      value: 3
-      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2275,6 +2336,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 655871025135807231, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1938710668}
+    - target: {fileID: 655871025135807231, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: RetryGame
+      objectReference: {fileID: 0}
+    - target: {fileID: 1529038557283607870, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1938710668}
+    - target: {fileID: 1529038557283607870, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: ExitGame
+      objectReference: {fileID: 0}
     - target: {fileID: 2637519276110641999, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
       propertyPath: m_Name
       value: Canvas
@@ -2287,18 +2364,6 @@ PrefabInstance:
       propertyPath: _weaponTarget
       value: 
       objectReference: {fileID: 4180346}
-    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: _hud
-      value: 
-      objectReference: {fileID: 8864941700989790123}
-    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: _isDontDestroyOnLoad
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: _autoShowInGamePanelOnPlaying
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 7398288164879301626, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
       propertyPath: m_Camera
       value: 
@@ -2386,61 +2451,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8505591882536713928, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8864941700989790123}
-    - targetCorrespondingSourceObject: {fileID: 2641855886691380265, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 8864941700989790122}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
---- !u!224 &8864941700989790119 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 4938087351194917135, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-  m_PrefabInstance: {fileID: 8864941700989790118}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &8864941700989790120 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2641855886691380265, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-  m_PrefabInstance: {fileID: 8864941700989790118}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &8864941700989790121 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8505591882536713928, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-  m_PrefabInstance: {fileID: 8864941700989790118}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &8864941700989790122
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8864941700989790120}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7b146ef98ec2bd45803c5665fbaa45c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UI_HpBar
-  _bar: {fileID: 8864941700989790119}
-  _filledHeartPrefab: {fileID: 3997870592411399815, guid: e4fd641ab75e604419e5216dba6179b7, type: 3}
-  _emptyHeartPrefab: {fileID: 3021337542212143725, guid: edd3c2145d6d01248b76bb02c92199f8, type: 3}
-  _punchScaleMultiplier: 1.2
-  _punchDuration: 0.08
-  _shrinkDuration: 0.12
-  _growDuration: 0.18
---- !u!114 &8864941700989790123
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8864941700989790121}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 354cfe46758b66e4199f20bb56c7dba6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HUD
-  _hpBar: {fileID: 8864941700989790122}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -2460,6 +2472,7 @@ SceneRoots:
   - {fileID: 6872936001100237723}
   - {fileID: 6425065754999614808}
   - {fileID: 4426634399923803852}
+  - {fileID: 1940820295}
   - {fileID: 701524090}
   - {fileID: 2069730402}
   - {fileID: 1571438712}
