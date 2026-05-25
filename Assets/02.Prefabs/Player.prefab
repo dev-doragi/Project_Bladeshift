@@ -492,7 +492,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a78085862eb22034a928cc091d0fe742, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
-  _maxHealth: 100
+  _maxHp: 3
+  _currentHp: 3
+  _deathResultDelay: 1.2
 --- !u!114 &6501514101528185886
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -510,7 +512,7 @@ MonoBehaviour:
   _isDashingParam: IsDashing
   _isJumpingParam: IsJumping
   _isBackwardMoveParam: IsBackwardMove
-  _deadParam: Dead
+  _deathTriggerParam: Dead
   _backwardThreshold: -0.1
 --- !u!114 &7187840058330926897
 MonoBehaviour:

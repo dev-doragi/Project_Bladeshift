@@ -102,6 +102,11 @@ public struct PrimaryAttackEvent
     public bool IsStarted;
 }
 
+public struct PlayerSpawnedEvent
+{
+    public PlayerController Player;
+}
+
 public struct SecondaryAttackEvent
 {
     public bool IsStarted;
@@ -142,6 +147,21 @@ public struct LinkEnergyChangedEvent
     public bool IsRecovering;
     public bool IsDraining;
 }
+
+public struct PlayerHpChangedEvent
+{
+    public int CurrentHp;
+    public int MaxHp;
+}
+
+public struct PlayerDamagedEvent
+{
+    public int Damage;
+    public int CurrentHp;
+    public int MaxHp;
+}
+
+public struct PlayerDeathStartedEvent { }
 #endregion
 
 #region [6. Audio & Camera Events]
@@ -153,4 +173,5 @@ public struct PlaySFXEvent
 
 public struct CameraManipulationEvent { }
 #endregion
+
 

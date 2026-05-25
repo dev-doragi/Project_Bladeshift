@@ -1032,6 +1032,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 453a8df749292c84ab65600d3ab46633, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+--- !u!114 &1652939333 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+  m_PrefabInstance: {fileID: 1493108795789087930}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a78085862eb22034a928cc091d0fe742, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
 --- !u!1 &1657171133
 GameObject:
   m_ObjectHideFlags: 0
@@ -1157,26 +1168,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1382064532308858275, guid: 916123afff0eaec4caff932178703efb, type: 3}
   m_PrefabInstance: {fileID: 1493108795789087930}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1693060299 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2124303791732366025, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
-  m_PrefabInstance: {fileID: 7905168344170264855}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1693060302
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693060299}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
-  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
-  m_EffectDistance: {x: 1, y: -1}
-  m_UseGraphicAlpha: 1
 --- !u!1001 &1857569185
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1242,6 +1233,57 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+--- !u!1 &1940820293
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1940820295}
+  - component: {fileID: 1940820294}
+  m_Layer: 0
+  m_Name: Debugger
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1940820294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940820293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5ab2c0ad3e713d4c852226b433ca713, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthDebugInput
+  _playerHealth: {fileID: 1652939333}
+  _damageKey: 94
+  _healKey: 95
+  _resetKey: 96
+  _killKey: 97
+  _damage: 1
+  _healAmount: 1
+--- !u!4 &1940820295
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940820293}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2069730400
 GameObject:
   m_ObjectHideFlags: 0
@@ -2250,10 +2292,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 2124303791732366025, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1693060302}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
 --- !u!1001 &8864941700989790118
 PrefabInstance:
@@ -2383,6 +2422,7 @@ SceneRoots:
   - {fileID: 6872936001100237723}
   - {fileID: 6425065754999614808}
   - {fileID: 4426634399923803852}
+  - {fileID: 1940820295}
   - {fileID: 701524090}
   - {fileID: 2069730402}
   - {fileID: 1571438712}

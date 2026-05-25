@@ -479,7 +479,7 @@ public class MeleeAttackModule : WeaponActionModule
                 ReturnDuration = 0.12f,
                 StrikeCurve = null,
                 ReturnCurve = null,
-                Damage = 1,
+                Damage = 10,
                 HitRadius = 1.0f,
                 SweepSamples = 7
             },
@@ -497,7 +497,7 @@ public class MeleeAttackModule : WeaponActionModule
                 ReturnDuration = 0.12f,
                 StrikeCurve = null,
                 ReturnCurve = null,
-                Damage = 1,
+                Damage = 15,
                 HitRadius = 1.05f,
                 SweepSamples = 8
             },
@@ -515,7 +515,7 @@ public class MeleeAttackModule : WeaponActionModule
                 ReturnDuration = 0.14f,
                 StrikeCurve = null,
                 ReturnCurve = null,
-                Damage = 2,
+                Damage = 10,
                 HitRadius = 1.15f,
                 SweepSamples = 9
             }

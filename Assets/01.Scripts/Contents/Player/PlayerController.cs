@@ -50,6 +50,14 @@ public class PlayerController : MonoBehaviour
         UpdateAimDirection();
     }
 
+    private void Start()
+    {
+        EventBus.Instance?.Publish(new PlayerSpawnedEvent
+        {
+            Player = this
+        });
+    }
+
     private void OnMoveInput(MoveInputEvent evt)
     {
         MoveInput = evt.Direction;

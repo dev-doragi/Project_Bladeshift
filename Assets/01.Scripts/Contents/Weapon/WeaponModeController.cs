@@ -25,16 +25,6 @@ public class WeaponModeController : MonoBehaviour
         ApplyCurrentMode();
     }
 
-    private void OnEnable()
-    {
-        EventBus.Instance?.Subscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
-    }
-
-    private void OnDisable()
-    {
-        EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
-    }
-
     public void ApplyCurrentMode()
     {
         if (CurrentMode == WeaponMode.Melee)
@@ -71,8 +61,4 @@ public class WeaponModeController : MonoBehaviour
         ModeChanged?.Invoke(previousMode, CurrentMode);
     }
 
-    private void OnWeaponModeToggle(WeaponModeToggleEvent _)
-    {
-        ToggleMode();
-    }
 }
