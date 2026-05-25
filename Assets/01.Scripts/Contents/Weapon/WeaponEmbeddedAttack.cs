@@ -32,6 +32,7 @@ public class WeaponEmbeddedAttack : MonoBehaviour
         ClearEmbeddedTarget();
         _embeddedEnemy = enemy;
         _embeddedEnemy.GroggyStateExited += OnEmbeddedEnemyGroggyExited;
+        _embeddedEnemy.SetPierced(true);
 
         transform.SetParent(enemy.transform, true);
         SnapWeaponIntoEnemy(enemy);
@@ -199,7 +200,10 @@ public class WeaponEmbeddedAttack : MonoBehaviour
     private void ClearEmbeddedTarget()
     {
         if (_embeddedEnemy != null)
+        {
             _embeddedEnemy.GroggyStateExited -= OnEmbeddedEnemyGroggyExited;
+            _embeddedEnemy.SetPierced(false);
+        }
 
         _embeddedEnemy = null;
     }

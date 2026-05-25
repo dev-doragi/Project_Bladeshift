@@ -30,9 +30,11 @@ public class WeaponCapture : MonoBehaviour
                 _capturedEnemies.Add(enemy);
 
             enemy.SetCaptured(true);
+            enemy.SetPierced(true);
         }
         if (enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
             rb.bodyType = RigidbodyType2D.Kinematic;
+        SetEnemyCollidersEnabled(enemyTransform, false);
     }
 
     public void UnbindAll(bool forcePhysicsRestore = false)
@@ -44,6 +46,7 @@ public class WeaponCapture : MonoBehaviour
             Transform enemyTransform = enemy.transform;
             enemyTransform.SetParent(null);
             enemy.SetCaptured(false);
+            enemy.SetPierced(false);
 
             if (enemyTransform.TryGetComponent<Rigidbody2D>(out var rb))
             {
@@ -55,11 +58,7 @@ public class WeaponCapture : MonoBehaviour
                 }
             }
 
-            if (enemyTransform.TryGetComponent<Collider2D>(out var col))
-            {
-                col.enabled = true;
-                col.isTrigger = false;
-            }
+            SetEnemyCollidersEnabled(enemyTransform, true);
         }
         _capturedEnemies.Clear();
     }
@@ -77,6 +76,11 @@ public class WeaponCapture : MonoBehaviour
             if (enemy == null) continue;
 
             enemy.transform.SetParent(null);
+            enemy.SetCaptured(false);
+            enemy.SetPierced(false);
+
+            SetEnemyCollidersEnabled(enemy.transform, true);
+
             enemy.ExecuteDeath(knockbackForce);
         }
 
@@ -84,4 +88,21 @@ public class WeaponCapture : MonoBehaviour
     }
 
     public IReadOnlyList<EnemyBase> GetCapturedEnemies() => _capturedEnemies;
+
+    private void SetEnemyCollidersEnabled(Transform enemyTransform, bool enabled)
+    {
+        if (enemyTransform == null)
+            return;
+
+        Collider2D[] colliders = enemyTransform.GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider2D col = colliders[i];
+            if (col == null) continue;
+
+            col.enabled = enabled;
+            if (enabled)
+                col.isTrigger = false;
+        }
+    }
 }

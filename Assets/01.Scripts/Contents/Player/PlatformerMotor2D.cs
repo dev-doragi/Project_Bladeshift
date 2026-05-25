@@ -1,4 +1,4 @@
-using UnityEngine;
+癤퓎sing UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(GroundSensor2D))]
 public class PlatformerMotor2D : MonoBehaviour
@@ -19,6 +19,8 @@ public class PlatformerMotor2D : MonoBehaviour
     [SerializeField] private float _dashDuration = 0.16f;
     [SerializeField] private float _dashCooldown = 0.45f;
     [SerializeField] private bool _dashLocksGravity = true;
+    [SerializeField] private bool _ignoreEnemyCollisionWhileDashing = true;
+    [SerializeField] private string _enemyLayerName = "Enemy";
 
     [Header("Forgiveness")]
     [SerializeField] private float _coyoteTime = 0.15f;
@@ -34,7 +36,7 @@ public class PlatformerMotor2D : MonoBehaviour
     private float _coyoteTimer;
     private float _jumpBufferTimer;
     private bool _isJumpHeld;
-    private bool _jumpRequestPending; // 점프 실행 신호 보관용
+    private bool _jumpRequestPending;
 
     private bool _isDashing;
     private float _lastDashTime = -999f;
@@ -43,6 +45,9 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private bool _wasGrounded;
     private bool _jumpConsumed;
+    private int _enemyLayer = -1;
+    private int _dashCollisionPlayerLayer = -1;
+    private bool _isIgnoringEnemyCollision;
 
     public bool IsDashing => _isDashing;
     public bool IsJumping => !_isDashing && _sensor != null && !_sensor.IsGrounded;
@@ -54,6 +59,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _rb = GetComponent<Rigidbody2D>();
         _sensor = GetComponent<GroundSensor2D>();
         _defaultGravityScale = _rb.gravityScale;
+        _enemyLayer = LayerMask.NameToLayer(_enemyLayerName);
     }
 
     private void Update()
@@ -76,13 +82,9 @@ public class PlatformerMotor2D : MonoBehaviour
         else
         {
             if (justLeftGround && !_jumpConsumed)
-            {
                 _coyoteTimer = _coyoteTime;
-            }
             else
-            {
                 _coyoteTimer -= Time.deltaTime;
-            }
         }
 
         _wasGrounded = isGrounded;
@@ -92,7 +94,6 @@ public class PlatformerMotor2D : MonoBehaviour
     {
         _velocity = _rb.linearVelocity;
 
-        // 0. 대시 로직 처리
         if (_isDashing)
         {
             TickDash();
@@ -100,20 +101,15 @@ public class PlatformerMotor2D : MonoBehaviour
             return;
         }
 
-        // 1. 점프 로직 처리 (입력 버퍼와 코요테 타임 확인)
         bool isGrounded = _sensor != null && _sensor.IsGrounded;
         bool canJump = !_jumpConsumed && (isGrounded || _coyoteTimer > 0f);
 
         if (_jumpRequestPending && _jumpBufferTimer > 0f && canJump)
-        {
             ExecuteJump();
-        }
 
-        // 2. 이동 및 중력 처리
         HandleHorizontalMovement();
         HandleGravityAndJumpApex();
 
-        // 3. 최종 속도 적용
         _rb.linearVelocity = _velocity;
     }
 
@@ -122,7 +118,7 @@ public class PlatformerMotor2D : MonoBehaviour
     public void RequestJump()
     {
         _jumpBufferTimer = _jumpBufferTime;
-        _jumpRequestPending = true; // 점프 신호 접수
+        _jumpRequestPending = true;
         _isJumpHeld = true;
     }
 
@@ -160,12 +156,16 @@ public class PlatformerMotor2D : MonoBehaviour
         _jumpBufferTimer = 0f;
         _isJumpHeld = false;
 
+        SetEnemyCollisionIgnoredForDash(true);
+
         if (_dashLocksGravity)
             _rb.gravityScale = 0f;
     }
 
     private void OnDisable()
     {
+        SetEnemyCollisionIgnoredForDash(false);
+
         if (_rb != null)
             _rb.gravityScale = _defaultGravityScale;
     }
@@ -182,6 +182,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _isDashing = false;
         _velocity = Vector2.zero;
         _rb.gravityScale = _defaultGravityScale;
+        SetEnemyCollisionIgnoredForDash(false);
     }
 
     private void HandleHorizontalMovement()
@@ -207,5 +208,37 @@ public class PlatformerMotor2D : MonoBehaviour
             _rb.gravityScale = _defaultGravityScale * _fallGravityMultiplier;
         else
             _rb.gravityScale = _defaultGravityScale;
+    }
+
+    private void SetEnemyCollisionIgnoredForDash(bool ignored)
+    {
+        if (!_ignoreEnemyCollisionWhileDashing)
+            return;
+
+        if (_enemyLayer < 0 || _enemyLayer > 31)
+            return;
+
+        if (ignored)
+        {
+            if (_isIgnoringEnemyCollision)
+                return;
+
+            _dashCollisionPlayerLayer = gameObject.layer;
+            if (_dashCollisionPlayerLayer < 0 || _dashCollisionPlayerLayer > 31)
+                return;
+
+            Physics2D.IgnoreLayerCollision(_dashCollisionPlayerLayer, _enemyLayer, true);
+            _isIgnoringEnemyCollision = true;
+            return;
+        }
+
+        if (!_isIgnoringEnemyCollision)
+            return;
+
+        if (_dashCollisionPlayerLayer >= 0 && _dashCollisionPlayerLayer <= 31)
+            Physics2D.IgnoreLayerCollision(_dashCollisionPlayerLayer, _enemyLayer, false);
+
+        _dashCollisionPlayerLayer = -1;
+        _isIgnoringEnemyCollision = false;
     }
 }

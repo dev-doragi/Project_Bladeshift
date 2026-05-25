@@ -19,10 +19,14 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [Header("Invincibility")]
     [SerializeField] private float _invincibleDuration = 1.0f;
     [SerializeField] private string _invincibleLayer = "Invincible";
+    [SerializeField, Range(0f, 1f)] private float _invincibleBlinkMinAlpha = 0.35f;
+    [SerializeField, Min(0.1f)] private float _invincibleBlinkSpeed = 18f;
 
     private int _originalLayer;
     private bool _isInvincible;
     private Coroutine _invincibleRoutine;
+    private SpriteRenderer _bodySpriteRenderer;
+    private Color _baseSpriteColor = Color.white;
 
     public TeamType Team => TeamType.Player;
     public int CurrentHp => _currentHp;
@@ -37,6 +41,9 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         _isDead = false;
         _isInvincible = false;
         _originalLayer = gameObject.layer;
+        _bodySpriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (_bodySpriteRenderer != null)
+            _baseSpriteColor = _bodySpriteRenderer.color;
 
         PublishHpChanged();
     }
@@ -151,6 +158,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     {
         _isInvincible = false;
         gameObject.layer = _originalLayer;
+        SetInvincibleVisualAlpha(1f);
 
         if (_invincibleRoutine != null)
         {
@@ -167,10 +175,30 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         if (invincibleLayer >= 0)
             gameObject.layer = invincibleLayer;
 
-        yield return new WaitForSeconds(_invincibleDuration);
+        float duration = Mathf.Max(0f, _invincibleDuration);
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = (Mathf.Sin(Time.time * _invincibleBlinkSpeed) + 1f) * 0.5f;
+            float alpha = Mathf.Lerp(_invincibleBlinkMinAlpha, 1f, t);
+            SetInvincibleVisualAlpha(alpha);
+            yield return null;
+        }
 
         _isInvincible = false;
         gameObject.layer = _originalLayer;
+        SetInvincibleVisualAlpha(1f);
         _invincibleRoutine = null;
+    }
+
+    private void SetInvincibleVisualAlpha(float alpha)
+    {
+        if (_bodySpriteRenderer == null)
+            return;
+
+        Color c = _baseSpriteColor;
+        c.a = Mathf.Clamp01(alpha);
+        _bodySpriteRenderer.color = c;
     }
 }

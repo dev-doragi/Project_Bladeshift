@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponCombat : MonoBehaviour
@@ -136,10 +136,12 @@ public class WeaponCombat : MonoBehaviour
         }
     }
 
-    public void PerformExplosiveFinisher(Vector2 center, Vector2 forward, EnemyBase pinnedTarget)
+        public void PerformExplosiveFinisher(Vector2 center, Vector2 forward, EnemyBase pinnedTarget)
     {
         float radius = 7f;
         Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius, _enemyLayer);
+        bool pinnedTargetProcessed = false;
+
         foreach (var col in hits)
         {
             if (!col.TryGetComponent<EnemyBase>(out var enemy) || enemy.IsDead)
@@ -147,30 +149,36 @@ public class WeaponCombat : MonoBehaviour
 
             if (enemy == pinnedTarget)
             {
-                // 즉사 + 무기 정면 15배 넉백
                 if (enemy.CanExecuteCaptureFinisher())
                     enemy.ExecuteDeath(forward.normalized * _knockbackPower * 15f);
+
+                pinnedTargetProcessed = true;
+                continue;
             }
-            else
+
+            Vector2 dir = ((Vector2)enemy.transform.position - center).normalized;
+            enemy.TakeDamage(new DamageData
             {
-                // 방사형 5배 넉백
-                Vector2 dir = ((Vector2)enemy.transform.position - center).normalized;
-                enemy.TakeDamage(new DamageData
-                {
-                    Damage = _slashDamage,
-                    AttackerTeam = TeamType.Player,
-                    HitPoint = col.ClosestPoint(center),
-                    KnockbackForce = dir * _knockbackPower * 5f,
-                    IsPiercing = false,
-                    AttackKind = WeaponAttackKind.None
-                });
-            }
+                Damage = _slashDamage,
+                AttackerTeam = TeamType.Player,
+                HitPoint = col.ClosestPoint(center),
+                KnockbackForce = dir * _knockbackPower * 5f,
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
+            });
+        }
+
+        if (!pinnedTargetProcessed && pinnedTarget != null && !pinnedTarget.IsDead && pinnedTarget.CanExecuteCaptureFinisher())
+        {
+            Vector2 safeForward = forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector2.right;
+            pinnedTarget.ExecuteDeath(safeForward * _knockbackPower * 15f);
         }
     }
-    public void PerformSpinFinisher(Vector3 position, List<Transform> pinnedTargets, LayerMask wallMask)
+        public void PerformSpinFinisher(Vector3 position, List<Transform> pinnedTargets, LayerMask wallMask)
     {
         float radius = 7f;
         Collider2D[] hits = Physics2D.OverlapCircleAll(position, radius, _enemyLayer);
+        HashSet<EnemyBase> processedPinnedEnemies = new HashSet<EnemyBase>();
 
         foreach (var col in hits)
         {
@@ -201,7 +209,10 @@ public class WeaponCombat : MonoBehaviour
             if (isPinnedTarget)
             {
                 if (other.CanExecuteCaptureFinisher())
+                {
                     other.ExecuteDeath(correctedKnockback);
+                    processedPinnedEnemies.Add(other);
+                }
 
                 continue;
             }
@@ -215,6 +226,32 @@ public class WeaponCombat : MonoBehaviour
                 IsPiercing = false,
                 AttackKind = WeaponAttackKind.None
             });
+        }
+
+        if (pinnedTargets == null || pinnedTargets.Count == 0)
+            return;
+
+        for (int i = 0; i < pinnedTargets.Count; i++)
+        {
+            Transform pinnedTransform = pinnedTargets[i];
+            if (pinnedTransform == null) continue;
+            if (!pinnedTransform.TryGetComponent<EnemyBase>(out var pinnedEnemy)) continue;
+            if (pinnedEnemy.IsDead) continue;
+            if (processedPinnedEnemies.Contains(pinnedEnemy)) continue;
+            if (!pinnedEnemy.CanExecuteCaptureFinisher()) continue;
+
+            Vector2 baseDir = ((Vector2)pinnedTransform.position - (Vector2)position).normalized;
+            if (baseDir.sqrMagnitude <= 0.0001f)
+                baseDir = Vector2.right;
+
+            Vector2 correctedKnockback = CalculateFinisherKnockback(
+                pinnedTransform.GetComponent<Collider2D>(),
+                baseDir,
+                10f,
+                wallMask
+            );
+
+            pinnedEnemy.ExecuteDeath(correctedKnockback);
         }
     }
 
@@ -264,3 +301,4 @@ public class WeaponCombat : MonoBehaviour
         return correctedDirection.normalized * (baseForce * forceRatio);
     }
 }
+

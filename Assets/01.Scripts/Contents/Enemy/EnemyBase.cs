@@ -31,6 +31,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected bool _isGroggyInvulnerable;
     protected bool _isRecoveringFromGroggy;
     protected bool _isCaptured;
+    protected bool _isPierced;
     protected bool _hasHitWallAfterDeath = false;
     protected float _currentGroggyGauge;
     private Quaternion _originalRotation;
@@ -44,6 +45,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public bool IsGroggyInvulnerable => _isGroggyInvulnerable;
     public bool IsRecoveringFromGroggy => _isRecoveringFromGroggy;
     public bool IsCaptured => _isCaptured;
+    public bool IsPierced => _isPierced;
     public float CurrentGroggyGauge => _currentGroggyGauge;
     public float MaxGroggyGauge => _enemyData != null ? _enemyData.MaxGroggyGauge : 0f;
     public virtual EnemyCategory Category => _enemyData != null ? _enemyData.Category : EnemyCategory.Normal;
@@ -121,9 +123,18 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         TryDealContactDamage(other);
     }
 
+    protected virtual void OnTriggerStay2D(Collider2D other)
+    {
+        TryDealContactDamage(other);
+    }
+
     private void TryDealContactDamage(Collider2D other)
     {
         if (IsDead)
+            return;
+        if (_isCaptured)
+            return;
+        if (_isPierced)
             return;
 
         if (_contactDamage <= 0)
@@ -503,6 +514,11 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             RestartGroggyHold();
     }
 
+    public virtual void SetPierced(bool isPierced)
+    {
+        _isPierced = isPierced;
+    }
+
     public virtual void ExecuteDeath(Vector2 knockbackForce)
     {
         if (IsDead) return;
@@ -621,6 +637,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         _isGroggyInvulnerable = false;
         _isRecoveringFromGroggy = false;
         _isCaptured = false;
+        _isPierced = false;
         _currentGroggyGauge = 0f;
     }
 
