@@ -528,11 +528,11 @@ TrailRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Time: 0.25
+  m_Time: 0.15
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.5
+    widthMultiplier: 0.75
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -585,7 +585,7 @@ TrailRenderer:
     textureScale: {x: 1, y: 1}
     shadowBias: 0.5
     generateLightingData: 0
-  m_MinVertexDistance: 0.1
+  m_MinVertexDistance: 1.25
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
@@ -952,6 +952,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponWallPlatform
   _stateMachine: {fileID: 5923836136970560632}
   _platformObject: {fileID: 5470165021660332961}
+  _releaseClearance: 0.25
+  _releaseDelay: 0.08
 --- !u!114 &3241085922754617426
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -979,6 +981,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ThrustPierceModule
   _thrustFireCost: 18
+  _focusHoldCostPerSecond: 10
   _captureHoldCostPerSecond: 25
   _captureHoldSpendMode: 1
   _pinStartHitStopDuration: 0.15

@@ -48,6 +48,9 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     private Vector2 _attackLocalOffset;
     private float _attackLocalAngle;
     private bool _hasAttackPose;
+    private Vector3 _attackAnchorPosition;
+    private Quaternion _attackAnchorRotation;
+    private bool _hasAttackAnchor;
 
     private RigidbodyType2D _cachedBodyType;
     private float _cachedGravityScale;
@@ -120,6 +123,7 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         _followVelocity = Vector3.zero;
         _orbitAngleVelocity = 0f;
         ClearAttackPose();
+        EndAttackAnchor();
 
         if (_resetOrbitOnDisable)
             ResetOrbitPose();
@@ -153,6 +157,23 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         _attackLocalOffset = localOffset;
         _attackLocalAngle = localAngle;
         _hasAttackPose = true;
+    }
+
+    public void BeginAttackAnchor()
+    {
+        if (_meleeHoverHoldPoint == null)
+            return;
+
+        _attackAnchorPosition = _meleeHoverHoldPoint.position;
+        _attackAnchorRotation = _meleeHoverHoldPoint.rotation;
+        _hasAttackAnchor = true;
+    }
+
+    public void EndAttackAnchor()
+    {
+        _hasAttackAnchor = false;
+        _attackAnchorPosition = Vector3.zero;
+        _attackAnchorRotation = Quaternion.identity;
     }
 
     public void ClearAttackPose()
@@ -279,20 +300,40 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     {
         if (_hasAttackPose)
         {
-            targetPosition = _meleeHoverHoldPoint.position + (Vector3)_attackLocalOffset;
+            Vector3 anchorPosition = _hasAttackAnchor ? _attackAnchorPosition : _meleeHoverHoldPoint.position;
+            Quaternion anchorRotation = _hasAttackAnchor ? _attackAnchorRotation : _meleeHoverHoldPoint.rotation;
+            targetPosition = anchorPosition + (Vector3)_attackLocalOffset;
 
             if (!_disableBobDuringAttack)
                 targetPosition += (Vector3)GetBobOffset();
 
-            targetRotation =
-                _meleeHoverHoldPoint.rotation *
-                Quaternion.Euler(0f, 0f, _attackLocalAngle);
+            targetRotation = anchorRotation * Quaternion.Euler(0f, 0f, _attackLocalAngle);
 
             return;
         }
 
         targetPosition = _meleeHoverHoldPoint.position + (Vector3)GetBobOffset();
         targetRotation = _meleeHoverHoldPoint.rotation;
+    }
+
+    public bool TryEvaluateAttackWorldPose(Vector2 localOffset, float localAngle, out Vector3 worldPosition, out Quaternion worldRotation)
+    {
+        worldPosition = transform.position;
+        worldRotation = transform.rotation;
+
+        if (_hasAttackAnchor)
+        {
+            worldPosition = _attackAnchorPosition + (Vector3)localOffset;
+            worldRotation = _attackAnchorRotation * Quaternion.Euler(0f, 0f, localAngle);
+            return true;
+        }
+
+        if (_meleeHoverHoldPoint == null)
+            return false;
+
+        worldPosition = _meleeHoverHoldPoint.position + (Vector3)localOffset;
+        worldRotation = _meleeHoverHoldPoint.rotation * Quaternion.Euler(0f, 0f, localAngle);
+        return true;
     }
 
     private float ResolveFacingSign()

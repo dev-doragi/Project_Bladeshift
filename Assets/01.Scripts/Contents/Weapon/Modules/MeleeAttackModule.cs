@@ -153,6 +153,7 @@ public class MeleeAttackModule : WeaponActionModule
 
         _hitTargets.Clear();
         _hasPreviousSweepPosition = false;
+        Controller.MeleeHoverFollow?.BeginAttackAnchor();
 
         SetTrail(false);
         ApplyPose(Vector2.zero, 0f);
@@ -238,6 +239,7 @@ public class MeleeAttackModule : WeaponActionModule
 
     private void FinishStep()
     {
+        Controller.MeleeHoverFollow?.EndAttackAnchor();
         Controller.MeleeHoverFollow?.ClearAttackPose();
         SetTrail(false);
 
@@ -260,6 +262,7 @@ public class MeleeAttackModule : WeaponActionModule
 
     private void CancelAttack()
     {
+        Controller?.MeleeHoverFollow?.EndAttackAnchor();
         Controller?.MeleeHoverFollow?.ClearAttackPose();
         SetTrail(false);
 
@@ -282,14 +285,10 @@ public class MeleeAttackModule : WeaponActionModule
         worldRotation = transform.rotation;
 
         WeaponMeleeHoverFollow hoverFollow = Controller != null ? Controller.MeleeHoverFollow : null;
-        Transform holdPoint = hoverFollow != null ? hoverFollow.MeleeHoverHoldPoint : null;
-
-        if (holdPoint == null)
+        if (hoverFollow == null)
             return false;
 
-        worldPosition = holdPoint.position + (Vector3)resolvedOffset;
-        worldRotation = holdPoint.rotation * Quaternion.Euler(0f, 0f, resolvedAngle);
-        return true;
+        return hoverFollow.TryEvaluateAttackWorldPose(resolvedOffset, resolvedAngle, out worldPosition, out worldRotation);
     }
 
     private void PerformSweepHit(MeleeComboStep step, Vector3 currentPosition, Quaternion currentRotation)
