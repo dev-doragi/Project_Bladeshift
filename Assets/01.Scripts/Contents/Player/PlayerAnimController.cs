@@ -10,7 +10,7 @@ public class PlayerAnimController : MonoBehaviour
     [SerializeField] private string _isDashingParam = "IsDashing";
     [SerializeField] private string _isJumpingParam = "IsJumping";
     [SerializeField] private string _isBackwardMoveParam = "IsBackwardMove";
-    [SerializeField] private string _deadParam = "Dead";
+    [SerializeField] private string _deathTriggerParam = "Death";
 
     [Header("Backward Move")]
     [SerializeField] private float _backwardThreshold = -0.1f;
@@ -23,6 +23,19 @@ public class PlayerAnimController : MonoBehaviour
 
         if (_animator == null)
             _animator = GetComponentInChildren<Animator>();
+    }
+
+    private void OnEnable()
+    {
+        EventBus.Instance?.Subscribe<PlayerDeathStartedEvent>(HandlePlayerDeathStarted);
+    }
+
+    private void OnDisable()
+    {
+        if (EventBus.Instance == null)
+            return;
+
+        EventBus.Instance.Unsubscribe<PlayerDeathStartedEvent>(HandlePlayerDeathStarted);
     }
 
     private void Update()
@@ -50,11 +63,11 @@ public class PlayerAnimController : MonoBehaviour
         _animator.SetBool(_isBackwardMoveParam, isBackwardMove);
     }
 
-    public void SetDead(bool isDead)
+    private void HandlePlayerDeathStarted(PlayerDeathStartedEvent evt)
     {
         if (_animator == null)
             return;
 
-        _animator.SetBool(_deadParam, isDead);
+        _animator.SetTrigger(_deathTriggerParam);
     }
 }

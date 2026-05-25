@@ -1645,6 +1645,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _maxHp
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _currentHp
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _maxHealth
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2275,6 +2287,18 @@ PrefabInstance:
       propertyPath: _weaponTarget
       value: 
       objectReference: {fileID: 4180346}
+    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: _hud
+      value: 
+      objectReference: {fileID: 8864941700989790123}
+    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: _isDontDestroyOnLoad
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6604440884382761983, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      propertyPath: _autoShowInGamePanelOnPlaying
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7398288164879301626, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
       propertyPath: m_Camera
       value: 
@@ -2362,8 +2386,61 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8505591882536713928, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8864941700989790123}
+    - targetCorrespondingSourceObject: {fileID: 2641855886691380265, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8864941700989790122}
   m_SourcePrefab: {fileID: 100100000, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+--- !u!224 &8864941700989790119 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 4938087351194917135, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+  m_PrefabInstance: {fileID: 8864941700989790118}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8864941700989790120 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2641855886691380265, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+  m_PrefabInstance: {fileID: 8864941700989790118}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8864941700989790121 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8505591882536713928, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
+  m_PrefabInstance: {fileID: 8864941700989790118}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8864941700989790122
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864941700989790120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b146ef98ec2bd45803c5665fbaa45c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UI_HpBar
+  _bar: {fileID: 8864941700989790119}
+  _filledHeartPrefab: {fileID: 3997870592411399815, guid: e4fd641ab75e604419e5216dba6179b7, type: 3}
+  _emptyHeartPrefab: {fileID: 3021337542212143725, guid: edd3c2145d6d01248b76bb02c92199f8, type: 3}
+  _punchScaleMultiplier: 1.2
+  _punchDuration: 0.08
+  _shrinkDuration: 0.12
+  _growDuration: 0.18
+--- !u!114 &8864941700989790123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864941700989790121}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 354cfe46758b66e4199f20bb56c7dba6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HUD
+  _hpBar: {fileID: 8864941700989790122}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

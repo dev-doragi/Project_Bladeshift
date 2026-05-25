@@ -16,6 +16,9 @@ public class UIManager : Singleton<UIManager>
     [SerializeField] private GameObject _gameClearPanel;
     [SerializeField] private GameObject _pausePanel;
 
+    [Header("HUD")]
+    [SerializeField] private HUD _hud;
+
     [Header("Tutorial")]
     [SerializeField] private bool _autoShowInGamePanelOnPlaying = true;
 
@@ -30,6 +33,7 @@ public class UIManager : Singleton<UIManager>
         {
             EventBus.Instance.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
             EventBus.Instance.Subscribe<InGameStateChangedEvent>(OnInGameStateChanged);
+            EventBus.Instance.Subscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
         }
     }
 
@@ -39,7 +43,28 @@ public class UIManager : Singleton<UIManager>
         {
             EventBus.Instance.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
             EventBus.Instance.Unsubscribe<InGameStateChangedEvent>(OnInGameStateChanged);
+            EventBus.Instance.Unsubscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
         }
+
+        if (_hud != null)
+            _hud.Unbind();
+    }
+
+    private void OnPlayerSpawned(PlayerSpawnedEvent evt)
+    {
+        if (_hud == null)
+        {
+            Debug.LogWarning("[UIManager] HUD 참조가 비어 있습니다.", this);
+            return;
+        }
+
+        if (evt.Player == null)
+        {
+            Debug.LogWarning("[UIManager] PlayerSpawnedEvent.Player가 null입니다.", this);
+            return;
+        }
+
+        _hud.Bind(evt.Player);
     }
 
     private void OnGameStateChanged(GameStateChangedEvent evt)
