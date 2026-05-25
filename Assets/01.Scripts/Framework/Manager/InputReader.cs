@@ -88,9 +88,11 @@ public class InputReader : Singleton<InputReader>
         _playerMap?.Enable();
         _systemMap?.Enable();
 
-        if (_useGameStateInputGate && EventBus.Instance != null)
+        if (EventBus.Instance != null)
         {
-            EventBus.Instance.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+            if (_useGameStateInputGate)
+                EventBus.Instance.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+            EventBus.Instance.Subscribe<PlayerDeathStartedEvent>(OnPlayerDeathStarted);
         }
     }
 
@@ -98,9 +100,11 @@ public class InputReader : Singleton<InputReader>
     {
         UnbindEvents();
 
-        if (_useGameStateInputGate && EventBus.Instance != null)
+        if (EventBus.Instance != null)
         {
-            EventBus.Instance.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
+            if (_useGameStateInputGate)
+                EventBus.Instance.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
+            EventBus.Instance.Unsubscribe<PlayerDeathStartedEvent>(OnPlayerDeathStarted);
         }
 
         _playerMap?.Disable();
@@ -246,7 +250,36 @@ public class InputReader : Singleton<InputReader>
         else _playerMap.Disable();
     }
 
-    public void SetInputBlocked(bool blocked) => _isInputBlocked = blocked;
+    public void SetInputBlocked(bool blocked)
+    {
+        _isInputBlocked = blocked;
+
+        if (blocked)
+        {
+            _playerMap?.Disable();
+            return;
+        }
+
+        if (GameManager.Instance == null || GameManager.Instance.CurrentState == GameState.Playing)
+            _playerMap?.Enable();
+    }
+
+    private void OnPlayerDeathStarted(PlayerDeathStartedEvent evt)
+    {
+        BlockGameplayInputImmediately();
+    }
+
+    private void BlockGameplayInputImmediately()
+    {
+        EventBus.Instance?.Publish(new MoveInputEvent { Direction = Vector2.zero });
+        EventBus.Instance?.Publish(new JumpInputEvent { IsStarted = false });
+        EventBus.Instance?.Publish(new PrimaryAttackEvent { IsStarted = false });
+        EventBus.Instance?.Publish(new SecondaryAttackEvent { IsStarted = false });
+
+        _isInputBlocked = true;
+        _playerMap?.Disable();
+    }
+
     public Vector2 GetMousePosition() => _pointAction?.ReadValue<Vector2>() ?? Vector2.zero;
     public Vector2 GetMouseDelta() => Mouse.current != null ? Mouse.current.delta.ReadValue() : Vector2.zero;
 

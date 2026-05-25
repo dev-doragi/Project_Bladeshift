@@ -90,6 +90,9 @@ public class PlayerController : MonoBehaviour
         if (InputReader.Instance == null)
             return;
 
+        if (InputReader.Instance.IsInputBlocked)
+            return;
+
         Camera cam = _mainCamera != null ? _mainCamera : Camera.main;
         if (cam == null)
             return;
