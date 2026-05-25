@@ -8,6 +8,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     [SerializeField] private float _recoverPerSecond = 25f;
     [SerializeField] private float _minDrainPerSecond = 4f;
     [SerializeField] private float _maxDrainPerSecond = 28f;
+    [SerializeField] private float _disconnectDrainPerSecond = 12f;
     [SerializeField, Range(0f, 1f)] private float _recoverRadiusRatio = 0.25f;
     [SerializeField, Range(0f, 1f)] private float _reactivationEnergyRatio = 0.2f;
     [SerializeField] private LinkEnergyDepletionMode _depletionMode = LinkEnergyDepletionMode.DropGrounded;
@@ -16,6 +17,9 @@ public class WeaponLinkEnergy : MonoBehaviour
     private bool _isRecoveryBlocked;
     private bool _spentEnergyThisFrame;
     private bool _isDepletedRechargeMode;
+    private bool _isOffline;
+    private bool _offlineRechargeEntryReady;
+    private WeaponController _controller;
 
     public float MaxEnergy => _maxEnergy;
     public float CurrentEnergy => _currentEnergy;
@@ -29,6 +33,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     public bool SpentEnergyThisFrame => _spentEnergyThisFrame;
     public LinkEnergyDepletionMode DepletionMode => _depletionMode;
     public bool IsDepletedRechargeMode => _isDepletedRechargeMode;
+    public bool IsOffline => _isOffline;
 
     private void Awake()
     {
@@ -37,8 +42,10 @@ public class WeaponLinkEnergy : MonoBehaviour
         _recoverPerSecond = Mathf.Max(0f, _recoverPerSecond);
         _minDrainPerSecond = Mathf.Max(0f, _minDrainPerSecond);
         _maxDrainPerSecond = Mathf.Max(_minDrainPerSecond, _maxDrainPerSecond);
+        _disconnectDrainPerSecond = Mathf.Max(0f, _disconnectDrainPerSecond);
         _reactivationEnergyRatio = Mathf.Clamp01(_reactivationEnergyRatio);
         IsControlLocked = _currentEnergy <= Epsilon;
+        _controller = GetComponent<WeaponController>();
     }
 
     public void Tick(float distance, float controlRadius, bool isRemoteControlling, float deltaTime)
@@ -48,57 +55,95 @@ public class WeaponLinkEnergy : MonoBehaviour
         float safeDistance = Mathf.Max(0f, distance);
         DistanceRatio = Mathf.Clamp01(safeDistance / safeControlRadius);
 
+        bool isDisconnected = safeDistance > safeControlRadius;
         float recoverRadius = safeControlRadius * Mathf.Clamp01(_recoverRadiusRatio);
         bool insideRecoverRadius = safeDistance <= recoverRadius;
 
-        IsRecovering =
-            !_isRecoveryBlocked &&
-            !_isDepletedRechargeMode &&
-            !IsControlLocked &&
-            !_spentEnergyThisFrame &&
-            insideRecoverRadius;
-        IsDraining =
-            !_isRecoveryBlocked &&
-            !_isDepletedRechargeMode &&
-            !insideRecoverRadius &&
-            isRemoteControlling;
-
-        float previousEnergy = _currentEnergy;
-
-        if (IsRecovering)
-        {
-            _currentEnergy += _recoverPerSecond * safeDelta;
-        }
-        else if (IsDraining)
-        {
-            float drainPerSecond = Mathf.Lerp(_minDrainPerSecond, _maxDrainPerSecond, DistanceRatio);
-            _currentEnergy -= drainPerSecond * safeDelta;
-        }
-
-        _currentEnergy = Mathf.Clamp(_currentEnergy, 0f, _maxEnergy);
-
-        if (_currentEnergy <= Epsilon)
+        if (_isOffline)
         {
             IsControlLocked = true;
-            if (!_isDepletedRechargeMode)
-                EnterDepletedRechargeMode();
-        }
-        else if (!IsControlLocked && _isDepletedRechargeMode)
-        {
-            ExitDepletedRechargeMode();
-        }
+            IsRecovering = false;
+            IsDraining = false;
+            EnterDepletedRechargeMode();
 
-        if (!Mathf.Approximately(previousEnergy, _currentEnergy))
-        {
-            EventBus.Instance?.Publish(new LinkEnergyChangedEvent
+            if (insideRecoverRadius)
             {
-                Current = _currentEnergy,
-                Max = _maxEnergy,
-                Normalized = Normalized,
-                DistanceRatio = DistanceRatio,
-                IsRecovering = IsRecovering,
-                IsDraining = IsDraining
-            });
+                if (!_offlineRechargeEntryReady)
+                {
+                    _offlineRechargeEntryReady = true;
+                    _controller?.TryEnterExistingRechargePathFromOffline();
+                }
+            }
+            else
+            {
+                _offlineRechargeEntryReady = false;
+            }
+        }
+        else
+        {
+            IsRecovering =
+                !_isRecoveryBlocked &&
+                !_isDepletedRechargeMode &&
+                !IsControlLocked &&
+                !_spentEnergyThisFrame &&
+                insideRecoverRadius &&
+                !isDisconnected;
+
+            IsDraining =
+                !_isRecoveryBlocked &&
+                !_isDepletedRechargeMode &&
+                ((isDisconnected && _currentEnergy > Epsilon) || (!insideRecoverRadius && isRemoteControlling));
+
+            float previousEnergy = _currentEnergy;
+
+            if (IsRecovering)
+            {
+                _currentEnergy += _recoverPerSecond * safeDelta;
+            }
+            else if (IsDraining)
+            {
+                float drainPerSecond = isDisconnected
+                    ? _disconnectDrainPerSecond
+                    : Mathf.Lerp(_minDrainPerSecond, _maxDrainPerSecond, DistanceRatio);
+                float drainDelta = isDisconnected ? Mathf.Max(0f, Time.deltaTime) : safeDelta;
+                _currentEnergy -= drainPerSecond * drainDelta;
+            }
+
+            _currentEnergy = Mathf.Clamp(_currentEnergy, 0f, _maxEnergy);
+
+            if (isDisconnected && _currentEnergy <= Epsilon)
+            {
+                _currentEnergy = 0f;
+                IsControlLocked = true;
+                _isOffline = true;
+                _offlineRechargeEntryReady = false;
+                EnterDepletedRechargeMode();
+                IsRecovering = false;
+                IsDraining = false;
+            }
+            else if (_currentEnergy <= Epsilon)
+            {
+                IsControlLocked = true;
+                if (!_isDepletedRechargeMode)
+                    EnterDepletedRechargeMode();
+            }
+            else if (!IsControlLocked && _isDepletedRechargeMode)
+            {
+                ExitDepletedRechargeMode();
+            }
+
+            if (!Mathf.Approximately(previousEnergy, _currentEnergy))
+            {
+                EventBus.Instance?.Publish(new LinkEnergyChangedEvent
+                {
+                    Current = _currentEnergy,
+                    Max = _maxEnergy,
+                    Normalized = Normalized,
+                    DistanceRatio = DistanceRatio,
+                    IsRecovering = IsRecovering,
+                    IsDraining = IsDraining
+                });
+            }
         }
     }
 
@@ -197,6 +242,8 @@ public class WeaponLinkEnergy : MonoBehaviour
     {
         _currentEnergy = 0f;
         IsControlLocked = true;
+        _isOffline = false;
+        _offlineRechargeEntryReady = false;
         if (!_isDepletedRechargeMode)
             EnterDepletedRechargeMode();
         EventBus.Instance?.Publish(new LinkEnergyChangedEvent
@@ -223,6 +270,8 @@ public class WeaponLinkEnergy : MonoBehaviour
         IsControlLocked = false;
         _isRecoveryBlocked = false;
         _isDepletedRechargeMode = false;
+        _isOffline = false;
+        _offlineRechargeEntryReady = false;
         IsRecovering = false;
         IsDraining = false;
         _spentEnergyThisFrame = false;

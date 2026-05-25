@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Reflection;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 [RequireComponent(typeof(WeaponStateMachine), typeof(WeaponModeController), typeof(WeaponActionRouter))]
@@ -33,8 +34,10 @@ public class WeaponController : MonoBehaviour
     private WeaponModeController _modeController;
     private WeaponActionRouter _actionRouter;
     private WeaponMeleeHoverFollow _meleeHoverFollow;
+    private ThrustPierceModule _thrustPierceModule;
     private PlayerController _playerController;
     private Camera _mainCamera;
+    private MethodInfo _handleLinkEnergyDepletedMethod;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -59,6 +62,7 @@ public class WeaponController : MonoBehaviour
     public LayerMask WallAndEnvironmentLayer => _wallAndEnvironmentLayer;
     public WeaponState CurrentState => _stateMachine != null ? _stateMachine.CurrentState : WeaponState.Grounded;
     public WeaponMode CurrentMode => _modeController != null ? _modeController.CurrentMode : WeaponMode.Remote;
+    public bool IsOffline => _linkEnergy != null && _linkEnergy.IsOffline;
 
     private void Awake()
     {
@@ -89,6 +93,9 @@ public class WeaponController : MonoBehaviour
         _modeController = GetComponent<WeaponModeController>();
         _actionRouter = GetComponent<WeaponActionRouter>();
         _meleeHoverFollow = GetComponent<WeaponMeleeHoverFollow>();
+        _thrustPierceModule = GetComponent<ThrustPierceModule>();
+        if (_thrustPierceModule != null)
+            _handleLinkEnergyDepletedMethod = _thrustPierceModule.GetType().GetMethod("HandleLinkEnergyDepleted", BindingFlags.Instance | BindingFlags.NonPublic);
         _mainCamera = Camera.main;
     }
 
@@ -148,6 +155,13 @@ public class WeaponController : MonoBehaviour
     public void ResetTimeScale()
     {
         TimeManager.Instance?.ResetTime();
+    }
+
+    public void TryEnterExistingRechargePathFromOffline()
+    {
+        if (_linkEnergy == null || !_linkEnergy.IsOffline) return;
+        if (_thrustPierceModule == null || _handleLinkEnergyDepletedMethod == null) return;
+        _handleLinkEnergyDepletedMethod.Invoke(_thrustPierceModule, null);
     }
 
     private void OnDrawGizmos()
