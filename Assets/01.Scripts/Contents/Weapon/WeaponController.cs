@@ -42,6 +42,7 @@ public class WeaponController : MonoBehaviour
     private Camera _mainCamera;
     private MethodInfo _handleLinkEnergyDepletedMethod;
     private bool _isModeSwitchInProgress;
+    private bool _isMeleeRechargeWaiting;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -212,52 +213,61 @@ public class WeaponController : MonoBehaviour
 
     private IEnumerator RemoteToMeleeSwitchRoutine()
     {
-        if (_isModeSwitchInProgress) yield break;
+        if (_isModeSwitchInProgress)
+            yield break;
 
         _isModeSwitchInProgress = true;
-        try
-        {
-            if (_capture != null && _capture.HasCapturedTarget)
-                _capture.ForceReleaseCapturedTarget();
 
-            if (_stateMachine != null)
-                _stateMachine.ClearPinSource();
+        if (_capture != null && _capture.HasCapturedTarget)
+            _capture.ForceReleaseCapturedTarget();
 
-            if (_movement == null)
-                yield break;
+        _stateMachine?.ClearPinSource();
 
-            bool returnCompleted = false;
-            bool returnSucceeded = false;
-
-            ChangeState(WeaponState.Returning);
-            _movement.ExecuteReturn(
-                GetModeSwitchReturnTargetPosition,
-                ControlRadius,
-                (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= 0.25f,
-                success =>
-                {
-                    if (returnCompleted) return;
-                    returnCompleted = true;
-                    returnSucceeded = success;
-                });
-
-            while (!returnCompleted)
-                yield return null;
-
-            if (!returnSucceeded)
-                yield break;
-
-            _modeController?.SetMode(WeaponMode.Melee);
-            _meleeHoverFollow?.EnableFollow();
-            if (_linkEnergy != null)
-            {
-                yield return StartCoroutine(_linkEnergy.RechargeToFullAndUnlockOverDuration(_fullRechargeDelayAfterReturn));
-            }
-        }
-        finally
+        if (_movement == null)
         {
             _isModeSwitchInProgress = false;
+            yield break;
         }
+
+        bool returnCompleted = false;
+        bool returnSucceeded = false;
+
+        ChangeState(WeaponState.Returning);
+
+        _movement.ExecuteReturn(
+            GetModeSwitchReturnTargetPosition,
+            ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= 0.25f,
+            success =>
+            {
+                if (returnCompleted)
+                    return;
+
+                returnCompleted = true;
+                returnSucceeded = success;
+            });
+
+        while (!returnCompleted)
+            yield return null;
+
+        _isModeSwitchInProgress = false;
+
+        if (!returnSucceeded)
+            yield break;
+
+        _modeController?.SetMode(WeaponMode.Melee);
+        _meleeHoverFollow?.EnableFollow();
+
+        if (_linkEnergy == null)
+            yield break;
+
+        _isMeleeRechargeWaiting = true;
+
+        yield return StartCoroutine(
+            _linkEnergy.RechargeToFullAndUnlockOverDuration(_fullRechargeDelayAfterReturn)
+        );
+
+        _isMeleeRechargeWaiting = false;
     }
 
     private Vector2 GetModeSwitchReturnTargetPosition()

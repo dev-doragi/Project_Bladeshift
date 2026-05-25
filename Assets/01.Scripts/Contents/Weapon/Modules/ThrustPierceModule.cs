@@ -32,7 +32,6 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _isFinisherRunning;
     private bool _hasActivatedSlowMotion;
     private bool _aimCanceledByEnergyShortage;
-    private float _dockWaitTimer;
     private Coroutine _dockRechargeRoutine;
     public bool IsAiming => _isAiming;
     public bool IsAutoReturning => _isAutoReturning;
@@ -471,7 +470,6 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.transform.position = dock.position;
         Controller.transform.rotation = dock.rotation;
         Controller.transform.SetParent(dock, true);
-        _dockWaitTimer = 0f;
         _isDockWaiting = true;
         _dockRechargeRoutine = null;
     }
@@ -483,7 +481,6 @@ public class ThrustPierceModule : WeaponActionModule
             yield return StartCoroutine(Controller.LinkEnergy.RechargeToFullAndUnlockOverDuration(duration));
 
         _isDockWaiting = false;
-        _dockWaitTimer = 0f;
         _dockRechargeRoutine = null;
         Controller.transform.SetParent(null, true);
         Controller.ChangeState(WeaponState.Grounded);
