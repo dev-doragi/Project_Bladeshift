@@ -279,22 +279,14 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     {
         if (_hasAttackPose)
         {
-            float facingSign = ResolveFacingSign();
-
-            Vector3 attackOffset = new Vector3(
-                _attackLocalOffset.x * facingSign,
-                _attackLocalOffset.y,
-                0f
-            );
-
-            targetPosition = _meleeHoverHoldPoint.position + attackOffset;
+            targetPosition = _meleeHoverHoldPoint.position + (Vector3)_attackLocalOffset;
 
             if (!_disableBobDuringAttack)
                 targetPosition += (Vector3)GetBobOffset();
 
             targetRotation =
                 _meleeHoverHoldPoint.rotation *
-                Quaternion.Euler(0f, 0f, _attackLocalAngle * facingSign);
+                Quaternion.Euler(0f, 0f, _attackLocalAngle);
 
             return;
         }

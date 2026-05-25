@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class MeleeAttackModule : WeaponActionModule
@@ -20,11 +21,13 @@ public class MeleeAttackModule : WeaponActionModule
         public float StrikeDuration;
         public float ReturnDuration;
 
-        [Range(0f, 1f)] public float HitTimeNormalized;
+        public AnimationCurve StrikeCurve;
+        public AnimationCurve ReturnCurve;
 
-        [Header("Hit")]
+        [Header("Hit Sweep")]
         public int Damage;
         public float HitRadius;
+        public int SweepSamples;
     }
 
     private enum AttackPhase
@@ -42,11 +45,10 @@ public class MeleeAttackModule : WeaponActionModule
     [Header("Hit")]
     [SerializeField] private int _defaultDamage = 1;
     [SerializeField] private LayerMask _targetLayer;
-    [SerializeField] private float _defaultHitRadius = 1.3f;
-
-    [Header("Motion")]
-    [SerializeField] private bool _invertAngleByFacing = true;
-    [SerializeField] private bool _invertYOffsetByFacing = false;
+    [SerializeField] private float _defaultHitRadius = 1.5f;
+    [SerializeField] private int _hitBufferSize = 32;
+    [SerializeField] private float _knockbackPower = 10f;
+    [SerializeField] private bool _hitTriggers = true;
 
     [Header("Trail")]
     [SerializeField] private TrailRenderer _slashTrail;
@@ -57,14 +59,25 @@ public class MeleeAttackModule : WeaponActionModule
     private int _activeStepIndex;
     private float _phaseTime;
     private float _lastComboEndTime;
-    private bool _didHit;
     private bool _bufferedInput;
     private float _lockedFacingSign = 1f;
+
+    private Vector2 _previousSweepPosition;
+    private bool _hasPreviousSweepPosition;
+
+    private Collider2D[] _hitBuffer;
+    private readonly HashSet<IDamageable> _hitTargets = new();
+
+    private ContactFilter2D _hitFilter;
+    private int _cachedTargetLayerMask;
+    private bool _cachedHitTriggers;
+    private bool _hasCachedHitFilter;
 
     private void Awake()
     {
         EnsureDefaultTargetLayer();
         EnsureDefaultComboSteps();
+        EnsureHitBuffer();
 
         if (_slashTrail != null)
             _slashTrail.emitting = false;
@@ -135,9 +148,11 @@ public class MeleeAttackModule : WeaponActionModule
         _activeStepIndex = Mathf.Clamp(index, 0, _comboSteps.Length - 1);
         _phase = AttackPhase.Windup;
         _phaseTime = 0f;
-        _didHit = false;
         _bufferedInput = false;
         _lockedFacingSign = ResolveFacingSign();
+
+        _hitTargets.Clear();
+        _hasPreviousSweepPosition = false;
 
         SetTrail(false);
         ApplyPose(Vector2.zero, 0f);
@@ -150,16 +165,17 @@ public class MeleeAttackModule : WeaponActionModule
         float t = NormalizeTime(_phaseTime, step.WindupDuration);
         float eased = EaseInOut(t);
 
-        ApplyPose(
-            Vector2.LerpUnclamped(Vector2.zero, ResolveOffset(step.WindupOffset), eased),
-            Mathf.LerpUnclamped(0f, ResolveSignedAngle(step.WindupAngle), eased)
-        );
+        Vector2 offset = Vector2.LerpUnclamped(Vector2.zero, ResolveOffset(step.WindupOffset), eased);
+        float angle = Mathf.LerpUnclamped(0f, ResolveAngle(step.WindupAngle), eased);
+
+        ApplyPose(offset, angle);
 
         if (t < 1f)
             return;
 
         _phase = AttackPhase.Strike;
         _phaseTime = 0f;
+        _hasPreviousSweepPosition = false;
         SetTrail(true);
     }
 
@@ -168,35 +184,34 @@ public class MeleeAttackModule : WeaponActionModule
         _phaseTime += Time.deltaTime;
 
         float t = NormalizeTime(_phaseTime, step.StrikeDuration);
-        float eased = EaseSlash(t);
+        float curvedT = EvaluateCurve(step.StrikeCurve, t, EaseSlash(t));
 
         Vector2 start = ResolveOffset(step.WindupOffset);
         Vector2 control = ResolveOffset(step.ArcOffset);
         Vector2 end = ResolveOffset(step.StrikeOffset);
 
-        Vector2 offset = QuadraticBezier(start, control, end, eased);
+        Vector2 offset = QuadraticBezier(start, control, end, curvedT);
 
-        float angleA = ResolveSignedAngle(step.WindupAngle);
-        float angleB = ResolveSignedAngle(step.ArcAngle);
-        float angleC = ResolveSignedAngle(step.StrikeAngle);
+        float angleA = ResolveAngle(step.WindupAngle);
+        float angleB = ResolveAngle(step.ArcAngle);
+        float angleC = ResolveAngle(step.StrikeAngle);
 
-        float angle = t < 0.5f
-            ? Mathf.LerpUnclamped(angleA, angleB, EaseOut(t * 2f))
-            : Mathf.LerpUnclamped(angleB, angleC, EaseOut((t - 0.5f) * 2f));
+        float angle = curvedT < 0.5f
+            ? Mathf.LerpUnclamped(angleA, angleB, EaseOut(curvedT * 2f))
+            : Mathf.LerpUnclamped(angleB, angleC, EaseOut((curvedT - 0.5f) * 2f));
 
         ApplyPose(offset, angle);
 
-        if (!_didHit && t >= step.HitTimeNormalized)
+        if (TryEvaluateWorldPose(offset, angle, out Vector3 worldPosition, out Quaternion worldRotation))
         {
-            _didHit = true;
-            PerformHit(step);
+            PerformSweepHit(step, worldPosition, worldRotation);
+
+            _previousSweepPosition = worldPosition;
+            _hasPreviousSweepPosition = true;
         }
 
         if (t < 1f)
             return;
-
-        if (!_didHit)
-            PerformHit(step);
 
         _phase = AttackPhase.Return;
         _phaseTime = 0f;
@@ -208,12 +223,12 @@ public class MeleeAttackModule : WeaponActionModule
         _phaseTime += Time.deltaTime;
 
         float t = NormalizeTime(_phaseTime, step.ReturnDuration);
-        float eased = EaseInOut(t);
+        float curvedT = EvaluateCurve(step.ReturnCurve, t, EaseInOut(t));
 
-        ApplyPose(
-            Vector2.LerpUnclamped(ResolveOffset(step.StrikeOffset), Vector2.zero, eased),
-            Mathf.LerpUnclamped(ResolveSignedAngle(step.StrikeAngle), 0f, eased)
-        );
+        Vector2 offset = Vector2.LerpUnclamped(ResolveOffset(step.StrikeOffset), Vector2.zero, curvedT);
+        float angle = Mathf.LerpUnclamped(ResolveAngle(step.StrikeAngle), 0f, curvedT);
+
+        ApplyPose(offset, angle);
 
         if (t < 1f)
             return;
@@ -229,6 +244,7 @@ public class MeleeAttackModule : WeaponActionModule
         _phase = AttackPhase.Idle;
         _phaseTime = 0f;
         _lastComboEndTime = Time.time;
+        _hasPreviousSweepPosition = false;
 
         int nextIndex = (_activeStepIndex + 1) % _comboSteps.Length;
 
@@ -249,48 +265,97 @@ public class MeleeAttackModule : WeaponActionModule
 
         _phase = AttackPhase.Idle;
         _phaseTime = 0f;
-        _didHit = false;
         _bufferedInput = false;
         _lastComboEndTime = Time.time;
+        _hasPreviousSweepPosition = false;
+        _hitTargets.Clear();
     }
 
-    private void ApplyPose(Vector2 localOffset, float localAngle)
+    private void ApplyPose(Vector2 resolvedOffset, float resolvedAngle)
     {
-        Controller.MeleeHoverFollow?.SetAttackPose(localOffset, localAngle);
+        Controller.MeleeHoverFollow?.SetAttackPose(resolvedOffset, resolvedAngle);
     }
 
-    private void PerformHit(MeleeComboStep step)
+    private bool TryEvaluateWorldPose(Vector2 resolvedOffset, float resolvedAngle, out Vector3 worldPosition, out Quaternion worldRotation)
     {
-        if (Controller == null || Controller.Combat == null)
-            return;
+        worldPosition = transform.position;
+        worldRotation = transform.rotation;
 
-        WeaponMeleeHoverFollow hoverFollow = Controller.MeleeHoverFollow;
+        WeaponMeleeHoverFollow hoverFollow = Controller != null ? Controller.MeleeHoverFollow : null;
+        Transform holdPoint = hoverFollow != null ? hoverFollow.MeleeHoverHoldPoint : null;
 
-        Vector3 origin = hoverFollow != null
-            ? hoverFollow.CurrentTargetPosition
-            : transform.position;
+        if (holdPoint == null)
+            return false;
 
-        Vector2 forward = hoverFollow != null
-            ? hoverFollow.CurrentForward
-            : Vector2.right * _lockedFacingSign;
+        worldPosition = holdPoint.position + (Vector3)resolvedOffset;
+        worldRotation = holdPoint.rotation * Quaternion.Euler(0f, 0f, resolvedAngle);
+        return true;
+    }
 
-        int damage = step.Damage > 0 ? step.Damage : _defaultDamage;
+    private void PerformSweepHit(MeleeComboStep step, Vector3 currentPosition, Quaternion currentRotation)
+    {
+        EnsureHitBuffer();
+
         float radius = step.HitRadius > 0f ? step.HitRadius : _defaultHitRadius;
+        int damage = step.Damage > 0 ? step.Damage : _defaultDamage;
+        int samples = Mathf.Max(1, step.SweepSamples);
 
-        Controller.Combat.PerformMeleeDamage(origin, radius, damage, _targetLayer, forward);
+        Vector2 start = _hasPreviousSweepPosition ? _previousSweepPosition : currentPosition;
+        Vector2 end = currentPosition;
+        Vector2 forward = currentRotation * Vector3.right;
+
+        for (int i = 0; i <= samples; i++)
+        {
+            float t = samples <= 0 ? 1f : i / (float)samples;
+            Vector2 samplePoint = Vector2.Lerp(start, end, t);
+
+            int count = Physics2D.OverlapCircle(samplePoint, radius, _hitFilter, _hitBuffer);
+
+            for (int h = 0; h < count; h++)
+            {
+                Collider2D hit = _hitBuffer[h];
+                if (hit == null)
+                    continue;
+
+                IDamageable damageable = ResolveDamageable(hit);
+                if (damageable == null || damageable.IsDead)
+                    continue;
+
+                if (!_hitTargets.Add(damageable))
+                    continue;
+
+                Vector2 hitPoint = hit.ClosestPoint(samplePoint);
+                Vector2 knockbackDirection = forward.sqrMagnitude > 0.0001f
+                    ? forward.normalized
+                    : Vector2.right * _lockedFacingSign;
+
+                damageable.TakeDamage(new DamageData
+                {
+                    Damage = damage,
+                    AttackerTeam = TeamType.Player,
+                    HitPoint = hitPoint,
+                    KnockbackForce = knockbackDirection * _knockbackPower,
+                    IsPiercing = false
+                });
+            }
+        }
+    }
+
+    private IDamageable ResolveDamageable(Collider2D hit)
+    {
+        if (hit.TryGetComponent<IDamageable>(out var damageable))
+            return damageable;
+
+        return hit.GetComponentInParent<IDamageable>();
     }
 
     private Vector2 ResolveOffset(Vector2 offset)
     {
-        float y = _invertYOffsetByFacing ? offset.y * _lockedFacingSign : offset.y;
-        return new Vector2(offset.x, y);
+        return new Vector2(offset.x * _lockedFacingSign, offset.y);
     }
 
-    private float ResolveSignedAngle(float angle)
+    private float ResolveAngle(float angle)
     {
-        if (!_invertAngleByFacing)
-            return angle;
-
         return angle * _lockedFacingSign;
     }
 
@@ -322,6 +387,14 @@ public class MeleeAttackModule : WeaponActionModule
         return u * u * a + 2f * u * t * b + t * t * c;
     }
 
+    private float EvaluateCurve(AnimationCurve curve, float t, float fallback)
+    {
+        if (curve == null || curve.length == 0)
+            return fallback;
+
+        return curve.Evaluate(t);
+    }
+
     private float EaseInOut(float t)
     {
         return t * t * (3f - 2f * t);
@@ -343,6 +416,32 @@ public class MeleeAttackModule : WeaponActionModule
             return;
 
         _slashTrail.emitting = emitting;
+    }
+
+    private void EnsureHitBuffer()
+    {
+        int size = Mathf.Max(8, _hitBufferSize);
+
+        if (_hitBuffer == null || _hitBuffer.Length != size)
+            _hitBuffer = new Collider2D[size];
+
+        if (_hasCachedHitFilter &&
+            _cachedTargetLayerMask == _targetLayer.value &&
+            _cachedHitTriggers == _hitTriggers)
+        {
+            return;
+        }
+
+        _hitFilter = new ContactFilter2D();
+        _hitFilter.useLayerMask = true;
+        _hitFilter.SetLayerMask(_targetLayer);
+        _hitFilter.useTriggers = _hitTriggers;
+        _hitFilter.useDepth = false;
+        _hitFilter.useNormalAngle = false;
+
+        _cachedTargetLayerMask = _targetLayer.value;
+        _cachedHitTriggers = _hitTriggers;
+        _hasCachedHitFilter = true;
     }
 
     private void EnsureDefaultTargetLayer()
@@ -379,9 +478,11 @@ public class MeleeAttackModule : WeaponActionModule
                 WindupDuration = 0.07f,
                 StrikeDuration = 0.16f,
                 ReturnDuration = 0.12f,
-                HitTimeNormalized = 0.55f,
+                StrikeCurve = null,
+                ReturnCurve = null,
                 Damage = 1,
-                HitRadius = 1.4f
+                HitRadius = 0.75f,
+                SweepSamples = 5
             },
             new MeleeComboStep
             {
@@ -395,9 +496,11 @@ public class MeleeAttackModule : WeaponActionModule
                 WindupDuration = 0.06f,
                 StrikeDuration = 0.17f,
                 ReturnDuration = 0.13f,
-                HitTimeNormalized = 0.5f,
+                StrikeCurve = null,
+                ReturnCurve = null,
                 Damage = 1,
-                HitRadius = 1.5f
+                HitRadius = 0.8f,
+                SweepSamples = 6
             },
             new MeleeComboStep
             {
@@ -411,9 +514,11 @@ public class MeleeAttackModule : WeaponActionModule
                 WindupDuration = 0.08f,
                 StrikeDuration = 0.2f,
                 ReturnDuration = 0.16f,
-                HitTimeNormalized = 0.58f,
+                StrikeCurve = null,
+                ReturnCurve = null,
                 Damage = 2,
-                HitRadius = 1.8f
+                HitRadius = 0.95f,
+                SweepSamples = 7
             }
         };
     }
