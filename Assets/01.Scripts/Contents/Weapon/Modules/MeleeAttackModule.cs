@@ -42,7 +42,7 @@ public class MeleeAttackModule : WeaponActionModule
     [Header("Hit")]
     [SerializeField] private int _defaultDamage = 1;
     [SerializeField] private LayerMask _targetLayer;
-    [SerializeField] private float _defaultHitRadius = 1.2f;
+    [SerializeField] private float _defaultHitRadius = 1.3f;
 
     [Header("Motion")]
     [SerializeField] private bool _invertAngleByFacing = true;
