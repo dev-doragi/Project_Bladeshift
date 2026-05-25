@@ -7,6 +7,7 @@ public class WeaponCapture : MonoBehaviour
     private readonly List<EnemyBase> _capturedEnemies = new List<EnemyBase>();
     private Transform _weaponTransform;
     public bool HasCapturedEnemy => _capturedEnemies.Count > 0;
+    public bool HasCapturedTarget => _capturedEnemies.Count > 0;
     public int CapturedCount => _capturedEnemies.Count;
 
     private void Awake()
@@ -61,6 +62,12 @@ public class WeaponCapture : MonoBehaviour
             }
         }
         _capturedEnemies.Clear();
+    }
+
+    public void ForceReleaseCapturedTarget()
+    {
+        if (!HasCapturedTarget) return;
+        UnbindAll(forcePhysicsRestore: true);
     }
 
     public void ExecuteCapturedEnemies(Vector2 knockbackForce)

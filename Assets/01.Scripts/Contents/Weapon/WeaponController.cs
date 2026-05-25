@@ -138,6 +138,24 @@ public class WeaponController : MonoBehaviour
         _modeController.ApplyCurrentMode();
     }
 
+    private void OnEnable()
+    {
+        EventBus.Instance?.Subscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
+    }
+
+    private void OnDisable()
+    {
+        EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
+    }
+
+    private void OnWeaponModeToggle(WeaponModeToggleEvent _)
+    {
+        if (_capture != null && _capture.HasCapturedTarget)
+            _capture.ForceReleaseCapturedTarget();
+
+        _modeController?.ToggleMode();
+    }
+
     public void ChangeState(WeaponState newState)
     {
         _stateMachine?.ChangeState(newState);
