@@ -22,7 +22,7 @@ MonoBehaviour:
   _usesGroggy: 1
   _groggyTriggerMode: 2
   _groggyThresholdRatio: 0.1
-  _maxGroggyGauge: 100
+  _maxGroggyGauge: 70
   _resetGroggyGaugeOnEnter: 1
   _resetGroggyGaugeOnExit: 1
   _groggyInvulnerableDuration: 0.75
