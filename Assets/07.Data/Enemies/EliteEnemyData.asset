@@ -36,4 +36,4 @@ MonoBehaviour:
   _usesEmbeddedAttackMechanic: 1
   _embeddedTearOutDamage: 50
   _embeddedAttackDamage: 100
-  _embeddedAttackRange: 2
+  _embeddedAttackRange: 5
