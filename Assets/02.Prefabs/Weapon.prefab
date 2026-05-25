@@ -902,6 +902,7 @@ MonoBehaviour:
   _recoverPerSecond: 25
   _minDrainPerSecond: 4
   _maxDrainPerSecond: 20
+  _disconnectDrainPerSecond: 12
   _recoverRadiusRatio: 0.35
   _reactivationEnergyRatio: 0.2
   _depletionMode: 1
@@ -1006,7 +1007,82 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98fc6733d02d40f3b35ec871de0404fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponMeleeAttackModule
-  _comboSteps: []
+  _comboSteps:
+  - Name: Slash_01
+    WindupOffset: {x: -0.8, y: 0.45}
+    ArcOffset: {x: 2.45, y: 0.85}
+    StrikeOffset: {x: 5.2, y: -1.15}
+    WindupAngle: -45
+    ArcAngle: 35
+    StrikeAngle: 115
+    WindupDuration: 0.07
+    StrikeDuration: 0.18
+    ReturnDuration: 0.12
+    StrikeCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    ReturnCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    Damage: 10
+    HitRadius: 1
+    SweepSamples: 7
+  - Name: Slash_02
+    WindupOffset: {x: -0.7, y: -0.2}
+    ArcOffset: {x: 2.9, y: -1.65}
+    StrikeOffset: {x: 5.6, y: -0.15}
+    WindupAngle: 30
+    ArcAngle: -75
+    StrikeAngle: -145
+    WindupDuration: 0.06
+    StrikeDuration: 0.18
+    ReturnDuration: 0.12
+    StrikeCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    ReturnCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    Damage: 15
+    HitRadius: 1.05
+    SweepSamples: 8
+  - Name: Slash_03
+    WindupOffset: {x: -0.95, y: 0.55}
+    ArcOffset: {x: 3.2, y: 1}
+    StrikeOffset: {x: 6.5, y: -1.35}
+    WindupAngle: -55
+    ArcAngle: 45
+    StrikeAngle: 135
+    WindupDuration: 0.08
+    StrikeDuration: 0.22
+    ReturnDuration: 0.14
+    StrikeCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    ReturnCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+    Damage: 15
+    HitRadius: 1.15
+    SweepSamples: 9
   _comboResetDelay: 0.65
   _defaultDamage: 1
   _targetLayer:
