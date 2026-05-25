@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _enemyId: Elite
   _category: 2
-  _maxHealth: 250
+  _maxHealth: 300
   _weight: 3
   _canBeCaptured: 0
   _captureWeight: 0
