@@ -26,6 +26,7 @@ public class MeleeAttackModule : WeaponActionModule
 
         [Header("Hit Sweep")]
         public int Damage;
+        public int GroggyDamage;
         public float HitRadius;
         public int SweepSamples;
     }
@@ -44,6 +45,7 @@ public class MeleeAttackModule : WeaponActionModule
 
     [Header("Hit")]
     [SerializeField] private int _defaultDamage = 1;
+    [SerializeField] private int _defaultGroggyDamage = 10;
     [SerializeField] private LayerMask _targetLayer;
     [SerializeField] private float _defaultHitRadius = 1.5f;
     [SerializeField] private int _hitBufferSize = 32;
@@ -60,6 +62,7 @@ public class MeleeAttackModule : WeaponActionModule
     private float _phaseTime;
     private float _lastComboEndTime;
     private bool _bufferedInput;
+    private bool _isPrimaryHeld;
     private float _lockedFacingSign = 1f;
 
     private Vector2 _previousSweepPosition;
@@ -92,6 +95,8 @@ public class MeleeAttackModule : WeaponActionModule
     {
         if (!CanUseMelee())
             return;
+
+        _isPrimaryHeld = true;
 
         EnsureDefaultComboSteps();
 
@@ -138,6 +143,8 @@ public class MeleeAttackModule : WeaponActionModule
 
     public override void OnRelease()
     {
+        _isPrimaryHeld = false;
+        _bufferedInput = false;
     }
 
     private void StartStep(int index)
@@ -249,15 +256,16 @@ public class MeleeAttackModule : WeaponActionModule
         _hasPreviousSweepPosition = false;
 
         int nextIndex = (_activeStepIndex + 1) % _comboSteps.Length;
+        _comboIndex = nextIndex;
 
-        if (_bufferedInput)
+        if ((_bufferedInput || _isPrimaryHeld) && CanUseMelee())
         {
-            _comboIndex = nextIndex;
+            _bufferedInput = false;
             StartStep(_comboIndex);
             return;
         }
 
-        _comboIndex = nextIndex;
+        _bufferedInput = false;
     }
 
     private void CancelAttack()
@@ -269,6 +277,7 @@ public class MeleeAttackModule : WeaponActionModule
         _phase = AttackPhase.Idle;
         _phaseTime = 0f;
         _bufferedInput = false;
+        _isPrimaryHeld = false;
         _lastComboEndTime = Time.time;
         _hasPreviousSweepPosition = false;
         _hitTargets.Clear();
@@ -295,8 +304,9 @@ public class MeleeAttackModule : WeaponActionModule
     {
         EnsureHitBuffer();
 
-        float radius = step.HitRadius > 0f ? step.HitRadius : _defaultHitRadius;
         int damage = step.Damage > 0 ? step.Damage : _defaultDamage;
+        int groggyDamage = step.GroggyDamage > 0 ? step.GroggyDamage : _defaultGroggyDamage;
+        float radius = step.HitRadius > 0f ? step.HitRadius : _defaultHitRadius;
         int samples = Mathf.Max(1, step.SweepSamples);
 
         Vector2 start = _hasPreviousSweepPosition ? _previousSweepPosition : currentPosition;
@@ -331,6 +341,7 @@ public class MeleeAttackModule : WeaponActionModule
                 damageable.TakeDamage(new DamageData
                 {
                     Damage = damage,
+                    GroggyDamage = groggyDamage,
                     AttackerTeam = TeamType.Player,
                     HitPoint = hitPoint,
                     KnockbackForce = knockbackDirection * _knockbackPower,
@@ -372,7 +383,13 @@ public class MeleeAttackModule : WeaponActionModule
 
     private bool CanUseMelee()
     {
-        return Controller != null && Controller.CurrentMode == WeaponMode.Melee;
+        if (Controller == null)
+            return false;
+
+        if (Controller.CurrentMode != WeaponMode.Melee)
+            return false;
+
+        return true;
     }
 
     private float NormalizeTime(float time, float duration)
@@ -480,6 +497,7 @@ public class MeleeAttackModule : WeaponActionModule
                 StrikeCurve = null,
                 ReturnCurve = null,
                 Damage = 10,
+                GroggyDamage = 8,
                 HitRadius = 1.0f,
                 SweepSamples = 7
             },
@@ -498,6 +516,7 @@ public class MeleeAttackModule : WeaponActionModule
                 StrikeCurve = null,
                 ReturnCurve = null,
                 Damage = 15,
+                GroggyDamage = 8,
                 HitRadius = 1.05f,
                 SweepSamples = 8
             },
@@ -516,6 +535,7 @@ public class MeleeAttackModule : WeaponActionModule
                 StrikeCurve = null,
                 ReturnCurve = null,
                 Damage = 10,
+                GroggyDamage = 8,
                 HitRadius = 1.15f,
                 SweepSamples = 9
             }
