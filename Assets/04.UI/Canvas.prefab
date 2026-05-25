@@ -588,6 +588,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 94a0c4cb1350b9e49a74eff4e8ddb602, type: 3}
+--- !u!114 &3734468907785389636 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3219242649784097454, guid: 94a0c4cb1350b9e49a74eff4e8ddb602, type: 3}
+  m_PrefabInstance: {fileID: 2269378314812595434}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177169235237112176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45f22aebe70d1d04f90acdee232eb3a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PausePanelPresenter
 --- !u!224 &4656720820888741425 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6908958779843033819, guid: 94a0c4cb1350b9e49a74eff4e8ddb602, type: 3}
@@ -630,6 +641,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2995447749212035825, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 3734468907785389636}
+    - target: {fileID: 3869670240761009456, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 3734468907785389636}
     - target: {fileID: 6026112340617585738, guid: 4151ae34fd998154daca0c8f637357dc, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0

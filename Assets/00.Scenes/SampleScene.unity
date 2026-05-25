@@ -1168,26 +1168,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1382064532308858275, guid: 916123afff0eaec4caff932178703efb, type: 3}
   m_PrefabInstance: {fileID: 1493108795789087930}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1693060299 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2124303791732366025, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
-  m_PrefabInstance: {fileID: 7905168344170264855}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1693060302
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1693060299}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
-  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
-  m_EffectDistance: {x: 1, y: -1}
-  m_UseGraphicAlpha: 1
 --- !u!1001 &1857569185
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1253,17 +1233,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
---- !u!114 &1938710668 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3734468907785389636, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-  m_PrefabInstance: {fileID: 8864941700989790118}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45f22aebe70d1d04f90acdee232eb3a7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PausePanelPresenter
 --- !u!1 &1940820293
 GameObject:
   m_ObjectHideFlags: 0
@@ -2323,10 +2292,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 2124303791732366025, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1693060302}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
 --- !u!1001 &8864941700989790118
 PrefabInstance:
@@ -2336,22 +2302,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 655871025135807231, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
-      value: 
-      objectReference: {fileID: 1938710668}
-    - target: {fileID: 655871025135807231, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: RetryGame
-      objectReference: {fileID: 0}
-    - target: {fileID: 1529038557283607870, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
-      value: 
-      objectReference: {fileID: 1938710668}
-    - target: {fileID: 1529038557283607870, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: ExitGame
-      objectReference: {fileID: 0}
     - target: {fileID: 2637519276110641999, guid: b807bbf9f5bccd7488b0eb6a56866be1, type: 3}
       propertyPath: m_Name
       value: Canvas
