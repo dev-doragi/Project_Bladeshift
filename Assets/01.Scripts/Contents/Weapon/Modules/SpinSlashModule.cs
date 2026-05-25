@@ -37,7 +37,7 @@ public class SpinSlashModule : WeaponActionModule
             Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
             true,
             Controller.WallAndEnvironmentLayer);
-        Controller.Movement.ApplySpinRotation(Controller.Combat.SpinSpeed);
+        Controller.Movement.ApplySpinRotation(-Controller.Combat.SpinSpeed);
     }
 
     public override void OnRelease()

@@ -41,6 +41,9 @@ public class PlatformerMotor2D : MonoBehaviour
     private float _dashTimer;
     private Vector2 _dashDirection;
 
+    private bool _wasGrounded;
+    private bool _jumpConsumed;
+
     public bool IsDashing => _isDashing;
     public bool IsJumping => !_isDashing && _sensor != null && !_sensor.IsGrounded;
     public Vector2 Velocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
@@ -55,11 +58,34 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private void Update()
     {
-        // 타이머 감소는 매 프레임 정확하게 진행
         _jumpBufferTimer -= Time.deltaTime;
 
-        if (_sensor.IsGrounded) _coyoteTimer = _coyoteTime;
-        else _coyoteTimer -= Time.deltaTime;
+        if (_jumpBufferTimer <= 0f)
+            _jumpRequestPending = false;
+
+        bool isGrounded = _sensor != null && _sensor.IsGrounded;
+        bool justLeftGround = _wasGrounded && !isGrounded;
+
+        if (isGrounded)
+        {
+            if (_rb.linearVelocity.y <= 0.01f)
+                _jumpConsumed = false;
+
+            _coyoteTimer = 0f;
+        }
+        else
+        {
+            if (justLeftGround && !_jumpConsumed)
+            {
+                _coyoteTimer = _coyoteTime;
+            }
+            else
+            {
+                _coyoteTimer -= Time.deltaTime;
+            }
+        }
+
+        _wasGrounded = isGrounded;
     }
 
     private void FixedUpdate()
@@ -75,7 +101,10 @@ public class PlatformerMotor2D : MonoBehaviour
         }
 
         // 1. 점프 로직 처리 (입력 버퍼와 코요테 타임 확인)
-        if (_jumpRequestPending && _coyoteTimer > 0f)
+        bool isGrounded = _sensor != null && _sensor.IsGrounded;
+        bool canJump = !_jumpConsumed && (isGrounded || _coyoteTimer > 0f);
+
+        if (_jumpRequestPending && _jumpBufferTimer > 0f && canJump)
         {
             ExecuteJump();
         }
@@ -108,6 +137,8 @@ public class PlatformerMotor2D : MonoBehaviour
         _jumpRequestPending = false;
         _jumpBufferTimer = 0f;
         _coyoteTimer = 0f;
+        _jumpConsumed = true;
+
         _velocity.y = _jumpForce;
     }
 

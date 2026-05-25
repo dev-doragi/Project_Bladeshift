@@ -388,7 +388,7 @@ BoxCollider2D:
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 400dee95eb4940e458beeee0b302c127, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -439,8 +439,8 @@ MonoBehaviour:
   _groundLayer:
     serializedVersion: 2
     m_Bits: 128
-  _boxSize: {x: 1.32, y: 0.19}
-  _offset: {x: 0, y: -1.25}
+  _boxSize: {x: 0.87, y: 0.12}
+  _offset: {x: 0, y: -1.21}
 --- !u!114 &7530631691869463140
 MonoBehaviour:
   m_ObjectHideFlags: 0
