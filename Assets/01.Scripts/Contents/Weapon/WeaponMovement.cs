@@ -340,7 +340,7 @@ public class WeaponMovement : MonoBehaviour
             if (distance <= stopDistance || (checkIntercept != null && checkIntercept(currentPos, targetPos)))
             {
                 onReturnComplete?.Invoke(true);
-                break;
+                yield break;
             }
 
             float speedT = Mathf.Clamp01(distance / Mathf.Max(0.01f, slowRadius));
@@ -356,7 +356,7 @@ public class WeaponMovement : MonoBehaviour
             _rb.MovePosition(currentPos + (moveDirection * moveDistance));
         }
 
-        onReturnComplete?.Invoke(true);
+        onReturnComplete?.Invoke(false);
     }
 
     private IEnumerator OrbitRoutine(Vector2 pivot, float radius, float duration, Action onReleasePoint, Action onComplete)

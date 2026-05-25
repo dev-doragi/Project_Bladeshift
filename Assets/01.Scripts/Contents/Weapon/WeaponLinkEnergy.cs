@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class WeaponLinkEnergy : MonoBehaviour
 {
@@ -284,6 +285,48 @@ public class WeaponLinkEnergy : MonoBehaviour
             IsRecovering = false,
             IsDraining = false
         });
+    }
+
+    public IEnumerator RechargeToFullAndUnlockOverDuration(float duration)
+    {
+        float safeDuration = Mathf.Max(0f, duration);
+        if (safeDuration <= Epsilon)
+        {
+            RestoreFullAndUnlock();
+            yield break;
+        }
+
+        BlockRecovery();
+        IsControlLocked = true;
+        _isDepletedRechargeMode = false;
+        _isOffline = false;
+        _offlineRechargeEntryReady = false;
+        IsRecovering = false;
+        IsDraining = false;
+
+        float startEnergy = Mathf.Clamp(_currentEnergy, 0f, _maxEnergy);
+        float elapsed = 0f;
+
+        while (elapsed < safeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / safeDuration);
+            _currentEnergy = Mathf.Lerp(startEnergy, _maxEnergy, t);
+
+            EventBus.Instance?.Publish(new LinkEnergyChangedEvent
+            {
+                Current = _currentEnergy,
+                Max = _maxEnergy,
+                Normalized = Normalized,
+                DistanceRatio = DistanceRatio,
+                IsRecovering = false,
+                IsDraining = false
+            });
+
+            yield return null;
+        }
+
+        RestoreFullAndUnlock();
     }
 
     public void ClearFrameSpendFlag()

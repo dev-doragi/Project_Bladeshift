@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
 
 public class ThrustPierceModule : WeaponActionModule
 {
@@ -14,6 +15,7 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private float _rangeBrakeDeceleration = 45f;
     [SerializeField] private float _rangeAutoReturnSpeedThreshold = 2f;
     [SerializeField] private float _dockArrivalDistance = 0.6f;
+    [SerializeField] private float _dockRechargeDuration = 1f;
     [Header("Finisher Tuning")]
     [SerializeField] private float _finisherHitStopDuration = 0.2f;
     [SerializeField] private float _finisherRadiusMultiplier = 1.8f;
@@ -31,6 +33,11 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _hasActivatedSlowMotion;
     private bool _aimCanceledByEnergyShortage;
     private float _dockWaitTimer;
+    private Coroutine _dockRechargeRoutine;
+    public bool IsAiming => _isAiming;
+    public bool IsAutoReturning => _isAutoReturning;
+    public bool IsDockWaiting => _isDockWaiting;
+    public bool IsPinningFlightActive => Controller != null && Controller.CurrentState == WeaponState.PinningFlight;
 
     public override bool BlocksPrimaryInput => _isAiming;
     public override bool TryHandlePinnedPrimary() => TryHandlePinnedAction();
@@ -214,14 +221,8 @@ public class ThrustPierceModule : WeaponActionModule
     private void TickDockWait()
     {
         if (!_isDockWaiting) return;
-        _dockWaitTimer += Time.fixedDeltaTime;
-        if (_dockWaitTimer < 1f) return;
-
-        _isDockWaiting = false;
-        _dockWaitTimer = 0f;
-        Controller.LinkEnergy?.RestoreFullAndUnlock();
-        Controller.transform.SetParent(null, true);
-        Controller.ChangeState(WeaponState.Grounded);
+        if (_dockRechargeRoutine != null) return;
+        _dockRechargeRoutine = StartCoroutine(DockRechargeRoutine());
     }
 
     private bool CanStartControl()
@@ -472,6 +473,20 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.transform.SetParent(dock, true);
         _dockWaitTimer = 0f;
         _isDockWaiting = true;
+        _dockRechargeRoutine = null;
+    }
+
+    private IEnumerator DockRechargeRoutine()
+    {
+        float duration = Mathf.Max(0.01f, _dockRechargeDuration);
+        if (Controller.LinkEnergy != null)
+            yield return StartCoroutine(Controller.LinkEnergy.RechargeToFullAndUnlockOverDuration(duration));
+
+        _isDockWaiting = false;
+        _dockWaitTimer = 0f;
+        _dockRechargeRoutine = null;
+        Controller.transform.SetParent(null, true);
+        Controller.ChangeState(WeaponState.Grounded);
     }
 
     private bool TryHandleGroggyEnemyPierce(EnemyBase enemy, Transform enemyTransform)

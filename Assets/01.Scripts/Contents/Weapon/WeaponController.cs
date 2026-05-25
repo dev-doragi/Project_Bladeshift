@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Reflection;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -20,6 +21,7 @@ public class WeaponController : MonoBehaviour
     [SerializeField] private LayerMask _wallAndEnvironmentLayer;
     [SerializeField] private float _thrustDragThreshold = 2.0f;
     [SerializeField] private float _recallEnergyCost = 0f;
+    [SerializeField] private float _fullRechargeDelayAfterReturn = 1.5f;
 
     private Rigidbody2D _rb;
     private Collider2D _weaponCollider;
@@ -34,10 +36,12 @@ public class WeaponController : MonoBehaviour
     private WeaponModeController _modeController;
     private WeaponActionRouter _actionRouter;
     private WeaponMeleeHoverFollow _meleeHoverFollow;
+    private SpinSlashModule _spinSlashModule;
     private ThrustPierceModule _thrustPierceModule;
     private PlayerController _playerController;
     private Camera _mainCamera;
     private MethodInfo _handleLinkEnergyDepletedMethod;
+    private bool _isModeSwitchInProgress;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -63,6 +67,14 @@ public class WeaponController : MonoBehaviour
     public WeaponState CurrentState => _stateMachine != null ? _stateMachine.CurrentState : WeaponState.Grounded;
     public WeaponMode CurrentMode => _modeController != null ? _modeController.CurrentMode : WeaponMode.Remote;
     public bool IsOffline => _linkEnergy != null && _linkEnergy.IsOffline;
+    public bool IsActionInputBlocked =>
+        IsAutoReturnInProgress ||
+        IsDockWaiting ||
+        _isModeSwitchInProgress;
+
+    private bool IsAutoReturnInProgress => _thrustPierceModule != null && _thrustPierceModule.IsAutoReturning;
+    private bool IsDockWaiting => _thrustPierceModule != null && _thrustPierceModule.IsDockWaiting;
+    private bool IsDepletionSequenceActive => _linkEnergy != null && (_linkEnergy.IsDepletedRechargeMode || _linkEnergy.IsOffline);
 
     private void Awake()
     {
@@ -93,6 +105,7 @@ public class WeaponController : MonoBehaviour
         _modeController = GetComponent<WeaponModeController>();
         _actionRouter = GetComponent<WeaponActionRouter>();
         _meleeHoverFollow = GetComponent<WeaponMeleeHoverFollow>();
+        _spinSlashModule = GetComponent<SpinSlashModule>();
         _thrustPierceModule = GetComponent<ThrustPierceModule>();
         if (_thrustPierceModule != null)
             _handleLinkEnergyDepletedMethod = _thrustPierceModule.GetType().GetMethod("HandleLinkEnergyDepleted", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -126,6 +139,7 @@ public class WeaponController : MonoBehaviour
 
     private void InitializeSubsystems()
     {
+        _fullRechargeDelayAfterReturn = Mathf.Max(1.5f, _fullRechargeDelayAfterReturn);
         _movement.CacheRigidbody(_rb);
         _stateMachine.Initialize(_rb, _weaponCollider);
         _meleeHoverFollow.Initialize(_playerController, _rb, _weaponCollider);
@@ -150,10 +164,112 @@ public class WeaponController : MonoBehaviour
 
     private void OnWeaponModeToggle(WeaponModeToggleEvent _)
     {
+        if (!CanToggleWeaponMode()) return;
+
+        if (_modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
+        {
+            StartCoroutine(RemoteToMeleeSwitchRoutine());
+            return;
+        }
+
         if (_capture != null && _capture.HasCapturedTarget)
             _capture.ForceReleaseCapturedTarget();
 
         _modeController?.ToggleMode();
+    }
+
+    private bool CanToggleWeaponMode()
+    {
+        if (_modeController == null) return false;
+        if (_isModeSwitchInProgress) return false;
+        if (IsActionInputBlocked) return false;
+        if (IsDepletionSequenceActive) return false;
+        if (_playerTransform == null) return false;
+
+        if (_spinSlashModule != null && _spinSlashModule.IsSlashing) return false;
+        if (_thrustPierceModule != null)
+        {
+            if (_thrustPierceModule.IsAiming) return false;
+            if (_thrustPierceModule.IsPinningFlightActive) return false;
+        }
+
+        WeaponState state = CurrentState;
+        if (state == WeaponState.Slashing ||
+            state == WeaponState.Thrusting ||
+            state == WeaponState.PinningFlight ||
+            state == WeaponState.Pinned ||
+            state == WeaponState.Returning)
+            return false;
+
+        float controlRadius = ControlRadius;
+        if (controlRadius <= 0f) return false;
+
+        float distance = Vector2.Distance(_playerTransform.position, transform.position);
+        if (distance > controlRadius) return false;
+
+        return true;
+    }
+
+    private IEnumerator RemoteToMeleeSwitchRoutine()
+    {
+        if (_isModeSwitchInProgress) yield break;
+
+        _isModeSwitchInProgress = true;
+        try
+        {
+            if (_capture != null && _capture.HasCapturedTarget)
+                _capture.ForceReleaseCapturedTarget();
+
+            if (_stateMachine != null)
+                _stateMachine.ClearPinSource();
+
+            if (_movement == null)
+                yield break;
+
+            bool returnCompleted = false;
+            bool returnSucceeded = false;
+
+            ChangeState(WeaponState.Returning);
+            _movement.ExecuteReturn(
+                GetModeSwitchReturnTargetPosition,
+                ControlRadius,
+                (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= 0.25f,
+                success =>
+                {
+                    if (returnCompleted) return;
+                    returnCompleted = true;
+                    returnSucceeded = success;
+                });
+
+            while (!returnCompleted)
+                yield return null;
+
+            if (!returnSucceeded)
+                yield break;
+
+            _modeController?.SetMode(WeaponMode.Melee);
+            _meleeHoverFollow?.EnableFollow();
+            if (_linkEnergy != null)
+            {
+                yield return StartCoroutine(_linkEnergy.RechargeToFullAndUnlockOverDuration(_fullRechargeDelayAfterReturn));
+            }
+        }
+        finally
+        {
+            _isModeSwitchInProgress = false;
+        }
+    }
+
+    private Vector2 GetModeSwitchReturnTargetPosition()
+    {
+        if (_meleeHoverFollow != null && _meleeHoverFollow.MeleeHoverHoldPoint != null)
+            return _meleeHoverFollow.MeleeHoverHoldPoint.position;
+
+        Transform dock = _droneDockPivot != null ? _droneDockPivot : _playerTransform;
+        if (dock != null)
+            return dock.position;
+
+        return _rb != null ? _rb.position : (Vector2)transform.position;
     }
 
     public void ChangeState(WeaponState newState)
