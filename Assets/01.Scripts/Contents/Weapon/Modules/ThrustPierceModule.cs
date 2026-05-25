@@ -4,6 +4,7 @@ using UnityEngine;
 public class ThrustPierceModule : WeaponActionModule
 {
     [SerializeField] private float _thrustFireCost = 18f;
+    [SerializeField] private float _focusHoldCostPerSecond = 10f;
     [SerializeField] private float _captureHoldCostPerSecond = 10f;
     [SerializeField] private ContinuousEnergySpendMode _captureHoldSpendMode = ContinuousEnergySpendMode.DepleteToZero;
     [Header("Pin Flight Tuning")]
@@ -27,8 +28,11 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _isAutoReturning;
     private bool _isDockWaiting;
     private bool _isFinisherRunning;
+    private bool _hasActivatedSlowMotion;
+    private bool _aimCanceledByEnergyShortage;
     private float _dockWaitTimer;
 
+    public override bool BlocksPrimaryInput => _isAiming;
     public override bool TryHandlePinnedPrimary() => TryHandlePinnedAction();
     public override bool TryHandlePinnedSecondary() => TryHandlePinnedAction();
 
@@ -42,8 +46,9 @@ public class ThrustPierceModule : WeaponActionModule
         _aimLockPosition = Controller.transform.position;
         _aimMouseStartPosition = Controller.Sensor.GetMouseWorldPosition();
         _isAiming = true;
+        _hasActivatedSlowMotion = false;
+        _aimCanceledByEnergyShortage = false;
         Controller.Movement.StopFollow();
-        Controller.PublishSlowMotion();
     }
 
     public override void OnTick()
@@ -64,6 +69,12 @@ public class ThrustPierceModule : WeaponActionModule
         Vector2 releaseMousePos = Controller.Sensor.GetMouseWorldPosition();
         float dragDistance = Vector2.Distance(_aimMouseStartPosition, releaseMousePos);
         EndAiming();
+
+        if (_aimCanceledByEnergyShortage)
+        {
+            _aimCanceledByEnergyShortage = false;
+            return;
+        }
 
         if (dragDistance < Controller.ThrustDragThreshold)
         {
@@ -89,6 +100,35 @@ public class ThrustPierceModule : WeaponActionModule
         if (_isAiming && Controller.CurrentMode == WeaponMode.Remote && Controller.CurrentState == WeaponState.Controlled)
         {
             Vector2 mouseWorldPos = Controller.Sensor.GetMouseWorldPosition();
+            float dragDistance = Vector2.Distance(_aimMouseStartPosition, mouseWorldPos);
+            bool canFireByDrag = dragDistance >= Controller.ThrustDragThreshold;
+
+            if (_focusHoldCostPerSecond > 0f && Controller.LinkEnergy != null)
+            {
+                bool keepAiming = Controller.LinkEnergy.SpendEnergyOverTime(_focusHoldCostPerSecond, ContinuousEnergySpendMode.DepleteToZero, Time.unscaledDeltaTime);
+                if (!keepAiming)
+                {
+                    _aimCanceledByEnergyShortage = true;
+                    EndAiming();
+                    Controller.ChangeState(WeaponState.Controlled);
+                    return;
+                }
+            }
+
+            if (canFireByDrag)
+            {
+                if (!_hasActivatedSlowMotion)
+                {
+                    _hasActivatedSlowMotion = true;
+                    Controller.PublishSlowMotion();
+                }
+            }
+            else if (_hasActivatedSlowMotion)
+            {
+                _hasActivatedSlowMotion = false;
+                Controller.ResetTimeScale();
+            }
+
             Vector2 dir = mouseWorldPos - (Vector2)Controller.transform.position;
             if (dir.sqrMagnitude > 0f)
                 Controller.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
@@ -472,6 +512,8 @@ public class ThrustPierceModule : WeaponActionModule
         if (!_isAiming) return;
         _isAiming = false;
         Controller.View?.HideTrajectory();
-        Controller.ResetTimeScale();
+        if (_hasActivatedSlowMotion)
+            Controller.ResetTimeScale();
+        _hasActivatedSlowMotion = false;
     }
 }

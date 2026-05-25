@@ -3,6 +3,7 @@ using UnityEngine;
 public abstract class WeaponActionModule : MonoBehaviour
 {
     protected WeaponController Controller;
+    public virtual bool BlocksPrimaryInput => false;
 
     public virtual void Initialize(WeaponController controller)
     {

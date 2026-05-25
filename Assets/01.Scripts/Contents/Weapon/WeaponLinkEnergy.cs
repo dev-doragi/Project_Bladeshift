@@ -150,10 +150,15 @@ public class WeaponLinkEnergy : MonoBehaviour
 
     public bool SpendEnergyOverTime(float amountPerSecond, ContinuousEnergySpendMode spendMode)
     {
+        return SpendEnergyOverTime(amountPerSecond, spendMode, Time.fixedDeltaTime);
+    }
+
+    public bool SpendEnergyOverTime(float amountPerSecond, ContinuousEnergySpendMode spendMode, float deltaTime)
+    {
         if (amountPerSecond <= 0f) return true;
         if (IsControlLocked) return false;
 
-        float deltaCost = Mathf.Max(0f, amountPerSecond * Time.fixedDeltaTime);
+        float deltaCost = Mathf.Max(0f, amountPerSecond * Mathf.Max(0f, deltaTime));
         if (deltaCost <= 0f) return true;
 
         if (_currentEnergy >= deltaCost)

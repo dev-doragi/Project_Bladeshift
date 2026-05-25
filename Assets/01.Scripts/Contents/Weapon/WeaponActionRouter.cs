@@ -9,6 +9,7 @@ public class WeaponActionRouter : MonoBehaviour
     [SerializeField] private WeaponActionModule _remoteSecondaryModule;
     [SerializeField] private WeaponActionModule _meleePrimaryModule;
     [SerializeField] private WeaponActionModule _meleeSecondaryModule;
+    private bool _blockNextPrimaryRelease;
 
     public void Initialize(WeaponController controller, WeaponModeController modeController)
     {
@@ -60,10 +61,27 @@ public class WeaponActionRouter : MonoBehaviour
         WeaponActionModule primaryModule = GetPrimaryModule();
         WeaponActionModule secondaryModule = GetSecondaryModule();
 
-        if (evt.IsStarted && secondaryModule != null && secondaryModule.TryHandlePinnedPrimary()) return;
+        if (evt.IsStarted)
+        {
+            _blockNextPrimaryRelease = false;
+            if (secondaryModule != null && secondaryModule.TryHandlePinnedPrimary()) return;
+            if (secondaryModule != null && secondaryModule.BlocksPrimaryInput)
+            {
+                _blockNextPrimaryRelease = true;
+                return;
+            }
 
-        if (evt.IsStarted) primaryModule?.OnPress();
-        else primaryModule?.OnRelease();
+            primaryModule?.OnPress();
+            return;
+        }
+
+        if (_blockNextPrimaryRelease)
+        {
+            _blockNextPrimaryRelease = false;
+            return;
+        }
+
+        primaryModule?.OnRelease();
     }
 
     private void OnSecondaryAttack(SecondaryAttackEvent evt)
