@@ -1180,6 +1180,10 @@ PrefabInstance:
       propertyPath: _maxHealth
       value: 100
       objectReference: {fileID: 0}
+    - target: {fileID: 4110499450350437241, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+      propertyPath: m_IsTrigger
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4369327001303254912, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 5.54
@@ -1511,6 +1515,10 @@ PrefabInstance:
     - target: {fileID: 670084346346721784, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       propertyPath: _maxHealth
       value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 4110499450350437241, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+      propertyPath: m_IsTrigger
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4369327001303254912, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2099,22 +2107,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 620977729684863863, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _wallPinOutlineColor.a
-      value: 0.5176471
-      objectReference: {fileID: 0}
-    - target: {fileID: 620977729684863863, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _wallPinOutlineColor.b
-      value: 0.85765254
-      objectReference: {fileID: 0}
-    - target: {fileID: 620977729684863863, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _wallPinOutlineColor.g
-      value: 0.8867924
-      objectReference: {fileID: 0}
-    - target: {fileID: 620977729684863863, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _wallPinOutlineColor.r
-      value: 0.23843002
-      objectReference: {fileID: 0}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _droneDockPivot
       value: 
@@ -2163,10 +2155,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5893691797077057928, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: b8bd72e7da6e8c84987d990091cf27a4, type: 2}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeOrbitRoot
       value: 
@@ -2260,6 +2248,10 @@ PrefabInstance:
     - target: {fileID: 670084346346721784, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       propertyPath: _maxHealth
       value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 4110499450350437241, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+      propertyPath: m_IsTrigger
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4369327001303254912, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       propertyPath: m_LocalPosition.x

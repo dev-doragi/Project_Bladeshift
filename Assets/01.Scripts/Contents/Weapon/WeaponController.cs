@@ -161,6 +161,8 @@ public class WeaponController : MonoBehaviour
     private void OnDisable()
     {
         EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
+        _isModeSwitchInProgress = false;
+        _isMeleeRechargeWaiting = false;
     }
 
     private void OnWeaponModeToggle(WeaponModeToggleEvent _)
@@ -182,6 +184,8 @@ public class WeaponController : MonoBehaviour
     private bool CanToggleWeaponMode()
     {
         if (_modeController == null) return false;
+        if (_isMeleeRechargeWaiting) return false;
+        if (_isMeleeRechargeWaiting) return false;
         if (_isModeSwitchInProgress) return false;
         if (IsActionInputBlocked) return false;
         if (IsDepletionSequenceActive) return false;
@@ -250,22 +254,29 @@ public class WeaponController : MonoBehaviour
         while (!returnCompleted)
             yield return null;
 
-        _isModeSwitchInProgress = false;
-
         if (!returnSucceeded)
+        {
+            _isModeSwitchInProgress = false;
             yield break;
+        }
 
         _modeController?.SetMode(WeaponMode.Melee);
         _meleeHoverFollow?.EnableFollow();
 
-        if (_linkEnergy == null)
+        _isModeSwitchInProgress = false;
+
+        if (_linkEnergy == null || _linkEnergy.IsFull)
             yield break;
 
         _isMeleeRechargeWaiting = true;
 
-        yield return StartCoroutine(
-            _linkEnergy.RechargeToFullAndUnlockOverDuration(_fullRechargeDelayAfterReturn)
-        );
+        while (_modeController != null &&
+               _modeController.CurrentMode == WeaponMode.Melee &&
+               _linkEnergy != null &&
+               !_linkEnergy.IsFull)
+        {
+            yield return null;
+        }
 
         _isMeleeRechargeWaiting = false;
     }

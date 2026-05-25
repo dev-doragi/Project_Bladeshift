@@ -21,6 +21,8 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private float _finisherRadiusMultiplier = 1.8f;
     [SerializeField] private float _finisherOrbitDuration = 0.35f;
     [SerializeField] private ShakeIntensity _finisherShakeIntensity = ShakeIntensity.Strong;
+    [Header("Capture Weight")]
+    [SerializeField] private float _captureWeightLimit = 3f;
 
     private readonly HashSet<IDamageable> _pierceHitTargets = new HashSet<IDamageable>();
     private readonly HashSet<EnemyBase> _groggyEnteredDuringCurrentPin = new HashSet<EnemyBase>();
@@ -32,6 +34,8 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _isFinisherRunning;
     private bool _hasActivatedSlowMotion;
     private bool _aimCanceledByEnergyShortage;
+    private float _currentCaptureWeight;
+    private bool _captureWeightBlocked;
     private Coroutine _dockRechargeRoutine;
     public bool IsAiming => _isAiming;
     public bool IsAutoReturning => _isAutoReturning;
@@ -345,6 +349,8 @@ public class ThrustPierceModule : WeaponActionModule
 
         _pierceHitTargets.Clear();
         _groggyEnteredDuringCurrentPin.Clear();
+        _currentCaptureWeight = 0f;
+        _captureWeightBlocked = false;
         Controller.StateMachine.ClearPinSource();
         Controller.ChangeState(WeaponState.PinningFlight);
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
@@ -387,7 +393,11 @@ public class ThrustPierceModule : WeaponActionModule
 
                 if (enemy.ShouldPierceStick() && enemy.CanBeCapturedByPierce())
                 {
+                    if (!CanCaptureByWeight(enemy))
+                        return false;
+
                     Controller.Capture.BindEnemy(targetTransform);
+                    AddCaptureWeight(enemy);
                     Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     // Keep flying while carrying captured enemy.
                     // Pinned state is finalized only on wall hit or range-end.
@@ -496,8 +506,11 @@ public class ThrustPierceModule : WeaponActionModule
             case GroggyRightClickActionType.Capture:
                 if (!enemy.TryHandleGroggyPierceInteraction())
                     return false;
+                if (!CanCaptureByWeight(enemy))
+                    return false;
 
                 Controller.Capture.BindEnemy(enemyTransform);
+                AddCaptureWeight(enemy);
                 Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                 Controller.ChangeState(WeaponState.Pinned);
                 return true;
@@ -527,5 +540,31 @@ public class ThrustPierceModule : WeaponActionModule
         if (_hasActivatedSlowMotion)
             Controller.ResetTimeScale();
         _hasActivatedSlowMotion = false;
+    }
+
+    private bool CanCaptureByWeight(EnemyBase enemy)
+    {
+        if (enemy == null)
+            return false;
+
+        if (_captureWeightBlocked)
+            return false;
+
+        float weight = Mathf.Max(1f, enemy.CaptureWeight);
+        if (_currentCaptureWeight + weight > _captureWeightLimit)
+        {
+            _captureWeightBlocked = true;
+            return false;
+        }
+
+        return true;
+    }
+
+    private void AddCaptureWeight(EnemyBase enemy)
+    {
+        if (enemy == null)
+            return;
+
+        _currentCaptureWeight += Mathf.Max(1f, enemy.CaptureWeight);
     }
 }

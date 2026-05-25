@@ -16,17 +16,27 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [Header("Death")]
     [SerializeField] private float _deathResultDelay = 1.2f;
     private Coroutine _deathRoutine;
+    [Header("Invincibility")]
+    [SerializeField] private float _invincibleDuration = 1.0f;
+    [SerializeField] private string _invincibleLayer = "Invincible";
+
+    private int _originalLayer;
+    private bool _isInvincible;
+    private Coroutine _invincibleRoutine;
 
     public TeamType Team => TeamType.Player;
     public int CurrentHp => _currentHp;
     public int MaxHp => _maxHp;
     public bool IsDead => _isDead;
+    public bool IsInvincible => _isInvincible;
 
     private void Awake()
     {
         _maxHp = Mathf.Max(1, _maxHp);
         _currentHp = _maxHp;
         _isDead = false;
+        _isInvincible = false;
+        _originalLayer = gameObject.layer;
 
         PublishHpChanged();
     }
@@ -34,6 +44,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     public void TakeDamage(DamageData damageData)
     {
         if (_isDead)
+            return;
+        if (_isInvincible)
             return;
 
         int damage = Mathf.RoundToInt(damageData.Damage);
@@ -55,7 +67,12 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         PublishHpChanged();
 
         if (_currentHp <= 0)
+        {
             Die();
+            return;
+        }
+
+        StartInvincible();
     }
 
     public void Heal(int amount)
@@ -83,6 +100,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             _deathRoutine = null;
         }
 
+        StopInvincible();
         _isDead = false;
         _currentHp = _maxHp;
 
@@ -95,6 +113,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             return;
 
         _isDead = true;
+        StopInvincible();
 
         EventBus.Instance.Publish(new PlayerDeathStartedEvent());
 
@@ -120,5 +139,38 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             CurrentHp = _currentHp,
             MaxHp = _maxHp
         });
+    }
+
+    private void StartInvincible()
+    {
+        StopInvincible();
+        _invincibleRoutine = StartCoroutine(InvincibleRoutine());
+    }
+
+    private void StopInvincible()
+    {
+        _isInvincible = false;
+        gameObject.layer = _originalLayer;
+
+        if (_invincibleRoutine != null)
+        {
+            StopCoroutine(_invincibleRoutine);
+            _invincibleRoutine = null;
+        }
+    }
+
+    private IEnumerator InvincibleRoutine()
+    {
+        _isInvincible = true;
+
+        int invincibleLayer = LayerMask.NameToLayer(_invincibleLayer);
+        if (invincibleLayer >= 0)
+            gameObject.layer = invincibleLayer;
+
+        yield return new WaitForSeconds(_invincibleDuration);
+
+        _isInvincible = false;
+        gameObject.layer = _originalLayer;
+        _invincibleRoutine = null;
     }
 }

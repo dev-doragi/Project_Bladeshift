@@ -424,7 +424,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 2100000, guid: b8bd72e7da6e8c84987d990091cf27a4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -734,6 +734,7 @@ MonoBehaviour:
     m_Bits: 128
   _thrustDragThreshold: 6
   _recallEnergyCost: 0
+  _fullRechargeDelayAfterReturn: 1.5
 --- !u!114 &5923836136970560632
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -867,6 +868,12 @@ MonoBehaviour:
   _criticalEnergyRatio: 0.2
   _blinkEnergyRatio: 0.1
   _blinkInterval: 0.12
+  _weaponRenderer: {fileID: 5893691797077057928}
+  _wallPinOutlineColor: {r: 0.23843002, g: 0.8867924, b: 0.85765254, a: 0.5176471}
+  _wallPinOutlineMinAlpha: 0.18
+  _wallPinOutlineMaxAlpha: 0.75
+  _wallPinOutlinePulseSpeed: 3
+  _wallPinOutlineSize: 1
   _showControlRadius: 1
   _showMouseCaptureRadius: 1
   _showMouseCaptureMaintainRadius: 1
@@ -991,10 +998,12 @@ MonoBehaviour:
   _rangeBrakeDeceleration: 2000
   _rangeAutoReturnSpeedThreshold: 2
   _dockArrivalDistance: 0.6
+  _dockRechargeDuration: 1
   _finisherHitStopDuration: 0.2
   _finisherRadiusMultiplier: 1.8
   _finisherOrbitDuration: 0.35
   _finisherShakeIntensity: 2
+  _captureWeightLimit: 4
 --- !u!114 &4215078335511638844
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1031,6 +1040,7 @@ MonoBehaviour:
       m_PostInfinity: 0
       m_RotationOrder: 0
     Damage: 10
+    GroggyDamage: 0
     HitRadius: 1
     SweepSamples: 7
   - Name: Slash_02
@@ -1056,6 +1066,7 @@ MonoBehaviour:
       m_PostInfinity: 0
       m_RotationOrder: 0
     Damage: 15
+    GroggyDamage: 0
     HitRadius: 1.05
     SweepSamples: 8
   - Name: Slash_03
@@ -1081,10 +1092,12 @@ MonoBehaviour:
       m_PostInfinity: 0
       m_RotationOrder: 0
     Damage: 15
+    GroggyDamage: 0
     HitRadius: 1.15
     SweepSamples: 9
   _comboResetDelay: 0.65
   _defaultDamage: 1
+  _defaultGroggyDamage: 10
   _targetLayer:
     serializedVersion: 2
     m_Bits: 512

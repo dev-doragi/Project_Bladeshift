@@ -6,10 +6,15 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 {
     [SerializeField] protected EnemyData _enemyData;
     [SerializeField] protected float _maxHealth = 50f;
+
+    [Header("Contact Damage")]
+    [SerializeField, Min(0)] private int _contactDamage = 1;
+
     [Header("Groggy Motion")]
     [SerializeField] private float _groggyLeanAngle = 10f;
     [SerializeField] private float _groggyPoseDuration = 0.18f;
     [SerializeField] private float _groggyRecoilForce = 3f;
+
     protected float _currentHealth;
 
     protected Rigidbody2D _rb;
@@ -109,6 +114,41 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         {
             Die(damageData.KnockbackForce);
         }
+    }
+
+    protected virtual void OnTriggerEnter2D(Collider2D other)
+    {
+        TryDealContactDamage(other);
+    }
+
+    private void TryDealContactDamage(Collider2D other)
+    {
+        if (IsDead)
+            return;
+
+        if (_contactDamage <= 0)
+            return;
+
+        if (other == null)
+            return;
+
+        PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+
+        if (playerHealth == null)
+            playerHealth = other.GetComponentInParent<PlayerHealth>();
+
+        if (playerHealth == null)
+            return;
+
+        playerHealth.TakeDamage(new DamageData
+        {
+            Damage = _contactDamage,
+            GroggyDamage = 0,
+            AttackerTeam = TeamType.Enemy,
+            HitPoint = other.ClosestPoint(transform.position),
+            KnockbackForce = Vector2.zero,
+            IsPiercing = false
+        });
     }
 
     public virtual bool ShouldPiercingAttackStick()
@@ -647,6 +687,9 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     protected virtual void OnCollisionEnter2D(Collision2D collision)
     {
+        if (!IsDead)
+            TryDealContactDamage(collision.collider);
+
         if (IsDead && !_hasHitWallAfterDeath && _rb != null && _rb.bodyType == RigidbodyType2D.Dynamic)
         {
             if (collision.relativeVelocity.sqrMagnitude > 25f)

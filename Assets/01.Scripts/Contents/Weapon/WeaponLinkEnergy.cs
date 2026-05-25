@@ -25,10 +25,12 @@ public class WeaponLinkEnergy : MonoBehaviour
     public float MaxEnergy => _maxEnergy;
     public float CurrentEnergy => _currentEnergy;
     public float Normalized => _maxEnergy <= Epsilon ? 0f : Mathf.Clamp01(_currentEnergy / _maxEnergy);
+    // (중복 제거) public bool IsFull => _currentEnergy >= _maxEnergy - Epsilon;
     public float DistanceRatio { get; private set; }
     public bool IsRecovering { get; private set; }
     public bool IsDraining { get; private set; }
     public bool IsEmpty => _currentEnergy <= Epsilon;
+    public bool IsFull => _currentEnergy >= _maxEnergy - Epsilon;
     public bool IsControlLocked { get; private set; }
     public bool CanStartControl => !IsControlLocked && !IsEmpty && !_isRecoveryBlocked;
     public bool SpentEnergyThisFrame => _spentEnergyThisFrame;
