@@ -20,6 +20,7 @@ public class InputReader : Singleton<InputReader>
     [SerializeField] private string _primaryAttackActionName = "PrimaryAttack";     // 좌클릭/기본공격
     [SerializeField] private string _secondaryAttackActionName = "SecondaryAttack"; // 우클릭/특수공격
     [SerializeField] private string _toggleWeaponModeActionName = "ToggleWeaponMode";
+    [SerializeField] private string _lookActionName = "Look";
     [SerializeField] private string _pointActionName = "Point";
     [SerializeField] private string _scrollActionName = "Scroll";
     [SerializeField] private string _rotateActionName = "Rotate";
@@ -29,6 +30,9 @@ public class InputReader : Singleton<InputReader>
 
     [Header("Behavior")]
     [SerializeField] private bool _useGameStateInputGate = true;
+
+    [Header("Aim")]
+    [SerializeField] private float _gamepadAimDeadzone = 0.2f;
 
     private PlayerInput _playerInput;
     private InputActionMap _playerMap;
@@ -41,10 +45,12 @@ public class InputReader : Singleton<InputReader>
     private InputAction _primaryAttackAction;
     private InputAction _secondaryAttackAction;
     private InputAction _toggleWeaponModeAction;
+    private InputAction _lookAction;
     private InputAction _pointAction;
     private InputAction _scrollAction;
     private InputAction _rotateAction;
     private InputAction _pauseAction;
+    private bool _wasUsingGamepadAim;
 
     public bool IsPointerOverUI { get; private set; }
     private bool _isInputBlocked = false;
@@ -73,6 +79,7 @@ public class InputReader : Singleton<InputReader>
             _primaryAttackAction = _playerMap.FindAction(_primaryAttackActionName, false);
             _secondaryAttackAction = _playerMap.FindAction(_secondaryAttackActionName, false);
             _toggleWeaponModeAction = _playerMap.FindAction(_toggleWeaponModeActionName, false);
+            _lookAction = _playerMap.FindAction(_lookActionName, false);
             _pointAction = _playerMap.FindAction(_pointActionName, false);
             _scrollAction = _playerMap.FindAction(_scrollActionName, false);
             _rotateAction = _playerMap.FindAction(_rotateActionName, false);
@@ -282,6 +289,73 @@ public class InputReader : Singleton<InputReader>
 
     public Vector2 GetMousePosition() => _pointAction?.ReadValue<Vector2>() ?? Vector2.zero;
     public Vector2 GetMouseDelta() => Mouse.current != null ? Mouse.current.delta.ReadValue() : Vector2.zero;
+    public Vector2 GetLookInput() => _lookAction?.ReadValue<Vector2>() ?? Vector2.zero;
+
+    public bool IsGamepadAimActive()
+    {
+        Vector2 lookInput = GetLookInput();
+        float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
+        bool hasGamepadLookInput = lookInput.sqrMagnitude >= deadzone * deadzone && IsLookInputFromGamepad();
+
+        if (hasGamepadLookInput)
+        {
+            _wasUsingGamepadAim = true;
+            return true;
+        }
+
+        if (_wasUsingGamepadAim && IsMouseAiming())
+        {
+            _wasUsingGamepadAim = false;
+            return false;
+        }
+
+        return _wasUsingGamepadAim;
+    }
+
+    public Vector2 GetAimWorldPosition(Vector2 origin, float radius, Camera camera, Vector2 fallbackWorldPosition)
+    {
+        if (camera == null)
+            return fallbackWorldPosition;
+
+        Vector2 lookInput = GetLookInput();
+        float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
+        bool hasGamepadLookInput = lookInput.sqrMagnitude >= deadzone * deadzone && IsLookInputFromGamepad();
+
+        if (hasGamepadLookInput)
+        {
+            _wasUsingGamepadAim = true;
+            return origin + lookInput.normalized * Mathf.Max(0f, radius);
+        }
+
+        if (_wasUsingGamepadAim)
+        {
+            if (IsMouseAiming())
+            {
+                _wasUsingGamepadAim = false;
+            }
+            else
+            {
+                return fallbackWorldPosition;
+            }
+        }
+
+        Vector2 mouseScreen = GetMousePosition();
+        return camera.ScreenToWorldPoint(mouseScreen);
+    }
+
+    private bool IsLookInputFromGamepad()
+    {
+        return _lookAction?.activeControl?.device is Gamepad;
+    }
+
+    private bool IsMouseAiming()
+    {
+        if (Mouse.current == null)
+            return false;
+
+        Vector2 mouseDelta = GetMouseDelta();
+        return mouseDelta.sqrMagnitude > 0.0001f;
+    }
 
     #endregion
 }

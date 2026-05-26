@@ -97,9 +97,13 @@ public class PlayerController : MonoBehaviour
         if (cam == null)
             return;
 
-        Vector2 mouseScreen = InputReader.Instance.GetMousePosition();
-        Vector2 mouseWorld = cam.ScreenToWorldPoint(mouseScreen);
-        Vector2 dir = mouseWorld - (Vector2)transform.position;
+        Vector2 origin = transform.position;
+        float aimRadius = Mathf.Max(0f, _controlRadius);
+        Vector2 fallbackWorldPosition = AimDirection.sqrMagnitude > 0.0001f
+            ? origin + AimDirection.normalized * aimRadius
+            : origin;
+        Vector2 aimWorld = InputReader.Instance.GetAimWorldPosition(origin, aimRadius, cam, fallbackWorldPosition);
+        Vector2 dir = aimWorld - origin;
 
         if (dir.sqrMagnitude <= 0.0001f)
             return;

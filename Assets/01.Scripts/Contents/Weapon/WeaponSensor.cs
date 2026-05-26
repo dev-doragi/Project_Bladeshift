@@ -31,15 +31,23 @@ public class WeaponSensor : MonoBehaviour
 
     public Vector2 GetMouseWorldPosition()
     {
-        if (_mainCamera == null || InputReader.Instance == null) return _lastValidMousePos;
-
-        Vector2 screenPos = InputReader.Instance.GetMousePosition();
-        if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
-        {
+        InputReader inputReader = InputReader.Instance;
+        if (_mainCamera == null || inputReader == null || _playerTransform == null)
             return _lastValidMousePos;
+
+        bool isGamepadAim = inputReader.IsGamepadAimActive();
+        if (!isGamepadAim)
+        {
+            Vector2 screenPos = inputReader.GetMousePosition();
+            if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
+            {
+                return _lastValidMousePos;
+            }
         }
 
-        Vector2 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
+        Vector2 origin = _playerTransform.position;
+        float aimRadius = Mathf.Max(0f, _controlRadius);
+        Vector2 worldPos = inputReader.GetAimWorldPosition(origin, aimRadius, _mainCamera, _lastValidMousePos);
         _lastValidMousePos = worldPos;
         return worldPos;
     }
