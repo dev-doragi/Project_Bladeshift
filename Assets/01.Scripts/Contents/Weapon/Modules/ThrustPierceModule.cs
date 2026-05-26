@@ -492,6 +492,7 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.transform.position = dock.position;
         Controller.transform.rotation = dock.rotation;
         Controller.transform.SetParent(dock, true);
+        Controller.AimCursor?.SnapToPlayerPosition();
         _isDockWaiting = true;
         _dockRechargeRoutine = null;
     }
@@ -505,6 +506,7 @@ public class ThrustPierceModule : WeaponActionModule
         _isDockWaiting = false;
         _dockRechargeRoutine = null;
         Controller.transform.SetParent(null, true);
+        Controller.AimCursor?.SnapToPlayerPosition();
         Controller.ChangeState(WeaponState.Grounded);
     }
 

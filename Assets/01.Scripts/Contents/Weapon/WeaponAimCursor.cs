@@ -331,11 +331,28 @@ public class WeaponAimCursor : MonoBehaviour
             return;
 
         bool shouldShow = ShouldShowCursorVisual();
+        ApplyVisualVisibility(shouldShow);
+
+        UpdateCursorTransformOnly();
+    }
+
+    private void ApplyVisualVisibility(bool shouldShow)
+    {
+        if (_cursorVisual == null)
+            return;
+
+        // If visual target is this same GameObject, never SetActive(false):
+        // that would disable this script and prevent automatic re-activation.
+        if (_cursorVisual == transform)
+        {
+            SpriteRenderer selfRenderer = _cursorVisual.GetComponent<SpriteRenderer>();
+            if (selfRenderer != null && selfRenderer.enabled != shouldShow)
+                selfRenderer.enabled = shouldShow;
+            return;
+        }
 
         if (_cursorVisual.gameObject.activeSelf != shouldShow)
             _cursorVisual.gameObject.SetActive(shouldShow);
-
-        UpdateCursorTransformOnly();
     }
 
     private void UpdateCursorTransformOnly()
