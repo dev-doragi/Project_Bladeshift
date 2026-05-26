@@ -21,6 +21,7 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
     [Header("Aim Orbit")]
     [SerializeField] private bool _enableAimOrbit = true;
+    [SerializeField] private bool _rotatePivotToAim = true;
     [SerializeField] private float _maxOrbitAngle = 18f;
     [SerializeField] private float _orbitSmoothTime = 0.08f;
     [SerializeField] private bool _counterRotateHoldPoint = true;
@@ -159,6 +160,11 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         _hasAttackPose = true;
     }
 
+    public void ForceRotatePivotToAim()
+    {
+        RotatePivotToAim();
+    }
+
     public void BeginAttackAnchor()
     {
         if (_meleeHoverHoldPoint == null)
@@ -186,6 +192,8 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
     private void UpdateAimOrbit(bool immediate)
     {
+        RotatePivotToAim();
+
         if (!_enableAimOrbit)
         {
             ApplyOrbitAngle(0f);
@@ -336,12 +344,17 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         return true;
     }
 
-    private float ResolveFacingSign()
+    private void RotatePivotToAim()
     {
-        if (_playerController == null)
-            return 1f;
+        if (!_rotatePivotToAim || _meleeHoverPivot == null || _playerController == null)
+            return;
 
-        return _playerController.FacingSign >= 0 ? 1f : -1f;
+        Vector2 aimDirection = _playerController.AimDirection;
+        if (aimDirection.sqrMagnitude <= 0.0001f)
+            return;
+
+        float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        _meleeHoverPivot.rotation = Quaternion.Euler(0f, 0f, aimAngle);
     }
 
     private void CacheOrbitPose()

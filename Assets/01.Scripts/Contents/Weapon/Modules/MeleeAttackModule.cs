@@ -63,7 +63,9 @@ public class MeleeAttackModule : WeaponActionModule
     private float _lastComboEndTime;
     private bool _bufferedInput;
     private bool _isPrimaryHeld;
-    private float _lockedFacingSign = 1f;
+    private Vector2 _attackDirection = Vector2.right;
+    private float _attackBaseAngle;
+    private Quaternion _attackBasisRotation = Quaternion.identity;
 
     private Vector2 _previousSweepPosition;
     private bool _hasPreviousSweepPosition;
@@ -156,7 +158,11 @@ public class MeleeAttackModule : WeaponActionModule
         _phase = AttackPhase.Windup;
         _phaseTime = 0f;
         _bufferedInput = false;
-        _lockedFacingSign = ResolveFacingSign();
+        Controller.MeleeHoverFollow?.ForceRotatePivotToAim();
+
+        _attackDirection = ResolveAimDirection();
+        _attackBaseAngle = Mathf.Atan2(_attackDirection.y, _attackDirection.x) * Mathf.Rad2Deg;
+        _attackBasisRotation = Quaternion.Euler(0f, 0f, _attackBaseAngle);
 
         _hitTargets.Clear();
         _hasPreviousSweepPosition = false;
@@ -210,9 +216,9 @@ public class MeleeAttackModule : WeaponActionModule
 
         ApplyPose(offset, angle);
 
-        if (TryEvaluateWorldPose(offset, angle, out Vector3 worldPosition, out Quaternion worldRotation))
+        if (TryEvaluateWorldPose(offset, angle, out Vector3 worldPosition, out _))
         {
-            PerformSweepHit(step, worldPosition, worldRotation);
+            PerformSweepHit(step, worldPosition);
 
             _previousSweepPosition = worldPosition;
             _hasPreviousSweepPosition = true;
@@ -300,7 +306,7 @@ public class MeleeAttackModule : WeaponActionModule
         return hoverFollow.TryEvaluateAttackWorldPose(resolvedOffset, resolvedAngle, out worldPosition, out worldRotation);
     }
 
-    private void PerformSweepHit(MeleeComboStep step, Vector3 currentPosition, Quaternion currentRotation)
+    private void PerformSweepHit(MeleeComboStep step, Vector3 currentPosition)
     {
         EnsureHitBuffer();
 
@@ -311,7 +317,7 @@ public class MeleeAttackModule : WeaponActionModule
 
         Vector2 start = _hasPreviousSweepPosition ? _previousSweepPosition : currentPosition;
         Vector2 end = currentPosition;
-        Vector2 forward = currentRotation * Vector3.right;
+        Vector2 forward = _attackDirection;
 
         for (int i = 0; i <= samples; i++)
         {
@@ -336,7 +342,7 @@ public class MeleeAttackModule : WeaponActionModule
                 Vector2 hitPoint = hit.ClosestPoint(samplePoint);
                 Vector2 knockbackDirection = forward.sqrMagnitude > 0.0001f
                     ? forward.normalized
-                    : Vector2.right * _lockedFacingSign;
+                    : Vector2.right;
 
                 damageable.TakeDamage(new DamageData
                 {
@@ -361,24 +367,29 @@ public class MeleeAttackModule : WeaponActionModule
 
     private Vector2 ResolveOffset(Vector2 offset)
     {
-        return new Vector2(offset.x * _lockedFacingSign, offset.y);
+        Vector3 rotated = _attackBasisRotation * new Vector3(offset.x, offset.y, 0f);
+        return new Vector2(rotated.x, rotated.y);
     }
 
     private float ResolveAngle(float angle)
     {
-        return angle * _lockedFacingSign;
+        return angle;
     }
 
-    private float ResolveFacingSign()
+    private Vector2 ResolveAimDirection()
     {
         if (Controller == null || Controller.PlayerTransform == null)
-            return 1f;
+            return Vector2.right;
 
         PlayerController playerController = Controller.PlayerTransform.GetComponent<PlayerController>();
         if (playerController == null)
-            return 1f;
+            return Vector2.right;
 
-        return playerController.FacingSign >= 0 ? 1f : -1f;
+        Vector2 aimDirection = playerController.AimDirection;
+        if (aimDirection.sqrMagnitude > 0.0001f)
+            return aimDirection.normalized;
+
+        return playerController.FacingSign >= 0 ? Vector2.right : Vector2.left;
     }
 
     private bool CanUseMelee()
