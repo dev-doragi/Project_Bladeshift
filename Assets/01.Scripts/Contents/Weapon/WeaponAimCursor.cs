@@ -63,14 +63,12 @@ public class WeaponAimCursor : MonoBehaviour
         if (isSuppressed)
         {
             IsGamepadCursorMode = false;
-
-            if (resetToMousePosition)
-                ForceSyncToMousePositionOrFallback();
+            SnapToPlayerPosition();
         }
         else
         {
             if (resetToMousePosition)
-                ForceSyncToMousePositionOrFallback();
+                ResetCursorByCurrentInputMode();
         }
 
         UpdateCursorVisual();
@@ -105,6 +103,34 @@ public class WeaponAimCursor : MonoBehaviour
         ForceSyncToMousePositionOrFallback();
     }
 
+    public void ResetCursorByCurrentInputMode()
+    {
+        InputReader inputReader = InputReader.Instance;
+        bool isGamepadMode = inputReader != null && inputReader.IsGamepadControlSchemeActive();
+
+        if (isGamepadMode)
+        {
+            IsGamepadCursorMode = true;
+            SnapToPlayerPosition();
+            return;
+        }
+
+        IsGamepadCursorMode = false;
+        ForceSyncToMousePositionOrFallback();
+    }
+
+    public void SnapToPlayerPosition()
+    {
+        if (_playerTransform != null)
+        {
+            CurrentWorldPosition = _playerTransform.position;
+            _fallbackGamepadStartPosition = CurrentWorldPosition;
+            _hasValidCursorPosition = true;
+            _lastPlayerPosition = _playerTransform.position;
+            UpdateCursorTransformOnly();
+        }
+    }
+
     public void Tick()
     {
         ManualUpdate();
@@ -135,32 +161,21 @@ public class WeaponAimCursor : MonoBehaviour
             return;
         }
 
+        Vector2 lookInput = inputReader.GetLookInput();
+        float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
+        bool hasGamepadLookInput =
+            inputReader.IsLookInputFromGamepad() &&
+            lookInput.sqrMagnitude >= deadzone * deadzone;
+
         if (_isSuppressedByMode)
         {
-            // Keep aim coordinates live even when cursor is hidden in melee mode.
-            // PlayerController reads CurrentWorldPosition for AimDirection updates.
-            IsGamepadCursorMode = false;
-
-            if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
-            {
-                CurrentWorldPosition = mouseWorld;
-                _hasValidCursorPosition = true;
-            }
-            else
-            {
-                CurrentWorldPosition += playerDelta;
-            }
+            SnapToPlayerPosition();
 
             UpdateCursorVisual();
             return;
         }
 
         bool mouseMoved = inputReader.IsMouseAiming();
-        Vector2 lookInput = inputReader.GetLookInput();
-        float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
-        bool hasGamepadLookInput =
-            inputReader.IsLookInputFromGamepad() &&
-            lookInput.sqrMagnitude >= deadzone * deadzone;
 
         if (mouseMoved)
         {

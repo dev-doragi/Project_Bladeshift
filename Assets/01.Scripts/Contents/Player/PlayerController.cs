@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviour
     [Header("Aim Provider")]
     [SerializeField] private WeaponAimCursor _weaponAimCursor;
     [SerializeField] private WeaponSensor _weaponSensor;
+    [SerializeField] private WeaponModeController _weaponModeController;
 
     private Camera _mainCamera;
 
@@ -69,6 +70,11 @@ public class PlayerController : MonoBehaviour
         _weaponSensor = weaponSensor;
     }
 
+    public void SetWeaponModeController(WeaponModeController modeController)
+    {
+        _weaponModeController = modeController;
+    }
+
     private void OnMoveInput(MoveInputEvent evt)
     {
         MoveInput = evt.Direction;
@@ -106,6 +112,20 @@ public class PlayerController : MonoBehaviour
         if (InputReader.Instance.IsInputBlocked)
             return;
 
+        if (_weaponModeController != null && _weaponModeController.CurrentMode == WeaponMode.Melee)
+        {
+            UpdateMeleeAimDirectionFromLook();
+            return;
+        }
+
+        Vector2 lookInput = InputReader.Instance.GetLookInput();
+        if (InputReader.Instance.IsGamepadLookActive() && lookInput.sqrMagnitude > 0.0001f)
+        {
+            AimDirection = lookInput.normalized;
+            FacingSign = AimDirection.x >= 0f ? 1 : -1;
+            return;
+        }
+
         Camera cam = _mainCamera != null ? _mainCamera : Camera.main;
         if (cam == null)
             return;
@@ -131,6 +151,23 @@ public class PlayerController : MonoBehaviour
 
         Vector2 screenPos = InputReader.Instance.GetMousePosition();
         return cam.ScreenToWorldPoint(screenPos);
+    }
+
+    private void UpdateMeleeAimDirectionFromLook()
+    {
+        Vector2 lookInput = InputReader.Instance.GetLookInput();
+        float absX = Mathf.Abs(lookInput.x);
+        if (InputReader.Instance.IsGamepadLookActive() && absX > 0.15f)
+        {
+            FacingSign = lookInput.x >= 0f ? 1 : -1;
+            AimDirection = new Vector2(FacingSign, 0f);
+            return;
+        }
+
+        if (Mathf.Abs(MoveInput.x) > 0.01f)
+            FacingSign = MoveInput.x >= 0f ? 1 : -1;
+
+        AimDirection = new Vector2(FacingSign, 0f);
     }
 
     private void OnDrawGizmos()

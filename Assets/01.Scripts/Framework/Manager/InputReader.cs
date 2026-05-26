@@ -297,6 +297,16 @@ public class InputReader : Singleton<InputReader>
     }
 
     public bool IsGamepadAimActive() => IsGamepadLookActive();
+    public bool IsGamepadControlSchemeActive()
+    {
+        if (_playerInput != null && !string.IsNullOrEmpty(_playerInput.currentControlScheme))
+        {
+            if (_playerInput.currentControlScheme.Contains("Gamepad"))
+                return true;
+        }
+
+        return IsLookInputFromGamepad();
+    }
 
     public Vector2 GetAimWorldPosition(Vector2 origin, float radius, Camera camera, Vector2 fallbackWorldPosition)
     {

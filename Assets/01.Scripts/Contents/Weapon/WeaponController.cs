@@ -170,6 +170,7 @@ public class WeaponController : MonoBehaviour
         _aimCursor?.Initialize(_playerTransform, _mainCamera, ControlRadius);
         _aimCursor?.SetFallbackGamepadStartPosition(transform.position);
         _sensor.SetAimCursor(_aimCursor);
+        _playerController?.SetWeaponModeController(_modeController);
         _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);
         _embeddedAttack.Initialize(this);
         _actionRouter.Initialize(this, _modeController);
@@ -230,7 +231,8 @@ public class WeaponController : MonoBehaviour
             return;
 
         bool suppressCursor = mode == WeaponMode.Melee;
-        _aimCursor.SetCursorSuppressedByMode(suppressCursor, resetCursorPosition);
+        bool shouldResetToMouse = resetCursorPosition && !suppressCursor;
+        _aimCursor.SetCursorSuppressedByMode(suppressCursor, shouldResetToMouse);
     }
 
     private void RefreshAimCursorVisibilityFromState()
