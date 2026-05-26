@@ -50,7 +50,6 @@ public class InputReader : Singleton<InputReader>
     private InputAction _scrollAction;
     private InputAction _rotateAction;
     private InputAction _pauseAction;
-    private bool _wasUsingGamepadAim;
 
     public bool IsPointerOverUI { get; private set; }
     private bool _isInputBlocked = false;
@@ -290,65 +289,30 @@ public class InputReader : Singleton<InputReader>
     public Vector2 GetMousePosition() => _pointAction?.ReadValue<Vector2>() ?? Vector2.zero;
     public Vector2 GetMouseDelta() => Mouse.current != null ? Mouse.current.delta.ReadValue() : Vector2.zero;
     public Vector2 GetLookInput() => _lookAction?.ReadValue<Vector2>() ?? Vector2.zero;
-
-    public bool IsGamepadAimActive()
+    public bool IsGamepadLookActive()
     {
         Vector2 lookInput = GetLookInput();
         float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
-        bool hasGamepadLookInput = lookInput.sqrMagnitude >= deadzone * deadzone && IsLookInputFromGamepad();
-
-        if (hasGamepadLookInput)
-        {
-            _wasUsingGamepadAim = true;
-            return true;
-        }
-
-        if (_wasUsingGamepadAim && IsMouseAiming())
-        {
-            _wasUsingGamepadAim = false;
-            return false;
-        }
-
-        return _wasUsingGamepadAim;
+        return lookInput.sqrMagnitude >= deadzone * deadzone && IsLookInputFromGamepad();
     }
+
+    public bool IsGamepadAimActive() => IsGamepadLookActive();
 
     public Vector2 GetAimWorldPosition(Vector2 origin, float radius, Camera camera, Vector2 fallbackWorldPosition)
     {
         if (camera == null)
             return fallbackWorldPosition;
 
-        Vector2 lookInput = GetLookInput();
-        float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
-        bool hasGamepadLookInput = lookInput.sqrMagnitude >= deadzone * deadzone && IsLookInputFromGamepad();
-
-        if (hasGamepadLookInput)
-        {
-            _wasUsingGamepadAim = true;
-            return origin + lookInput.normalized * Mathf.Max(0f, radius);
-        }
-
-        if (_wasUsingGamepadAim)
-        {
-            if (IsMouseAiming())
-            {
-                _wasUsingGamepadAim = false;
-            }
-            else
-            {
-                return fallbackWorldPosition;
-            }
-        }
-
         Vector2 mouseScreen = GetMousePosition();
         return camera.ScreenToWorldPoint(mouseScreen);
     }
 
-    private bool IsLookInputFromGamepad()
+    public bool IsLookInputFromGamepad()
     {
         return _lookAction?.activeControl?.device is Gamepad;
     }
 
-    private bool IsMouseAiming()
+    public bool IsMouseAiming()
     {
         if (Mouse.current == null)
             return false;

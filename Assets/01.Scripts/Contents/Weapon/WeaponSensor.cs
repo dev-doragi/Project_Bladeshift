@@ -8,6 +8,7 @@ public class WeaponSensor : MonoBehaviour
     [SerializeField] private float _mouseCaptureRadius = 1f;
     [SerializeField] private float _mouseCaptureMaintainRadius = 1.5f;
     [SerializeField] private float _lineOfSightMargin = 0.35f;
+    [SerializeField] private WeaponAimCursor _aimCursor;
 
     private Transform _playerTransform;
     private Camera _mainCamera;
@@ -19,6 +20,8 @@ public class WeaponSensor : MonoBehaviour
         _playerTransform = playerTransform;
         _mainCamera = mainCamera != null ? mainCamera : Camera.main;
         _controlRadius = controlRadius;
+        if (_aimCursor == null)
+            _aimCursor = GetComponent<WeaponAimCursor>();
         _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
     }
 
@@ -31,25 +34,31 @@ public class WeaponSensor : MonoBehaviour
 
     public Vector2 GetMouseWorldPosition()
     {
-        InputReader inputReader = InputReader.Instance;
-        if (_mainCamera == null || inputReader == null || _playerTransform == null)
+        if (_playerTransform == null)
             return _lastValidMousePos;
 
-        bool isGamepadAim = inputReader.IsGamepadAimActive();
-        if (!isGamepadAim)
+        if (_aimCursor != null && _aimCursor.IsInitialized)
         {
-            Vector2 screenPos = inputReader.GetMousePosition();
-            if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
-            {
-                return _lastValidMousePos;
-            }
+            _lastValidMousePos = _aimCursor.CurrentWorldPosition;
+            return _lastValidMousePos;
         }
 
-        Vector2 origin = _playerTransform.position;
-        float aimRadius = Mathf.Max(0f, _controlRadius);
-        Vector2 worldPos = inputReader.GetAimWorldPosition(origin, aimRadius, _mainCamera, _lastValidMousePos);
+        InputReader inputReader = InputReader.Instance;
+        if (_mainCamera == null || inputReader == null)
+            return _lastValidMousePos;
+
+        Vector2 screenPos = inputReader.GetMousePosition();
+        if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
+            return _lastValidMousePos;
+
+        Vector2 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
         _lastValidMousePos = worldPos;
         return worldPos;
+    }
+
+    public void SetAimCursor(WeaponAimCursor aimCursor)
+    {
+        _aimCursor = aimCursor;
     }
 
     public bool IsPlayerInRange(Vector3 weaponPosition)

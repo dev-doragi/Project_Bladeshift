@@ -430,7 +430,7 @@ public class ThrustPierceModule : WeaponActionModule
                 }
 
                 Controller.StateMachine.ClearPinSource();
-                StartReturnToPlayer();
+                StartRangeExceededReturnToDock();
             });
     }
 
@@ -443,6 +443,18 @@ public class ThrustPierceModule : WeaponActionModule
             () => Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
             Controller.ControlRadius,
             (currentPos, mousePos) => Controller.Sensor.IsMouseHovering(currentPos, mousePos),
+            _ => Controller.ChangeState(WeaponState.Controlled));
+    }
+
+    private void StartRangeExceededReturnToDock()
+    {
+        Controller.StateMachine?.ClearPinSource();
+        Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
+        Controller.ChangeState(WeaponState.Returning);
+        Controller.Movement.ExecuteReturn(
+            GetDockTargetPosition,
+            Controller.ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
             _ => Controller.ChangeState(WeaponState.Controlled));
     }
 

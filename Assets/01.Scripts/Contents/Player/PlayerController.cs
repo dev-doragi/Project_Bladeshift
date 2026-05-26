@@ -4,8 +4,13 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     private PlatformerMotor2D _motor;
+
     [SerializeField] private float _controlRadius = 20f;
     [SerializeField] private bool _showControlRadiusGizmo = true;
+
+    [Header("Aim Provider")]
+    [SerializeField] private WeaponAimCursor _weaponAimCursor;
+    [SerializeField] private WeaponSensor _weaponSensor;
 
     private Camera _mainCamera;
 
@@ -45,11 +50,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Update()
-    {
-        UpdateAimDirection();
-    }
-
     private void Start()
     {
         EventBus.Instance?.Publish(new PlayerSpawnedEvent
@@ -58,22 +58,35 @@ public class PlayerController : MonoBehaviour
         });
     }
 
+    private void Update()
+    {
+        UpdateAimDirection();
+    }
+
+    public void SetAimProvider(WeaponAimCursor aimCursor, WeaponSensor weaponSensor)
+    {
+        _weaponAimCursor = aimCursor;
+        _weaponSensor = weaponSensor;
+    }
+
     private void OnMoveInput(MoveInputEvent evt)
     {
         MoveInput = evt.Direction;
-
         _motor.SetHorizontalInput(evt.Direction.x);
     }
 
     private void OnJumpInput(JumpInputEvent evt)
     {
-        if (evt.IsStarted) _motor.RequestJump();
-        else _motor.CancelJump();
+        if (evt.IsStarted)
+            _motor.RequestJump();
+        else
+            _motor.CancelJump();
     }
 
     private void OnDashInput(DashInputEvent evt)
     {
-        if (!evt.IsStarted) return;
+        if (!evt.IsStarted)
+            return;
 
         Vector2 dashDirection;
 
@@ -98,11 +111,7 @@ public class PlayerController : MonoBehaviour
             return;
 
         Vector2 origin = transform.position;
-        float aimRadius = Mathf.Max(0f, _controlRadius);
-        Vector2 fallbackWorldPosition = AimDirection.sqrMagnitude > 0.0001f
-            ? origin + AimDirection.normalized * aimRadius
-            : origin;
-        Vector2 aimWorld = InputReader.Instance.GetAimWorldPosition(origin, aimRadius, cam, fallbackWorldPosition);
+        Vector2 aimWorld = ResolveAimWorldPosition(cam);
         Vector2 dir = aimWorld - origin;
 
         if (dir.sqrMagnitude <= 0.0001f)
@@ -112,9 +121,22 @@ public class PlayerController : MonoBehaviour
         FacingSign = AimDirection.x >= 0f ? 1 : -1;
     }
 
+    private Vector2 ResolveAimWorldPosition(Camera cam)
+    {
+        if (_weaponAimCursor != null && _weaponAimCursor.IsInitialized)
+            return _weaponAimCursor.CurrentWorldPosition;
+
+        if (_weaponSensor != null)
+            return _weaponSensor.GetMouseWorldPosition();
+
+        Vector2 screenPos = InputReader.Instance.GetMousePosition();
+        return cam.ScreenToWorldPoint(screenPos);
+    }
+
     private void OnDrawGizmos()
     {
-        if (!_showControlRadiusGizmo) return;
+        if (!_showControlRadiusGizmo)
+            return;
 
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, _controlRadius);

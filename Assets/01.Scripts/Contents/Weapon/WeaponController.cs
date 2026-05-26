@@ -9,6 +9,7 @@ using System.Reflection;
 [RequireComponent(typeof(WeaponSensor), typeof(WeaponView))]
 [RequireComponent(typeof(WeaponCapture), typeof(WeaponLinkEnergy))]
 [RequireComponent(typeof(WeaponEmbeddedAttack))]
+[RequireComponent(typeof(WeaponAimCursor))]
 public class WeaponController : MonoBehaviour
 {
     [Header("1. Core References")]
@@ -31,6 +32,7 @@ public class WeaponController : MonoBehaviour
     private WeaponView _view;
     private WeaponCapture _capture;
     private WeaponEmbeddedAttack _embeddedAttack;
+    private WeaponAimCursor _aimCursor;
     private WeaponLinkEnergy _linkEnergy;
     private WeaponStateMachine _stateMachine;
     private WeaponModeController _modeController;
@@ -52,6 +54,7 @@ public class WeaponController : MonoBehaviour
     public WeaponView View => _view;
     public WeaponCapture Capture => _capture;
     public WeaponEmbeddedAttack EmbeddedAttack => _embeddedAttack;
+    public WeaponAimCursor AimCursor => _aimCursor;
     public WeaponLinkEnergy LinkEnergy => _linkEnergy;
     public WeaponStateMachine StateMachine => _stateMachine;
     public WeaponModeController ModeController => _modeController;
@@ -101,6 +104,9 @@ public class WeaponController : MonoBehaviour
         _embeddedAttack = GetComponent<WeaponEmbeddedAttack>();
         if (_embeddedAttack == null)
             _embeddedAttack = gameObject.AddComponent<WeaponEmbeddedAttack>();
+        _aimCursor = GetComponent<WeaponAimCursor>();
+        if (_aimCursor == null)
+            _aimCursor = gameObject.AddComponent<WeaponAimCursor>();
         _linkEnergy = GetComponent<WeaponLinkEnergy>();
         _stateMachine = GetComponent<WeaponStateMachine>();
         _modeController = GetComponent<WeaponModeController>();
@@ -146,6 +152,9 @@ public class WeaponController : MonoBehaviour
         _meleeHoverFollow.Initialize(_playerController, _rb, _weaponCollider);
         _modeController.Initialize(_stateMachine);
         _sensor.Initialize(_playerTransform, _mainCamera, ControlRadius);
+        _aimCursor?.Initialize(_playerTransform, _mainCamera, ControlRadius);
+        _aimCursor?.SetFallbackGamepadStartPosition(transform.position);
+        _sensor.SetAimCursor(_aimCursor);
         _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);
         _embeddedAttack.Initialize(this);
         _actionRouter.Initialize(this, _modeController);
