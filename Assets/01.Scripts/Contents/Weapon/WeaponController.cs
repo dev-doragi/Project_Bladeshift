@@ -168,6 +168,7 @@ public class WeaponController : MonoBehaviour
         _modeController.Initialize(_stateMachine);
         _sensor.Initialize(_playerTransform, _mainCamera, ControlRadius);
         _aimCursor?.Initialize(_playerTransform, _mainCamera, ControlRadius);
+        _aimCursor?.SetWallMask(_wallAndEnvironmentLayer);
         _aimCursor?.SetFallbackGamepadStartPosition(transform.position);
         _sensor.SetAimCursor(_aimCursor);
         _playerController?.SetWeaponModeController(_modeController);

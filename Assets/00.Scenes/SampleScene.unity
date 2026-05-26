@@ -1718,6 +1718,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _wallMask.m_Bits
+      value: 128
+      objectReference: {fileID: 0}
+    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: _showCursorInGamepadModeOnly
       value: 0
       objectReference: {fileID: 0}

@@ -7,6 +7,7 @@ public class WeaponAimCursor : MonoBehaviour
     [SerializeField] private float _gamepadCursorSpeed = 12f;
     [SerializeField] private float _gamepadAimDeadzone = 0.2f;
     [SerializeField] private bool _showCursorInGamepadModeOnly = false;
+    [SerializeField] private LayerMask _wallMask;
 
     public Vector2 CurrentWorldPosition { get; private set; }
     public bool IsGamepadCursorMode { get; private set; }
@@ -22,6 +23,9 @@ public class WeaponAimCursor : MonoBehaviour
     private bool _isCursorVisibleByUser = true;
     private bool _isSuppressedByMode;
     private Vector2 _lastPlayerPosition;
+
+    private Vector2 _lastReachableCursorPosition;
+    private bool _hasLastReachableCursorPosition;
 
     public void Initialize(Transform playerTransform, Camera camera, float controlRadius)
     {
@@ -43,6 +47,11 @@ public class WeaponAimCursor : MonoBehaviour
         _isInitialized = true;
 
         UpdateCursorVisual();
+    }
+
+    public void SetWallMask(LayerMask wallMask)
+    {
+        _wallMask = wallMask;
     }
 
     public void SetFallbackGamepadStartPosition(Vector2 worldPosition)
@@ -81,7 +90,7 @@ public class WeaponAimCursor : MonoBehaviour
 
         if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
         {
-            CurrentWorldPosition = mouseWorld;
+            CurrentWorldPosition = ConstrainToReachableWorldPosition(mouseWorld);
         }
         else if (_playerTransform != null)
         {
@@ -96,6 +105,8 @@ public class WeaponAimCursor : MonoBehaviour
         _hasValidCursorPosition = true;
         _lastPlayerPosition = _playerTransform != null ? (Vector2)_playerTransform.position : CurrentWorldPosition;
         UpdateCursorTransformOnly();
+
+        ResetAimConstraintCache();
     }
 
     public void ResetCursorPosition()
@@ -129,6 +140,8 @@ public class WeaponAimCursor : MonoBehaviour
             _lastPlayerPosition = _playerTransform.position;
             UpdateCursorTransformOnly();
         }
+
+        ResetAimConstraintCache();
     }
 
     public void Tick()
@@ -169,8 +182,6 @@ public class WeaponAimCursor : MonoBehaviour
 
         if (_isSuppressedByMode)
         {
-            SnapToPlayerPosition();
-
             UpdateCursorVisual();
             return;
         }
@@ -183,7 +194,7 @@ public class WeaponAimCursor : MonoBehaviour
 
             if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
             {
-                CurrentWorldPosition = mouseWorld;
+                CurrentWorldPosition = ConstrainToReachableWorldPosition(mouseWorld);
                 _hasValidCursorPosition = true;
             }
         }
@@ -197,7 +208,7 @@ public class WeaponAimCursor : MonoBehaviour
 
             CurrentWorldPosition += playerDelta;
             CurrentWorldPosition += lookInput * Mathf.Max(0f, _gamepadCursorSpeed) * Time.unscaledDeltaTime;
-            CurrentWorldPosition = ClampToControlRadius(CurrentWorldPosition);
+            CurrentWorldPosition = ConstrainToReachableWorldPosition(CurrentWorldPosition);
             _hasValidCursorPosition = true;
         }
         else
@@ -206,14 +217,14 @@ public class WeaponAimCursor : MonoBehaviour
             {
                 if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
                 {
-                    CurrentWorldPosition = mouseWorld;
+                    CurrentWorldPosition = ConstrainToReachableWorldPosition(mouseWorld);
                     _hasValidCursorPosition = true;
                 }
             }
             else
             {
                 CurrentWorldPosition += playerDelta;
-                CurrentWorldPosition = ClampToControlRadius(CurrentWorldPosition);
+                CurrentWorldPosition = ConstrainToReachableWorldPosition(CurrentWorldPosition);
             }
         }
 
@@ -235,13 +246,8 @@ public class WeaponAimCursor : MonoBehaviour
             return;
 
         Vector2 preferred = _fallbackGamepadStartPosition;
-        Vector2 weaponWorldPosition = transform.position;
 
-        if (Vector2.Distance(weaponWorldPosition, origin) >= minDistance)
-        {
-            preferred = weaponWorldPosition;
-        }
-        else if (Vector2.Distance(preferred, origin) < minDistance)
+        if (Vector2.Distance(preferred, origin) < minDistance)
         {
             Vector2 aimDirection =
                 _playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
@@ -288,6 +294,35 @@ public class WeaponAimCursor : MonoBehaviour
             return worldPosition;
 
         return origin + offset.normalized * _controlRadius;
+    }
+
+    private Vector2 ConstrainToReachableWorldPosition(Vector2 desiredWorldPosition)
+    {
+        if (_playerTransform == null)
+            return desiredWorldPosition;
+
+        Vector2 solvedPosition = WeaponAimConstraintSolver.SolveReachablePosition(
+            _playerTransform.position,
+            desiredWorldPosition,
+            _controlRadius,
+            _wallMask,
+            ref _lastReachableCursorPosition,
+            _hasLastReachableCursorPosition
+        );
+
+        _hasLastReachableCursorPosition = true;
+        return solvedPosition;
+    }
+
+    public void ResetAimConstraintCache()
+    {
+        _hasLastReachableCursorPosition = false;
+
+        Vector2 fallback = _playerTransform != null
+            ? (Vector2)_playerTransform.position
+            : CurrentWorldPosition;
+
+        _lastReachableCursorPosition = fallback;
     }
 
     private void UpdateCursorVisual()
