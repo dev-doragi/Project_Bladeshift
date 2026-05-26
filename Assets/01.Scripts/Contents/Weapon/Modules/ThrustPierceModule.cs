@@ -430,7 +430,7 @@ public class ThrustPierceModule : WeaponActionModule
                 }
 
                 Controller.StateMachine.ClearPinSource();
-                StartReturnToPlayer();
+                StartRangeExceededReturnToDock();
             });
     }
 
@@ -443,6 +443,18 @@ public class ThrustPierceModule : WeaponActionModule
             () => Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
             Controller.ControlRadius,
             (currentPos, mousePos) => Controller.Sensor.IsMouseHovering(currentPos, mousePos),
+            _ => Controller.ChangeState(WeaponState.Controlled));
+    }
+
+    private void StartRangeExceededReturnToDock()
+    {
+        Controller.StateMachine?.ClearPinSource();
+        Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
+        Controller.ChangeState(WeaponState.Returning);
+        Controller.Movement.ExecuteReturn(
+            GetDockTargetPosition,
+            Controller.ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
             _ => Controller.ChangeState(WeaponState.Controlled));
     }
 
@@ -480,6 +492,7 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.transform.position = dock.position;
         Controller.transform.rotation = dock.rotation;
         Controller.transform.SetParent(dock, true);
+        Controller.AimCursor?.SnapToPlayerPosition();
         _isDockWaiting = true;
         _dockRechargeRoutine = null;
     }
@@ -493,6 +506,7 @@ public class ThrustPierceModule : WeaponActionModule
         _isDockWaiting = false;
         _dockRechargeRoutine = null;
         Controller.transform.SetParent(null, true);
+        Controller.AimCursor?.SnapToPlayerPosition();
         Controller.ChangeState(WeaponState.Grounded);
     }
 

@@ -735,6 +735,7 @@ MonoBehaviour:
   _thrustDragThreshold: 6
   _recallEnergyCost: 0
   _fullRechargeDelayAfterReturn: 1.5
+  _aimCursor: {fileID: 0}
 --- !u!114 &5923836136970560632
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -760,7 +761,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80f4745e9cc441e39b27f0ed60c4314b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
-  _initialMode: 0
+  _initialMode: 1
   _stateMachine: {fileID: 5923836136970560632}
   _meleeHoverFollow: {fileID: 7554338162925912487}
 --- !u!114 &6088404281793045894
@@ -847,6 +848,7 @@ MonoBehaviour:
   _mouseCaptureRadius: 1
   _mouseCaptureMaintainRadius: 1.5
   _lineOfSightMargin: 0.35
+  _aimCursor: {fileID: 0}
 --- !u!114 &620977729684863863
 MonoBehaviour:
   m_ObjectHideFlags: 0

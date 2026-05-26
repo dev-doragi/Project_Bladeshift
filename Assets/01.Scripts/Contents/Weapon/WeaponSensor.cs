@@ -8,18 +8,26 @@ public class WeaponSensor : MonoBehaviour
     [SerializeField] private float _mouseCaptureRadius = 1f;
     [SerializeField] private float _mouseCaptureMaintainRadius = 1.5f;
     [SerializeField] private float _lineOfSightMargin = 0.35f;
+    [SerializeField] private WeaponAimCursor _aimCursor;
 
     private Transform _playerTransform;
     private Camera _mainCamera;
     private float _controlRadius;
     private Vector2 _lastValidMousePos;
 
+    private Vector2 _lastReachableTargetPosition;
+    private bool _hasLastReachableTargetPosition;
+
     public void Initialize(Transform playerTransform, Camera mainCamera, float controlRadius)
     {
         _playerTransform = playerTransform;
         _mainCamera = mainCamera != null ? mainCamera : Camera.main;
         _controlRadius = controlRadius;
+        if (_aimCursor == null)
+            _aimCursor = GetComponentInChildren<WeaponAimCursor>(true);
         _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
+
+        ResetAimConstraintCache();
     }
 
     public void Configure(Transform playerTransform, Camera mainCamera, float controlRadius, float mouseCaptureRadius, float mouseCaptureMaintainRadius, float breakMouseSpeed)
@@ -31,17 +39,31 @@ public class WeaponSensor : MonoBehaviour
 
     public Vector2 GetMouseWorldPosition()
     {
-        if (_mainCamera == null || InputReader.Instance == null) return _lastValidMousePos;
+        if (_playerTransform == null)
+            return _lastValidMousePos;
 
-        Vector2 screenPos = InputReader.Instance.GetMousePosition();
-        if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
+        if (_aimCursor != null && _aimCursor.IsInitialized)
         {
+            _lastValidMousePos = _aimCursor.CurrentWorldPosition;
             return _lastValidMousePos;
         }
+
+        InputReader inputReader = InputReader.Instance;
+        if (_mainCamera == null || inputReader == null)
+            return _lastValidMousePos;
+
+        Vector2 screenPos = inputReader.GetMousePosition();
+        if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
+            return _lastValidMousePos;
 
         Vector2 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
         _lastValidMousePos = worldPos;
         return worldPos;
+    }
+
+    public void SetAimCursor(WeaponAimCursor aimCursor)
+    {
+        _aimCursor = aimCursor;
     }
 
     public bool IsPlayerInRange(Vector3 weaponPosition)
@@ -70,26 +92,31 @@ public class WeaponSensor : MonoBehaviour
 
     public Vector2 GetClampedTargetPosition(LayerMask wallMask)
     {
-        if (_playerTransform == null) return GetMouseWorldPosition();
+        if (_playerTransform == null)
+            return GetMouseWorldPosition();
 
-        Vector2 mousePos = GetMouseWorldPosition();
-        Vector2 start = _playerTransform.position;
-        Vector2 direction = mousePos - start;
-        float distance = direction.magnitude;
+        Vector2 solvedPosition = WeaponAimConstraintSolver.SolveReachablePosition(
+            _playerTransform.position,
+            GetMouseWorldPosition(),
+            _controlRadius,
+            wallMask,
+            ref _lastReachableTargetPosition,
+            _hasLastReachableTargetPosition
+        );
 
-        if (distance <= 0.01f) return mousePos;
+        _hasLastReachableTargetPosition = true;
+        return solvedPosition;
+    }
 
-        Vector2 targetPos = mousePos;
+    public void ResetAimConstraintCache()
+    {
+        _hasLastReachableTargetPosition = false;
 
-        if (distance > _controlRadius)
-        {
-            targetPos = start + direction.normalized * _controlRadius;
-            direction = targetPos - start;
-            distance = _controlRadius;
-        }
+        Vector2 fallback = _playerTransform != null
+            ? (Vector2)_playerTransform.position
+            : _lastValidMousePos;
 
-        RaycastHit2D hit = Physics2D.Raycast(start, direction.normalized, distance, wallMask);
-        return hit.collider != null ? hit.point : targetPos;
+        _lastReachableTargetPosition = fallback;
     }
 
     public bool IsMouseInRange(Vector2 mousePos, bool alreadyControlled)

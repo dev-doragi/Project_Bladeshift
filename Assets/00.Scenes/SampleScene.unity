@@ -883,6 +883,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
+--- !u!114 &1459670090 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+  m_PrefabInstance: {fileID: 7181595876209411561}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a7dbf3c51d34c49b67c3f5b4a3a0c55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponSensor
+--- !u!114 &1459670094 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 303466040254391467, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+  m_PrefabInstance: {fileID: 7181595876209411561}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80f4745e9cc441e39b27f0ed60c4314b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
 --- !u!1 &1571438710
 GameObject:
   m_ObjectHideFlags: 0
@@ -1695,6 +1717,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _wallMask.m_Bits
+      value: 128
+      objectReference: {fileID: 0}
+    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _showCursorInGamepadModeOnly
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1739,6 +1769,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponSensor
+      value: 
+      objectReference: {fileID: 1459670090}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponAimCursor
+      value: 
+      objectReference: {fileID: 1493108795789087932}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponModeController
+      value: 
+      objectReference: {fileID: 1459670094}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1749,6 +1791,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1508241358393717943, guid: 916123afff0eaec4caff932178703efb, type: 3}
   m_PrefabInstance: {fileID: 1493108795789087930}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1493108795789087932 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+  m_PrefabInstance: {fileID: 1493108795789087930}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1001 &3407521210719011598
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2107,6 +2160,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 303466040254391467, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _initialMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _cursorVisual
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _modeController
+      value: 
+      objectReference: {fileID: 1459670094}
+    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _showCursorInGamepadModeOnly
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _aimCursor
+      value: 
+      objectReference: {fileID: 1493108795789087932}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _droneDockPivot
       value: 
@@ -2155,6 +2228,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5123456789012345678, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _aimCursor
+      value: 
+      objectReference: {fileID: 1493108795789087932}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeOrbitRoot
       value: 
