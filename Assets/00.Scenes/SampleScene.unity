@@ -1773,6 +1773,10 @@ PrefabInstance:
       propertyPath: _weaponAimCursor
       value: 
       objectReference: {fileID: 1493108795789087932}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponModeController
+      value: 
+      objectReference: {fileID: 1459670094}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
