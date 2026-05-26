@@ -298,11 +298,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &348086679 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1253719974958842125, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-  m_PrefabInstance: {fileID: 7181595876209411561}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1722,6 +1717,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _showCursorInGamepadModeOnly
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1773,7 +1772,7 @@ PrefabInstance:
     - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: _weaponAimCursor
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1493108795789087932}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1784,6 +1783,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1508241358393717943, guid: 916123afff0eaec4caff932178703efb, type: 3}
   m_PrefabInstance: {fileID: 1493108795789087930}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1493108795789087932 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+  m_PrefabInstance: {fileID: 1493108795789087930}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1001 &3407521210719011598
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2149,19 +2159,19 @@ PrefabInstance:
     - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _cursorVisual
       value: 
-      objectReference: {fileID: 348086679}
+      objectReference: {fileID: 0}
     - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _modeController
       value: 
       objectReference: {fileID: 1459670094}
     - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _showCursorInGamepadModeOnly
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
-      objectReference: {fileID: 7181595876209411565}
+      objectReference: {fileID: 1493108795789087932}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _droneDockPivot
       value: 
@@ -2214,6 +2224,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _aimCursor
+      value: 
+      objectReference: {fileID: 1493108795789087932}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeOrbitRoot
       value: 
@@ -2239,17 +2253,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
---- !u!114 &7181595876209411565 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-  m_PrefabInstance: {fileID: 7181595876209411561}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1001 &7719760163161778089
 PrefabInstance:
   m_ObjectHideFlags: 0

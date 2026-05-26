@@ -191,7 +191,7 @@ public class WeaponAimCursor : MonoBehaviour
         UpdateCursorVisual();
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         ManualUpdate();
     }
@@ -289,11 +289,7 @@ public class WeaponAimCursor : MonoBehaviour
             _cursorVisual.rotation = Quaternion.identity;
     }
 
-    private void LateUpdate()
-    {
-        if (transform.parent != null)
-            transform.SetParent(null, true);
-    }
+
 
     private void ResolveCursorVisual()
     {
