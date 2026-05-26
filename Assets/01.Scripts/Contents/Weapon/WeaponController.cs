@@ -9,9 +9,23 @@ using System.Reflection;
 [RequireComponent(typeof(WeaponSensor), typeof(WeaponView))]
 [RequireComponent(typeof(WeaponCapture), typeof(WeaponLinkEnergy))]
 [RequireComponent(typeof(WeaponEmbeddedAttack))]
-[RequireComponent(typeof(WeaponAimCursor))]
 public class WeaponController : MonoBehaviour
 {
+    [System.Flags]
+    private enum AimCursorBlockReason
+    {
+        None = 0,
+        NonRemoteMode = 1 << 0,
+        UnsupportedWeaponState = 1 << 1,
+        ModeSwitchInProgress = 1 << 2,
+        AutoReturnInProgress = 1 << 3,
+        DockWaiting = 1 << 4,
+        DepletionSequence = 1 << 5,
+        ThrustAiming = 1 << 6,
+        PinningFlight = 1 << 7,
+        SpinSlashing = 1 << 8
+    }
+
     [Header("1. Core References")]
     [SerializeField] private Transform _playerTransform;
     [SerializeField] private Transform _droneDockPivot;
@@ -32,7 +46,7 @@ public class WeaponController : MonoBehaviour
     private WeaponView _view;
     private WeaponCapture _capture;
     private WeaponEmbeddedAttack _embeddedAttack;
-    private WeaponAimCursor _aimCursor;
+    [SerializeField] private WeaponAimCursor _aimCursor;
     private WeaponLinkEnergy _linkEnergy;
     private WeaponStateMachine _stateMachine;
     private WeaponModeController _modeController;
@@ -104,9 +118,10 @@ public class WeaponController : MonoBehaviour
         _embeddedAttack = GetComponent<WeaponEmbeddedAttack>();
         if (_embeddedAttack == null)
             _embeddedAttack = gameObject.AddComponent<WeaponEmbeddedAttack>();
-        _aimCursor = GetComponent<WeaponAimCursor>();
         if (_aimCursor == null)
-            _aimCursor = gameObject.AddComponent<WeaponAimCursor>();
+            _aimCursor = GetComponent<WeaponAimCursor>();
+        if (_aimCursor == null)
+            _aimCursor = GetComponentInChildren<WeaponAimCursor>(true);
         _linkEnergy = GetComponent<WeaponLinkEnergy>();
         _stateMachine = GetComponent<WeaponStateMachine>();
         _modeController = GetComponent<WeaponModeController>();
@@ -160,23 +175,35 @@ public class WeaponController : MonoBehaviour
         _actionRouter.Initialize(this, _modeController);
         _stateMachine.ChangeState(WeaponState.Grounded);
         _modeController.ApplyCurrentMode();
+        ApplyAimCursorModePolicy(_modeController.CurrentMode, resetCursorPosition: true);
+        RefreshAimCursorVisibilityFromState();
     }
 
     private void OnEnable()
     {
         EventBus.Instance?.Subscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
+        if (_modeController != null)
+            _modeController.ModeChanged += OnWeaponModeChanged;
     }
 
     private void OnDisable()
     {
         EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
+        if (_modeController != null)
+            _modeController.ModeChanged -= OnWeaponModeChanged;
         _isModeSwitchInProgress = false;
         _isMeleeRechargeWaiting = false;
     }
 
+    private void Update()
+    {
+        RefreshAimCursorVisibilityFromState();
+    }
+
     private void OnWeaponModeToggle(WeaponModeToggleEvent _)
     {
-        if (!CanToggleWeaponMode()) return;
+        if (!CanToggleWeaponMode())
+            return;
 
         if (_modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
         {
@@ -188,6 +215,75 @@ public class WeaponController : MonoBehaviour
             _capture.ForceReleaseCapturedTarget();
 
         _modeController?.ToggleMode();
+    }
+
+    private void OnWeaponModeChanged(WeaponMode previousMode, WeaponMode newMode)
+    {
+        bool shouldReset = previousMode != newMode;
+        ApplyAimCursorModePolicy(newMode, shouldReset);
+        RefreshAimCursorVisibilityFromState();
+    }
+
+    private void ApplyAimCursorModePolicy(WeaponMode mode, bool resetCursorPosition)
+    {
+        if (_aimCursor == null)
+            return;
+
+        bool suppressCursor = mode == WeaponMode.Melee;
+        _aimCursor.SetCursorSuppressedByMode(suppressCursor, resetCursorPosition);
+    }
+
+    private void RefreshAimCursorVisibilityFromState()
+    {
+        if (_aimCursor == null)
+            return;
+
+        bool shouldShow = EvaluateAimCursorVisibleFromState();
+        _aimCursor.SetCursorVisible(shouldShow);
+    }
+
+    private bool EvaluateAimCursorVisibleFromState()
+    {
+        return GetAimCursorBlockReasons() == AimCursorBlockReason.None;
+    }
+
+    private AimCursorBlockReason GetAimCursorBlockReasons()
+    {
+        AimCursorBlockReason reasons = AimCursorBlockReason.None;
+
+        if (_modeController == null || _modeController.CurrentMode != WeaponMode.Remote)
+            reasons |= AimCursorBlockReason.NonRemoteMode;
+
+        if (!IsAimCursorSupportedWeaponState(CurrentState))
+            reasons |= AimCursorBlockReason.UnsupportedWeaponState;
+
+        if (_isModeSwitchInProgress)
+            reasons |= AimCursorBlockReason.ModeSwitchInProgress;
+
+        if (IsAutoReturnInProgress)
+            reasons |= AimCursorBlockReason.AutoReturnInProgress;
+
+        if (IsDockWaiting)
+            reasons |= AimCursorBlockReason.DockWaiting;
+
+        if (IsDepletionSequenceActive)
+            reasons |= AimCursorBlockReason.DepletionSequence;
+
+        if (_thrustPierceModule != null && _thrustPierceModule.IsAiming)
+            reasons |= AimCursorBlockReason.ThrustAiming;
+
+        if (_thrustPierceModule != null && _thrustPierceModule.IsPinningFlightActive)
+            reasons |= AimCursorBlockReason.PinningFlight;
+
+        if (_spinSlashModule != null && _spinSlashModule.IsSlashing)
+            reasons |= AimCursorBlockReason.SpinSlashing;
+
+        return reasons;
+    }
+
+    private bool IsAimCursorSupportedWeaponState(WeaponState state)
+    {
+        return state == WeaponState.Grounded || state == WeaponState.Controlled;
     }
 
     private bool CanToggleWeaponMode()
@@ -326,6 +422,11 @@ public class WeaponController : MonoBehaviour
         if (_linkEnergy == null || !_linkEnergy.IsOffline) return;
         if (_thrustPierceModule == null || _handleLinkEnergyDepletedMethod == null) return;
         _handleLinkEnergyDepletedMethod.Invoke(_thrustPierceModule, null);
+    }
+
+    public void SetAimCursorVisible(bool isVisible)
+    {
+        _aimCursor?.SetCursorVisible(isVisible);
     }
 
     private void OnDrawGizmos()

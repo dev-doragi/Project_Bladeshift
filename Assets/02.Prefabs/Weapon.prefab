@@ -384,6 +384,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5123456789012345679}
+  - component: {fileID: 442233110099887766}
   m_Layer: 6
   m_Name: AimCursor
   m_TagString: Untagged
@@ -729,7 +730,6 @@ GameObject:
   - component: {fileID: 6088404281793045894}
   - component: {fileID: 5723434080366493270}
   - component: {fileID: 8890931883336942143}
-  - component: {fileID: 662233445566778899}
   - component: {fileID: 6705958014074586991}
   - component: {fileID: 620977729684863863}
   - component: {fileID: 5063814875019817314}
@@ -955,19 +955,19 @@ MonoBehaviour:
   _finisherWallProbeDistance: 3
   _finisherWallSkinWidth: 0.25
   _finisherBlockedForceRatio: 0.2
---- !u!114 &662233445566778899
+--- !u!114 &442233110099887766
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8857529888259376973}
+  m_GameObject: {fileID: 5123456789012345678}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
-  _cursorVisual: {fileID: 5123456789012345679}
+  _cursorVisual: {fileID: 3909317666882688024}
   _gamepadCursorSpeed: 12
   _gamepadAimDeadzone: 0.2
   _showCursorInGamepadModeOnly: 1
@@ -988,7 +988,7 @@ MonoBehaviour:
   _mouseCaptureRadius: 1
   _mouseCaptureMaintainRadius: 1.5
   _lineOfSightMargin: 0.35
-  _aimCursor: {fileID: 662233445566778899}
+  _aimCursor: {fileID: 442233110099887766}
 --- !u!114 &620977729684863863
 MonoBehaviour:
   m_ObjectHideFlags: 0

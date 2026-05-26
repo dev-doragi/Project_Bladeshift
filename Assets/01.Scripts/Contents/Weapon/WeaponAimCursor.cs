@@ -6,7 +6,7 @@ public class WeaponAimCursor : MonoBehaviour
     [SerializeField] private Transform _cursorVisual;
     [SerializeField] private float _gamepadCursorSpeed = 12f;
     [SerializeField] private float _gamepadAimDeadzone = 0.2f;
-    [SerializeField] private bool _showCursorInGamepadModeOnly = true;
+    [SerializeField] private bool _showCursorInGamepadModeOnly = false;
 
     public Vector2 CurrentWorldPosition { get; private set; }
     public bool IsGamepadCursorMode { get; private set; }
@@ -19,6 +19,9 @@ public class WeaponAimCursor : MonoBehaviour
     private bool _isInitialized;
     private bool _hasValidCursorPosition;
     private Vector2 _fallbackGamepadStartPosition;
+    private bool _isCursorVisibleByUser = true;
+    private bool _isSuppressedByMode;
+    private Vector2 _lastPlayerPosition;
 
     public void Initialize(Transform playerTransform, Camera camera, float controlRadius)
     {
@@ -26,25 +29,80 @@ public class WeaponAimCursor : MonoBehaviour
         _playerController = _playerTransform != null ? _playerTransform.GetComponent<PlayerController>() : null;
         _camera = camera != null ? camera : Camera.main;
         _controlRadius = Mathf.Max(0f, controlRadius);
+
         IsGamepadCursorMode = false;
+        _isSuppressedByMode = false;
+
         ResolveCursorVisual();
         EnsureCursorVisualStyle();
 
-        if (!TryGetMouseWorldPosition(out Vector2 mouseWorld))
-        {
-            mouseWorld = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
-        }
+        ForceSyncToMousePositionOrFallback();
 
-        CurrentWorldPosition = mouseWorld;
         _fallbackGamepadStartPosition = CurrentWorldPosition;
         _hasValidCursorPosition = true;
         _isInitialized = true;
+
         UpdateCursorVisual();
     }
 
     public void SetFallbackGamepadStartPosition(Vector2 worldPosition)
     {
         _fallbackGamepadStartPosition = worldPosition;
+    }
+
+    public void SetCursorVisible(bool isVisible)
+    {
+        _isCursorVisibleByUser = isVisible;
+        UpdateCursorVisual();
+    }
+
+    public void SetCursorSuppressedByMode(bool isSuppressed, bool resetToMousePosition)
+    {
+        _isSuppressedByMode = isSuppressed;
+
+        if (isSuppressed)
+        {
+            IsGamepadCursorMode = false;
+
+            if (resetToMousePosition)
+                ForceSyncToMousePositionOrFallback();
+        }
+        else
+        {
+            if (resetToMousePosition)
+                ForceSyncToMousePositionOrFallback();
+        }
+
+        UpdateCursorVisual();
+    }
+
+    public void ForceSyncToMousePositionOrFallback()
+    {
+        if (_camera == null)
+            _camera = Camera.main;
+
+        if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
+        {
+            CurrentWorldPosition = mouseWorld;
+        }
+        else if (_playerTransform != null)
+        {
+            CurrentWorldPosition = _playerTransform.position;
+        }
+        else
+        {
+            CurrentWorldPosition = transform.position;
+        }
+
+        _fallbackGamepadStartPosition = CurrentWorldPosition;
+        _hasValidCursorPosition = true;
+        _lastPlayerPosition = _playerTransform != null ? (Vector2)_playerTransform.position : CurrentWorldPosition;
+        UpdateCursorTransformOnly();
+    }
+
+    public void ResetCursorPosition()
+    {
+        ForceSyncToMousePositionOrFallback();
     }
 
     public void Tick()
@@ -63,6 +121,10 @@ public class WeaponAimCursor : MonoBehaviour
             return;
         }
 
+        Vector2 currentPlayerPosition = _playerTransform.position;
+        Vector2 playerDelta = currentPlayerPosition - _lastPlayerPosition;
+        _lastPlayerPosition = currentPlayerPosition;
+
         if (_camera == null)
             _camera = Camera.main;
 
@@ -73,14 +135,23 @@ public class WeaponAimCursor : MonoBehaviour
             return;
         }
 
+        if (_isSuppressedByMode)
+        {
+            UpdateCursorVisual();
+            return;
+        }
+
         bool mouseMoved = inputReader.IsMouseAiming();
         Vector2 lookInput = inputReader.GetLookInput();
         float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
-        bool hasGamepadLookInput = inputReader.IsLookInputFromGamepad() && lookInput.sqrMagnitude >= deadzone * deadzone;
+        bool hasGamepadLookInput =
+            inputReader.IsLookInputFromGamepad() &&
+            lookInput.sqrMagnitude >= deadzone * deadzone;
 
         if (mouseMoved)
         {
             IsGamepadCursorMode = false;
+
             if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
             {
                 CurrentWorldPosition = mouseWorld;
@@ -95,6 +166,7 @@ public class WeaponAimCursor : MonoBehaviour
                 EnsureGamepadModeStartPosition();
             }
 
+            CurrentWorldPosition += playerDelta;
             CurrentWorldPosition += lookInput * Mathf.Max(0f, _gamepadCursorSpeed) * Time.unscaledDeltaTime;
             CurrentWorldPosition = ClampToControlRadius(CurrentWorldPosition);
             _hasValidCursorPosition = true;
@@ -111,6 +183,7 @@ public class WeaponAimCursor : MonoBehaviour
             }
             else
             {
+                CurrentWorldPosition += playerDelta;
                 CurrentWorldPosition = ClampToControlRadius(CurrentWorldPosition);
             }
         }
@@ -134,15 +207,18 @@ public class WeaponAimCursor : MonoBehaviour
 
         Vector2 preferred = _fallbackGamepadStartPosition;
         Vector2 weaponWorldPosition = transform.position;
+
         if (Vector2.Distance(weaponWorldPosition, origin) >= minDistance)
         {
             preferred = weaponWorldPosition;
         }
         else if (Vector2.Distance(preferred, origin) < minDistance)
         {
-            Vector2 aimDirection = _playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
-                ? _playerController.AimDirection.normalized
-                : Vector2.right;
+            Vector2 aimDirection =
+                _playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
+                    ? _playerController.AimDirection.normalized
+                    : Vector2.right;
+
             float startDistance = Mathf.Clamp(_controlRadius * 0.5f, 0.5f, Mathf.Max(0.5f, _controlRadius));
             preferred = origin + aimDirection * startDistance;
         }
@@ -154,10 +230,12 @@ public class WeaponAimCursor : MonoBehaviour
     private bool TryGetMouseWorldPosition(out Vector2 worldPosition)
     {
         worldPosition = default;
+
         if (_camera == null || InputReader.Instance == null)
             return false;
 
         Vector2 screenPos = InputReader.Instance.GetMousePosition();
+
         if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
             return false;
 
@@ -176,6 +254,7 @@ public class WeaponAimCursor : MonoBehaviour
         Vector2 origin = _playerTransform.position;
         Vector2 offset = worldPosition - origin;
         float distance = offset.magnitude;
+
         if (distance <= _controlRadius)
             return worldPosition;
 
@@ -187,20 +266,44 @@ public class WeaponAimCursor : MonoBehaviour
         if (_cursorVisual == null)
             return;
 
-        if (!_cursorVisual.gameObject.activeSelf)
-            _cursorVisual.gameObject.SetActive(true);
+        bool shouldShow = ShouldShowCursorVisual();
 
-        _cursorVisual.position = new Vector3(
+        if (_cursorVisual.gameObject.activeSelf != shouldShow)
+            _cursorVisual.gameObject.SetActive(shouldShow);
+
+        UpdateCursorTransformOnly();
+    }
+
+    private void UpdateCursorTransformOnly()
+    {
+        Vector3 targetWorld = new Vector3(
             CurrentWorldPosition.x,
             CurrentWorldPosition.y,
-            _cursorVisual.position.z
+            transform.position.z
         );
 
-        _cursorVisual.rotation = Quaternion.identity;
+        transform.position = targetWorld;
+        transform.rotation = Quaternion.identity;
+
+        if (_cursorVisual != null)
+            _cursorVisual.rotation = Quaternion.identity;
+    }
+
+    private void LateUpdate()
+    {
+        if (transform.parent != null)
+            transform.SetParent(null, true);
     }
 
     private void ResolveCursorVisual()
     {
+        if (_cursorVisual == null)
+        {
+            SpriteRenderer selfRenderer = GetComponent<SpriteRenderer>();
+            if (selfRenderer != null)
+                _cursorVisual = transform;
+        }
+
         if (_cursorVisual != null)
             return;
 
@@ -211,9 +314,7 @@ public class WeaponAimCursor : MonoBehaviour
             return;
         }
 
-        GameObject cursorObject = new GameObject("AimCursor");
-        cursorObject.transform.SetParent(transform, false);
-        _cursorVisual = cursorObject.transform;
+        _cursorVisual = transform;
     }
 
     private void EnsureCursorVisualStyle()
@@ -223,8 +324,20 @@ public class WeaponAimCursor : MonoBehaviour
 
         SpriteRenderer cursorRenderer = _cursorVisual.GetComponent<SpriteRenderer>();
         if (cursorRenderer == null)
-        {
             Debug.LogWarning("[WeaponAimCursor] CursorVisual has no SpriteRenderer.", this);
-        }
+    }
+
+    private bool ShouldShowCursorVisual()
+    {
+        if (!_isCursorVisibleByUser)
+            return false;
+
+        if (_isSuppressedByMode)
+            return false;
+
+        if (_showCursorInGamepadModeOnly && !IsGamepadCursorMode)
+            return false;
+
+        return true;
     }
 }

@@ -21,7 +21,7 @@ public class WeaponSensor : MonoBehaviour
         _mainCamera = mainCamera != null ? mainCamera : Camera.main;
         _controlRadius = controlRadius;
         if (_aimCursor == null)
-            _aimCursor = GetComponent<WeaponAimCursor>();
+            _aimCursor = GetComponentInChildren<WeaponAimCursor>(true);
         _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
     }
 
