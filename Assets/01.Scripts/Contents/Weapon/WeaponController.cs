@@ -241,6 +241,9 @@ public class WeaponController : MonoBehaviour
         if (_aimCursor == null)
             return;
 
+        // Safety sync: if mode event ordering was missed, keep suppression aligned.
+        ApplyAimCursorModePolicy(CurrentMode, resetCursorPosition: false);
+
         bool shouldShow = EvaluateAimCursorVisibleFromState();
         _aimCursor.SetCursorVisible(shouldShow);
     }

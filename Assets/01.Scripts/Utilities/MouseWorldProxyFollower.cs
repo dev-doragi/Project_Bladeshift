@@ -5,6 +5,7 @@ public class MouseWorldProxyFollower : MonoBehaviour
 {
     [SerializeField] private Camera _targetCamera;
     [SerializeField] private Transform _playerTransform;
+    [SerializeField] private WeaponAimCursor _aimCursor;
     [SerializeField] private bool _usePlayerControlRadius = true;
     [SerializeField] private float _cameraInfluenceRadius = 20f;
     [SerializeField] private float _recoverDeadZoneRadius = 5f;
@@ -23,6 +24,7 @@ public class MouseWorldProxyFollower : MonoBehaviour
             _targetCamera = Camera.main;
 
         ResolvePlayer();
+        ResolveAimCursor();
     }
 
     private void Update()
@@ -31,6 +33,22 @@ public class MouseWorldProxyFollower : MonoBehaviour
             return;
 
         ResolvePlayer();
+        ResolveAimCursor();
+
+        if (_aimCursor != null && _aimCursor.IsInitialized)
+        {
+            Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
+            aimWorld.z = transform.position.z;
+
+            if (_playerTransform == null)
+            {
+                MoveProxy(aimWorld);
+                return;
+            }
+
+            MoveProxy(GetProxyPosition(aimWorld));
+            return;
+        }
 
         Camera cam = _targetCamera != null ? _targetCamera : Camera.main;
         if (cam == null)
@@ -119,6 +137,12 @@ public class MouseWorldProxyFollower : MonoBehaviour
 
         if (_playerController == null && _playerTransform != null)
             _playerController = _playerTransform.GetComponent<PlayerController>();
+    }
+
+    private void ResolveAimCursor()
+    {
+        if (_aimCursor == null)
+            _aimCursor = FindObjectOfType<WeaponAimCursor>();
     }
 
     private static bool IsOutsideScreen(Vector2 screenPosition)

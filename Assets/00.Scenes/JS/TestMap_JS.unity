@@ -1278,6 +1278,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _aimCursor
+      value: 
+      objectReference: {fileID: 1029272964}
+    - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _droneDockPivot
       value: 
       objectReference: {fileID: 1493108795789087931}
@@ -1325,6 +1329,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _aimCursor
+      value: 
+      objectReference: {fileID: 1029272964}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeOrbitRoot
       value: 
@@ -3260,6 +3268,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1029272964 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+  m_PrefabInstance: {fileID: 1493108795789087930}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1 &1034891865
 GameObject:
   m_ObjectHideFlags: 0
@@ -3704,6 +3723,28 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2573951358506072716, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
   m_PrefabInstance: {fileID: 506990839}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1239430059 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+  m_PrefabInstance: {fileID: 506990839}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a7dbf3c51d34c49b67c3f5b4a3a0c55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponSensor
+--- !u!114 &1239430063 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 303466040254391467, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+  m_PrefabInstance: {fileID: 506990839}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80f4745e9cc441e39b27f0ed60c4314b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
 --- !u!1 &1260298606
 GameObject:
   m_ObjectHideFlags: 0
@@ -5927,6 +5968,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MouseWorldProxyFollower
   _targetCamera: {fileID: 519420031}
   _playerTransform: {fileID: 1089678679}
+  _aimCursor: {fileID: 1029272964}
   _usePlayerControlRadius: 0
   _cameraInfluenceRadius: 7.5
   _recoverDeadZoneRadius: 0
@@ -6744,9 +6786,13 @@ PrefabInstance:
       value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _controlRadius
-      value: 24
-      objectReference: {fileID: 0}
+      propertyPath: _weaponSensor
+      value: 
+      objectReference: {fileID: 1239430059}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponModeController
+      value: 
+      objectReference: {fileID: 1239430063}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
