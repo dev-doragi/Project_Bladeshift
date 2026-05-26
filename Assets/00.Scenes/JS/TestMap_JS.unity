@@ -6741,6 +6741,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _gamepadCursorSpeed
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.86

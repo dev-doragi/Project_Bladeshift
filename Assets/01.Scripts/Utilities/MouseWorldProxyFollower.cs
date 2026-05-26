@@ -18,6 +18,70 @@ public class MouseWorldProxyFollower : MonoBehaviour
     private PlayerController _playerController;
     private Vector3 _proxyVelocity;
 
+    public void SnapToPlayerPosition()
+    {
+        ResolvePlayer();
+        if (_playerTransform == null)
+            return;
+
+        Vector3 playerPos = _playerTransform.position;
+        playerPos.z = transform.position.z;
+        transform.position = playerPos;
+        _proxyVelocity = Vector3.zero;
+    }
+
+    public void ResetByCurrentInputMode()
+    {
+        ResolvePlayer();
+        ResolveAimCursor();
+
+        if (_playerTransform == null)
+            return;
+
+        InputReader inputReader = InputReader.Instance;
+        bool isGamepadMode = inputReader != null && inputReader.IsGamepadControlSchemeActive();
+        if (isGamepadMode)
+        {
+            SnapToPlayerPosition();
+            return;
+        }
+
+        Camera cam = _targetCamera != null ? _targetCamera : Camera.main;
+        if (cam == null)
+        {
+            SnapToPlayerPosition();
+            return;
+        }
+
+        if (_aimCursor != null && _aimCursor.IsInitialized)
+        {
+            Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
+            aimWorld.z = transform.position.z;
+            transform.position = GetProxyPosition(aimWorld);
+            _proxyVelocity = Vector3.zero;
+            return;
+        }
+
+        if (inputReader == null)
+        {
+            SnapToPlayerPosition();
+            return;
+        }
+
+        Vector2 screenPosition = inputReader.GetMousePosition();
+        if (_ignorePointerOutsideScreen && IsOutsideScreen(screenPosition))
+        {
+            SnapToPlayerPosition();
+            return;
+        }
+
+        float depth = Mathf.Abs(transform.position.z - cam.transform.position.z);
+        Vector3 worldPosition = cam.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, depth));
+        worldPosition.z = transform.position.z;
+        transform.position = GetProxyPosition(worldPosition);
+        _proxyVelocity = Vector3.zero;
+    }
+
     private void Awake()
     {
         if (_targetCamera == null)

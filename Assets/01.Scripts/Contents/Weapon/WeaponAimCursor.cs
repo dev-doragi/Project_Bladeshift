@@ -144,6 +144,32 @@ public class WeaponAimCursor : MonoBehaviour
         ResetAimConstraintCache();
     }
 
+    public void ResetToPlayerAimOffset(float normalizedRadius = 0.45f, float minDistance = 0.5f)
+    {
+        if (_playerTransform == null)
+            return;
+
+        float radius = Mathf.Max(0f, _controlRadius);
+        float clampedRatio = Mathf.Clamp01(normalizedRadius);
+        float distance = Mathf.Max(minDistance, radius * clampedRatio);
+
+        Vector2 aimDirection = _playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
+            ? _playerController.AimDirection.normalized
+            : Vector2.right;
+
+        Vector2 origin = _playerTransform.position;
+        Vector2 desired = origin + aimDirection * distance;
+
+        CurrentWorldPosition = ConstrainToReachableWorldPosition(desired);
+        _fallbackGamepadStartPosition = CurrentWorldPosition;
+        _hasValidCursorPosition = true;
+        _lastPlayerPosition = origin;
+        IsGamepadCursorMode = true;
+
+        UpdateCursorTransformOnly();
+        UpdateCursorVisual();
+    }
+
     public void Tick()
     {
         ManualUpdate();

@@ -55,6 +55,7 @@ public class WeaponController : MonoBehaviour
     private SpinSlashModule _spinSlashModule;
     private ThrustPierceModule _thrustPierceModule;
     private PlayerController _playerController;
+    [SerializeField] private MouseWorldProxyFollower _mouseWorldProxyFollower;
     private Camera _mainCamera;
     private MethodInfo _handleLinkEnergyDepletedMethod;
     private bool _isModeSwitchInProgress;
@@ -132,6 +133,8 @@ public class WeaponController : MonoBehaviour
         if (_thrustPierceModule != null)
             _handleLinkEnergyDepletedMethod = _thrustPierceModule.GetType().GetMethod("HandleLinkEnergyDepleted", BindingFlags.Instance | BindingFlags.NonPublic);
         _mainCamera = Camera.main;
+        if (_mouseWorldProxyFollower == null)
+            _mouseWorldProxyFollower = FindObjectOfType<MouseWorldProxyFollower>();
     }
 
     private bool ResolvePlayerContext()
@@ -234,6 +237,14 @@ public class WeaponController : MonoBehaviour
         bool suppressCursor = mode == WeaponMode.Melee;
         bool shouldResetToMouse = resetCursorPosition && !suppressCursor;
         _aimCursor.SetCursorSuppressedByMode(suppressCursor, shouldResetToMouse);
+
+        if (_mouseWorldProxyFollower != null)
+        {
+            if (suppressCursor)
+                _mouseWorldProxyFollower.SnapToPlayerPosition();
+            else if (resetCursorPosition)
+                _mouseWorldProxyFollower.ResetByCurrentInputMode();
+        }
     }
 
     private void RefreshAimCursorVisibilityFromState()
