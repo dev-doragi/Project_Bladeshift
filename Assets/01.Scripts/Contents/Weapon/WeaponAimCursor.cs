@@ -137,6 +137,20 @@ public class WeaponAimCursor : MonoBehaviour
 
         if (_isSuppressedByMode)
         {
+            // Keep aim coordinates live even when cursor is hidden in melee mode.
+            // PlayerController reads CurrentWorldPosition for AimDirection updates.
+            IsGamepadCursorMode = false;
+
+            if (TryGetMouseWorldPosition(out Vector2 mouseWorld))
+            {
+                CurrentWorldPosition = mouseWorld;
+                _hasValidCursorPosition = true;
+            }
+            else
+            {
+                CurrentWorldPosition += playerDelta;
+            }
+
             UpdateCursorVisual();
             return;
         }
