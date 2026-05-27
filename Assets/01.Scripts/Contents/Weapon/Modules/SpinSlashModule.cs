@@ -15,7 +15,7 @@ public class SpinSlashModule : WeaponActionModule
         if (_isSlashing) return;
 
         _isSlashing = true;
-        Controller.Combat.ResetTickTimer();
+        //Controller.Combat.ResetTickTimer();
         Controller.ChangeState(WeaponState.Slashing);
     }
 
