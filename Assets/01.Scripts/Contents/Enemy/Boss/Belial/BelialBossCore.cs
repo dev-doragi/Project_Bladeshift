@@ -272,6 +272,12 @@ public sealed class BelialBossCore : MonoBehaviour
 
         if (_rightHand != null && !_rightHand.IsDead)
             _rightHand.ExecuteDeath(Vector2.zero);
+
+        EventBus.Instance?.Publish(new StageClearedEvent
+        {
+            StageIndex = 0,
+            IsFinalStage = true
+        });
     }
 
     private IEnumerator ExecutePattern(BelialPatternType pattern)

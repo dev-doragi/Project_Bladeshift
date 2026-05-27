@@ -464,6 +464,15 @@ public sealed class BelialBossPart : EnemyBase
     {
         if (_role == BelialBossPartRole.Head)
         {
+            if (_rb != null)
+            {
+                _rb.bodyType = RigidbodyType2D.Dynamic;
+                _rb.simulated = true;
+                _rb.freezeRotation = false;
+                _rb.linearVelocity = Vector2.zero;
+                _rb.angularVelocity = 0f;
+            }
+
             _core?.NotifyHeadDied();
             base.Die(knockbackForce);
             return;
