@@ -18,6 +18,7 @@ public class WeaponMovement : MonoBehaviour
     [SerializeField] private float _maxReturnSpeed = 30f;
     [SerializeField] private float _returnStopDistance = 0.5f;
     [SerializeField] private float _returnSpeedMultiplier = 1f;
+    [SerializeField] private float _capturePullReturnSpeedMultiplier = 1.3f;
 
     public float WeaponRadius => _weaponRadius;
     public bool IsManagedMovementRunning => _activeMovementRoutine != null;
@@ -103,6 +104,14 @@ public class WeaponMovement : MonoBehaviour
     public void ExecuteReturn(Func<Vector2> getTargetPos, float controlRadius, Func<Vector2, Vector2, bool> checkIntercept, Action<bool> onReturnComplete)
     {
         float speedMultiplier = Mathf.Max(0.1f, _returnSpeedMultiplier);
+        float minSpeed = Mathf.Max(0f, _minReturnSpeed) * speedMultiplier;
+        float maxSpeed = Mathf.Max(minSpeed, _maxReturnSpeed * speedMultiplier);
+        StartManagedMovement(ReturnRoutine(getTargetPos, minSpeed, maxSpeed, controlRadius, _returnStopDistance, checkIntercept, onReturnComplete));
+    }
+
+    public void ExecuteCapturePullReturn(Func<Vector2> getTargetPos, float controlRadius, Func<Vector2, Vector2, bool> checkIntercept, Action<bool> onReturnComplete)
+    {
+        float speedMultiplier = Mathf.Max(0.1f, _returnSpeedMultiplier * Mathf.Max(0.1f, _capturePullReturnSpeedMultiplier));
         float minSpeed = Mathf.Max(0f, _minReturnSpeed) * speedMultiplier;
         float maxSpeed = Mathf.Max(minSpeed, _maxReturnSpeed * speedMultiplier);
         StartManagedMovement(ReturnRoutine(getTargetPos, minSpeed, maxSpeed, controlRadius, _returnStopDistance, checkIntercept, onReturnComplete));

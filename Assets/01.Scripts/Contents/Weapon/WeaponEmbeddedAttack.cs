@@ -117,7 +117,7 @@ public class WeaponEmbeddedAttack : MonoBehaviour
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _embeddedFinisherHitStopDuration });
         EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _embeddedFinisherShakeIntensity });
 
-        Vector2 pivot = sensor.GetMouseWorldPosition();
+        Vector2 pivot = sensor.GetAimWorldPosition();
         float radius = Vector2.Distance(pivot, transform.position);
         radius = Mathf.Max(radius, combat.SlashRadius * Mathf.Max(0.1f, _embeddedFinisherRadiusMultiplier));
         float damage = _embeddedEnemy.EmbeddedAttackDamage;
@@ -190,7 +190,7 @@ public class WeaponEmbeddedAttack : MonoBehaviour
         _controller.ChangeState(WeaponState.Returning);
         _controller.Movement?.ExecuteReturn(
             () => _controller.Sensor != null
-                ? _controller.Sensor.GetClampedTargetPosition(_controller.WallAndEnvironmentLayer)
+                ? _controller.Sensor.GetReachableAimTargetPosition(_controller.WallAndEnvironmentLayer)
                 : (Vector2)_controller.transform.position,
             _controller.ControlRadius,
             (currentPos, mousePos) => _controller.Sensor != null && _controller.Sensor.IsMouseHovering(currentPos, mousePos),

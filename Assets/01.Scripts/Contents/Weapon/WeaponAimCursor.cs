@@ -150,6 +150,39 @@ public class WeaponAimCursor : MonoBehaviour
         }
     }
 
+    public void ResetGamepadCursorToPlayer()
+    {
+        if (_playerTransform == null)
+            return;
+
+        IsGamepadCursorMode = true;
+        ApplyGamepadCursorWorldPosition(_playerTransform.position);
+    }
+
+    public void ResetGamepadCursorNearPlayer(Vector2 preferredDirection)
+    {
+        if (_playerTransform == null)
+            return;
+
+        IsGamepadCursorMode = true;
+        float distance = Mathf.Max(0.5f, _controlRadius * 0.45f);
+        Vector2 direction = preferredDirection.sqrMagnitude > 0.0001f
+            ? preferredDirection.normalized
+            : (_playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
+                ? _playerController.AimDirection.normalized
+                : Vector2.right);
+        Vector2 desired = (Vector2)_playerTransform.position + direction * distance;
+        ApplyGamepadCursorWorldPosition(desired);
+    }
+
+    public void ClampGamepadCursorToControlRadius()
+    {
+        if (!IsGamepadCursorMode || _playerTransform == null)
+            return;
+
+        ApplyGamepadCursorWorldPosition(CurrentWorldPosition);
+    }
+
     public void ResetToPlayerAimOffset(float normalizedRadius = 0.45f, float minDistance = 0.5f)
     {
         Vector2 fallbackDirection = _playerController != null
@@ -272,6 +305,7 @@ public class WeaponAimCursor : MonoBehaviour
                 currentPlayerPosition,
                 gamepadFollowDelta,
                 lookInput);
+            ClampGamepadCursorToControlRadius();
             _hasValidCursorPosition = true;
         }
         else
@@ -289,6 +323,7 @@ public class WeaponAimCursor : MonoBehaviour
                 CurrentWorldPosition = RebuildGamepadCursorWorldPosition(
                     currentPlayerPosition,
                     gamepadFollowDelta);
+                ClampGamepadCursorToControlRadius();
             }
         }
 
@@ -422,7 +457,12 @@ public class WeaponAimCursor : MonoBehaviour
 
     private void RefreshAimWorldPosition()
     {
+        if (IsGamepadCursorMode)
+            CurrentWorldPosition = ClampToControlRadius(CurrentWorldPosition);
+
         AimWorldPosition = ConstrainToReachableWorldPosition(CurrentWorldPosition);
+        if (IsGamepadCursorMode)
+            AimWorldPosition = ClampToControlRadius(AimWorldPosition);
     }
 
     public void ResetAimConstraintCache()
@@ -538,5 +578,17 @@ public class WeaponAimCursor : MonoBehaviour
             return false;
 
         return true;
+    }
+
+    private void ApplyGamepadCursorWorldPosition(Vector2 worldPosition)
+    {
+        CurrentWorldPosition = ClampToControlRadius(worldPosition);
+        _fallbackGamepadStartPosition = CurrentWorldPosition;
+        _hasValidCursorPosition = true;
+        _lastPlayerPosition = _playerTransform != null ? (Vector2)_playerTransform.position : CurrentWorldPosition;
+        _gamepadConstraintAnchorY = CurrentWorldPosition.y;
+        RefreshAimWorldPosition();
+        UpdateCursorTransformOnly();
+        UpdateCursorVisual();
     }
 }
