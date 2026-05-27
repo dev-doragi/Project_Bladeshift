@@ -62,8 +62,17 @@ public class ThrustPierceModule : WeaponActionModule
         if (_isAiming || _isAutoReturning || _isDockWaiting) return;
         if (Controller.CurrentState != WeaponState.Controlled) return;
 
-        InputReader input = InputReader.Instance;
-        bool useGamepadAim = input != null && input.IsSecondaryAttackStartedFromGamepad();
+        WeaponActionInputContext inputContext = GetActiveInputContext(WeaponActionInputType.Secondary)
+            ?? new WeaponActionInputContext
+            {
+                ActionType = WeaponActionInputType.Secondary,
+                Device = InputReader.Instance != null && InputReader.Instance.IsSecondaryAttackStartedFromGamepad()
+                    ? WeaponInputDevice.Gamepad
+                    : WeaponInputDevice.MouseKeyboard,
+                StartedFrame = Time.frameCount,
+                StartedTime = Time.unscaledTime
+            };
+        bool useGamepadAim = inputContext.IsGamepad;
 
         _aimLockPosition = Controller.transform.position;
         _aimMouseStartPosition = useGamepadAim
