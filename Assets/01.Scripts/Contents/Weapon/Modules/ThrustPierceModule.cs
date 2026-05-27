@@ -467,6 +467,7 @@ public class ThrustPierceModule : WeaponActionModule
         _snapCursorOnCurrentReturnFlow = false;
         Controller.StateMachine.ClearPinSource();
         Controller.ChangeState(WeaponState.PinningFlight);
+        Controller.View?.SetLaunchedSorting();
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
 
         Controller.Movement.ExecutePinFlight(
@@ -570,6 +571,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (shouldSnapCursor)
             Controller.AimCursor?.SnapToPlayerPosition();
         Controller.ChangeState(WeaponState.Returning);
+        Controller.View?.RestoreDefaultSorting();
 
         Controller.Movement.ExecuteReturn(
             GetContextualReturnTargetPosition,
@@ -652,8 +654,9 @@ public class ThrustPierceModule : WeaponActionModule
 
         Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
         Controller.ChangeState(WeaponState.Returning);
+        Controller.View?.RestoreDefaultSorting();
         Controller.Movement.ExecuteReturn(
-            GetContextualRangeExceededTargetPosition,
+                    GetContextualRangeExceededTargetPosition,
             Controller.ControlRadius,
             (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
             _ => Controller.ChangeState(WeaponState.Controlled));
@@ -672,6 +675,7 @@ public class ThrustPierceModule : WeaponActionModule
         _isAutoReturning = true;
         _snapCursorOnCurrentReturnFlow = false;
         Controller.ChangeState(WeaponState.Returning);
+        Controller.View?.RestoreDefaultSorting();
 
         Controller.Movement.ExecuteReturn(
             GetDockTargetPosition,
@@ -692,6 +696,7 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
         Controller.AimCursor?.ResetGamepadCursorNearPlayer(_lastAimDirection);
         Controller.ChangeState(WeaponState.Returning);
+        Controller.View?.RestoreDefaultSorting();
         Controller.Movement.ExecuteCapturePullReturn(
             GetGamepadCapturedReturnTargetPosition,
             Controller.ControlRadius,
@@ -709,6 +714,7 @@ public class ThrustPierceModule : WeaponActionModule
             return;
 
         Controller.ChangeState(WeaponState.Returning);
+        Controller.View?.RestoreDefaultSorting();
         Controller.Movement.ExecuteCapturePullReturn(
             GetGamepadCapturedReturnTargetPosition,
             Controller.ControlRadius,

@@ -66,7 +66,8 @@ public class CameraManager : Singleton<CameraManager>
     {
         if (EventBus.Instance == null) return;
 
-        EventBus.Instance.Subscribe<ScrollEvent>(HandleScroll);
+        // Wheel zoom is currently disabled.
+        // EventBus.Instance.Subscribe<ScrollEvent>(HandleScroll);
         EventBus.Instance.Subscribe<CameraShakeEvent>(OnCameraShake);
     }
 
@@ -74,7 +75,8 @@ public class CameraManager : Singleton<CameraManager>
     {
         if (EventBus.Instance == null) return;
 
-        EventBus.Instance.Unsubscribe<ScrollEvent>(HandleScroll);
+        // Wheel zoom is currently disabled.
+        // EventBus.Instance.Unsubscribe<ScrollEvent>(HandleScroll);
         EventBus.Instance.Unsubscribe<CameraShakeEvent>(OnCameraShake);
     }
 

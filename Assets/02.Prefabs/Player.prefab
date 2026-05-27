@@ -361,7 +361,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -101537425
-  m_SortingLayer: 3
+  m_SortingLayer: 4
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 1202768392051682914, guid: 907165aaa15af314ea876fd7a95407af, type: 3}
@@ -526,8 +526,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GroundSensor2D
   _groundLayer:
     serializedVersion: 2
-    m_Bits: 128
-  _boxSize: {x: 0.87, y: 0.12}
+    m_Bits: 4224
+  _boxSize: {x: 0.99, y: 0.12}
   _offset: {x: 0, y: -1.21}
 --- !u!114 &7530631691869463140
 MonoBehaviour:
@@ -544,7 +544,7 @@ MonoBehaviour:
   _maxSpeed: 10
   _acceleration: 60
   _deceleration: 60
-  _jumpForce: 13
+  _jumpForce: 16
   _fallGravityMultiplier: 2
   _lowJumpGravityMultiplier: 3
   _apexBonus: 1

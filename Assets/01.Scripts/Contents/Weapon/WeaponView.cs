@@ -20,6 +20,10 @@ public class WeaponView : MonoBehaviour
     [SerializeField] private float _wallPinOutlinePulseSpeed = 3f;
     [SerializeField] private float _wallPinOutlineSize = 1f;
 
+    [Header("Launch Sorting")]
+    [SerializeField] private string _launchedSortingLayerName = "Platform";
+    [SerializeField] private int _launchedSortingOrder = -1;
+
     [Header("Gizmo Display")]
     [SerializeField] private bool _showControlRadius = true;
     [SerializeField] private bool _showMouseCaptureRadius = true;
@@ -44,10 +48,21 @@ public class WeaponView : MonoBehaviour
     private MaterialPropertyBlock _outlineBlock;
     private bool _wallPinOutlineActive;
 
+    private string _defaultSortingLayerName;
+    private int _defaultSortingOrder;
+    private bool _hasDefaultSorting;
+
     private void Awake()
     {
         if (_weaponRenderer == null)
             _weaponRenderer = GetComponentInChildren<SpriteRenderer>();
+
+        if (_weaponRenderer != null)
+        {
+            _defaultSortingLayerName = _weaponRenderer.sortingLayerName;
+            _defaultSortingOrder = _weaponRenderer.sortingOrder;
+            _hasDefaultSorting = true;
+        }
 
         _outlineBlock = new MaterialPropertyBlock();
     }
@@ -94,6 +109,7 @@ public class WeaponView : MonoBehaviour
     private void OnDisable()
     {
         ClearWallPinOutline();
+        RestoreDefaultSorting();
     }
 
     public void Configure(Transform playerTransform, float controlRadius, float mouseCaptureRadius, float mouseCaptureMaintainRadius, float slashRadius)
@@ -324,6 +340,24 @@ public class WeaponView : MonoBehaviour
         _weaponRenderer.SetPropertyBlock(_outlineBlock);
 
         _wallPinOutlineActive = false;
+    }
+
+    public void SetLaunchedSorting()
+    {
+        if (_weaponRenderer == null)
+            return;
+
+        _weaponRenderer.sortingLayerName = _launchedSortingLayerName;
+        _weaponRenderer.sortingOrder = _launchedSortingOrder;
+    }
+
+    public void RestoreDefaultSorting()
+    {
+        if (_weaponRenderer == null || !_hasDefaultSorting)
+            return;
+
+        _weaponRenderer.sortingLayerName = _defaultSortingLayerName;
+        _weaponRenderer.sortingOrder = _defaultSortingOrder;
     }
 
     public void DrawGizmos()
