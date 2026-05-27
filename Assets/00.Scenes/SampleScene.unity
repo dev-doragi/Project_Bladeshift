@@ -882,6 +882,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6098493208779198356, guid: 320b7206bb64f064c961202dbca3bacc, type: 3}
   m_PrefabInstance: {fileID: 914536034}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &914536036 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9071678673182628156, guid: 320b7206bb64f064c961202dbca3bacc, type: 3}
+  m_PrefabInstance: {fileID: 914536034}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 071e1c47090f4dca8c41aacca6b38a7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MouseWorldProxyFollower
 --- !u!4 &1015006790 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8238492940431564361, guid: 916123afff0eaec4caff932178703efb, type: 3}
@@ -2318,6 +2329,10 @@ PrefabInstance:
       propertyPath: _playerTransform
       value: 
       objectReference: {fileID: 1089678679}
+    - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _mouseWorldProxyFollower
+      value: 
+      objectReference: {fileID: 914536036}
     - target: {fileID: 2573951358506072716, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

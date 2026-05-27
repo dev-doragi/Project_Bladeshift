@@ -53,6 +53,7 @@ public class InputReader : Singleton<InputReader>
 
     public bool IsPointerOverUI { get; private set; }
     private bool _isInputBlocked = false;
+    private bool _isPrimaryAttackStartedFromGamepad;
     private bool _isSecondaryAttackStartedFromGamepad;
     public bool IsInputBlocked => _isInputBlocked;
 
@@ -209,7 +210,11 @@ public class InputReader : Singleton<InputReader>
     private void OnJumpCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = false });
     private void OnDashStarted(InputAction.CallbackContext _) => PublishIfAllowed(new DashInputEvent { IsStarted = true });
 
-    private void OnPrimaryAttackStarted(InputAction.CallbackContext _) => PublishIfAllowed(new PrimaryAttackEvent { IsStarted = true });
+    private void OnPrimaryAttackStarted(InputAction.CallbackContext ctx)
+    {
+        _isPrimaryAttackStartedFromGamepad = ctx.control != null && ctx.control.device is Gamepad;
+        PublishIfAllowed(new PrimaryAttackEvent { IsStarted = true });
+    }
     private void OnPrimaryAttackCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new PrimaryAttackEvent { IsStarted = false });
 
     private void OnSecondaryAttackStarted(InputAction.CallbackContext ctx)
@@ -299,6 +304,7 @@ public class InputReader : Singleton<InputReader>
     }
 
     public bool IsGamepadAimActive() => IsGamepadLookActive();
+    public bool IsPrimaryAttackStartedFromGamepad() => _isPrimaryAttackStartedFromGamepad;
     public bool IsSecondaryAttackStartedFromGamepad() => _isSecondaryAttackStartedFromGamepad;
     public bool IsGamepadControlSchemeActive()
     {

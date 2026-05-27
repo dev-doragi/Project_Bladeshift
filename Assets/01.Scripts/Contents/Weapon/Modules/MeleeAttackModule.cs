@@ -55,6 +55,8 @@ public class MeleeAttackModule : WeaponActionModule
     [Header("Trail")]
     [SerializeField] private TrailRenderer _slashTrail;
     [SerializeField] private bool _useTrail = true;
+    [Header("Input")]
+    [SerializeField, Range(0f, 1f)] private float _gamepadSlashXDeadzone = 0.2f;
 
     private AttackPhase _phase = AttackPhase.Idle;
     private int _comboIndex;
@@ -377,6 +379,28 @@ public class MeleeAttackModule : WeaponActionModule
         PlayerController playerController = Controller.PlayerTransform.GetComponent<PlayerController>();
         if (playerController == null)
             return 1f;
+
+        WeaponActionInputContext? inputContext = GetActiveInputContext(WeaponActionInputType.Primary);
+        if (inputContext.HasValue && inputContext.Value.IsGamepad)
+        {
+            InputReader input = InputReader.Instance;
+            if (input != null)
+            {
+                float lookX = input.GetLookInput().x;
+                if (Mathf.Abs(lookX) >= Mathf.Clamp01(_gamepadSlashXDeadzone))
+                    return lookX >= 0f ? 1f : -1f;
+            }
+
+            return playerController.FacingSign >= 0 ? 1f : -1f;
+        }
+
+        if (Controller.Sensor != null)
+        {
+            Vector2 mouseWorld = Controller.Sensor.GetRawPointerWorldPosition();
+            float deltaX = mouseWorld.x - Controller.PlayerTransform.position.x;
+            if (Mathf.Abs(deltaX) > 0.0001f)
+                return deltaX >= 0f ? 1f : -1f;
+        }
 
         return playerController.FacingSign >= 0 ? 1f : -1f;
     }
