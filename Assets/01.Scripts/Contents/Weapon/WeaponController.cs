@@ -59,7 +59,6 @@ public class WeaponController : MonoBehaviour
     private Camera _mainCamera;
     private MethodInfo _handleLinkEnergyDepletedMethod;
     private bool _isModeSwitchInProgress;
-    private bool _isMeleeRechargeWaiting;
     private Coroutine _meleeModeRechargeRoutine;
 
     public Rigidbody2D Rigidbody => _rb;
@@ -145,7 +144,7 @@ public class WeaponController : MonoBehaviour
             _handleLinkEnergyDepletedMethod = _thrustPierceModule.GetType().GetMethod("HandleLinkEnergyDepleted", BindingFlags.Instance | BindingFlags.NonPublic);
         _mainCamera = Camera.main;
         if (_mouseWorldProxyFollower == null)
-            _mouseWorldProxyFollower = FindObjectOfType<MouseWorldProxyFollower>();
+            _mouseWorldProxyFollower = GetComponentInChildren<MouseWorldProxyFollower>(true);
     }
 
     private bool ResolvePlayerContext()
@@ -185,6 +184,8 @@ public class WeaponController : MonoBehaviour
         _aimCursor?.SetWallMask(_wallAndEnvironmentLayer);
         _aimCursor?.SetFallbackGamepadStartPosition(transform.position);
         _sensor.SetAimCursor(_aimCursor);
+        _mouseWorldProxyFollower?.SetAimCursor(_aimCursor);
+        _mouseWorldProxyFollower?.SetPlayerTransform(_playerTransform);
         _playerController?.SetWeaponModeController(_modeController);
         _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);
         _embeddedAttack.Initialize(this);
@@ -208,7 +209,6 @@ public class WeaponController : MonoBehaviour
         if (_modeController != null)
             _modeController.ModeChanged -= OnWeaponModeChanged;
         _isModeSwitchInProgress = false;
-        _isMeleeRechargeWaiting = false;
         if (_meleeModeRechargeRoutine != null)
         {
             StopCoroutine(_meleeModeRechargeRoutine);
@@ -243,7 +243,6 @@ public class WeaponController : MonoBehaviour
     {
         if (newMode != WeaponMode.Melee)
         {
-            _isMeleeRechargeWaiting = false;
             if (_meleeModeRechargeRoutine != null)
             {
                 StopCoroutine(_meleeModeRechargeRoutine);
@@ -434,12 +433,8 @@ public class WeaponController : MonoBehaviour
 
     private IEnumerator MeleeModeRechargeRoutine()
     {
-        _isMeleeRechargeWaiting = true;
-
         float rechargeDuration = Mathf.Max(0.01f, _fullRechargeDelayAfterReturn);
         yield return StartCoroutine(_linkEnergy.RechargeToFullAndUnlockOverDuration(rechargeDuration));
-
-        _isMeleeRechargeWaiting = false;
         _meleeModeRechargeRoutine = null;
     }
 

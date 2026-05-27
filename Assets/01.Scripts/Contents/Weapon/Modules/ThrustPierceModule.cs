@@ -34,7 +34,6 @@ public class ThrustPierceModule : WeaponActionModule
     private bool _hasGamepadAimDirection;
     private Vector2 _gamepadAimDirection;
     private Vector2 _lastAimDirection;
-    private bool _lastAimWasGamepad;
     private bool _isAutoReturning;
     private bool _isDockWaiting;
     private bool _isFinisherRunning;
@@ -66,7 +65,6 @@ public class ThrustPierceModule : WeaponActionModule
         _aimCanceledByEnergyShortage = false;
         _isGamepadHoldAim = false;
         _hasGamepadAimDirection = false;
-        _lastAimWasGamepad = false;
         _lastAimDirection = ResolveFallbackAimDirection();
         Controller.Movement.StopFollow();
         Controller.Movement.HoldPosition(_aimLockPosition);
@@ -288,7 +286,6 @@ public class ThrustPierceModule : WeaponActionModule
                 _gamepadAimDirection = look.normalized;
                 _hasGamepadAimDirection = true;
                 _lastAimDirection = _gamepadAimDirection;
-                _lastAimWasGamepad = true;
 
                 direction = _gamepadAimDirection;
                 visualTarget = _aimLockPosition + direction * visualDistance;
@@ -322,7 +319,6 @@ public class ThrustPierceModule : WeaponActionModule
 
         direction = delta.normalized;
         _lastAimDirection = direction;
-        _lastAimWasGamepad = false;
         return true;
     }
 
