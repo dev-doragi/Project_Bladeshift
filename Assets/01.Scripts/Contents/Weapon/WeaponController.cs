@@ -98,7 +98,7 @@ public class WeaponController : MonoBehaviour
     public bool IsOffline => _linkEnergy != null && _linkEnergy.IsOffline;
     public bool IsActionInputBlocked =>
         IsAutoReturnInProgress ||
-        IsDockWaiting ||
+        (CurrentMode == WeaponMode.Remote && IsDockWaiting) ||
         _isModeSwitchInProgress;
 
     private bool IsAutoReturnInProgress => _thrustPierceModule != null && _thrustPierceModule.IsAutoReturning;
@@ -490,6 +490,14 @@ public class WeaponController : MonoBehaviour
     {
         if (_linkEnergy == null || !_linkEnergy.IsOffline) return;
         if (_thrustPierceModule == null || _handleLinkEnergyDepletedMethod == null) return;
+
+        // Melee mode should recharge energy only, without forcing dock-return flow.
+        if (_modeController != null && _modeController.CurrentMode == WeaponMode.Melee)
+        {
+            BeginMeleeModeRecharge();
+            return;
+        }
+
         _handleLinkEnergyDepletedMethod.Invoke(_thrustPierceModule, null);
     }
 

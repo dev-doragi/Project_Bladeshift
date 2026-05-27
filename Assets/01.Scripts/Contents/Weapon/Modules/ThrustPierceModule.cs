@@ -230,7 +230,9 @@ public class ThrustPierceModule : WeaponActionModule
         linkEnergy.ClearFrameSpendFlag();
         if (isWallPinned) return;
 
-        if (!linkEnergy.IsControlLocked || !isRemoteControlling) return;
+        if (!isRemoteControlling) return;
+        if (!linkEnergy.IsControlLocked) return;
+        if (!linkEnergy.IsOffline && !linkEnergy.IsDepletedRechargeMode) return;
         HandleLinkEnergyDepleted();
     }
 
@@ -250,6 +252,7 @@ public class ThrustPierceModule : WeaponActionModule
 
     private void TickDockWait()
     {
+        if (Controller.CurrentMode != WeaponMode.Remote) return;
         if (!_isDockWaiting) return;
         if (_dockRechargeRoutine != null) return;
         _dockRechargeRoutine = StartCoroutine(DockRechargeRoutine());
