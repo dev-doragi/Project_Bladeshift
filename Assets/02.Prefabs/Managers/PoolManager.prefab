@@ -47,4 +47,7 @@ MonoBehaviour:
   _isDontDestroyOnLoad: 0
   _poolRoot: {fileID: 8193606758975949393}
   _uiPoolRoot: {fileID: 0}
-  _globalPools: []
+  _globalPools:
+  - Prefab: {fileID: 6000000000000000000, guid: 7f311369b7fe44dc8ecd8683ec33bac0, type: 3}
+    InitialSize: 10
+    MaxSize: 50
