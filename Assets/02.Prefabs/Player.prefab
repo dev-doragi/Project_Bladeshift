@@ -257,7 +257,10 @@ MonoBehaviour:
   _cursorVisual: {fileID: 5293943958384476474}
   _gamepadCursorSpeed: 20
   _gamepadAimDeadzone: 0.2
-  _showCursorInGamepadModeOnly: 1
+  _showCursorInGamepadModeOnly: 0
+  _wallMask:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!1 &5281900919386555140
 GameObject:
   m_ObjectHideFlags: 0
@@ -621,10 +624,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 453a8df749292c84ab65600d3ab46633, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  _controlRadius: 20
+  _controlRadius: 24
   _showControlRadiusGizmo: 1
   _weaponAimCursor: {fileID: 5685921721219222157}
   _weaponSensor: {fileID: 0}
+  _weaponModeController: {fileID: 0}
 --- !u!114 &3112057920478771632
 MonoBehaviour:
   m_ObjectHideFlags: 0

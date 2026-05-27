@@ -1717,14 +1717,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _wallMask.m_Bits
-      value: 128
-      objectReference: {fileID: 0}
-    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _showCursorInGamepadModeOnly
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1773,10 +1765,6 @@ PrefabInstance:
       propertyPath: _weaponSensor
       value: 
       objectReference: {fileID: 1459670090}
-    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _weaponAimCursor
-      value: 
-      objectReference: {fileID: 1493108795789087932}
     - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: _weaponModeController
       value: 
@@ -2160,22 +2148,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 303466040254391467, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _initialMode
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _cursorVisual
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _modeController
-      value: 
-      objectReference: {fileID: 1459670094}
-    - target: {fileID: 442233110099887766, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: _showCursorInGamepadModeOnly
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
@@ -2227,10 +2199,6 @@ PrefabInstance:
     - target: {fileID: 2573951358506072716, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5123456789012345678, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor

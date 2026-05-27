@@ -438,12 +438,30 @@ public class ThrustPierceModule : WeaponActionModule
     {
         Controller.StateMachine?.ClearPinSource();
         Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
+
+        Controller.AimCursor?.SnapToPlayerPosition();
         Controller.ChangeState(WeaponState.Returning);
+
         Controller.Movement.ExecuteReturn(
-            () => Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
+            GetReturnToPlayerTargetPosition,
             Controller.ControlRadius,
-            (currentPos, mousePos) => Controller.Sensor.IsMouseHovering(currentPos, mousePos),
-            _ => Controller.ChangeState(WeaponState.Controlled));
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
+            _ =>
+            {
+                Controller.AimCursor?.SnapToPlayerPosition();
+                Controller.ChangeState(WeaponState.Controlled);
+            });
+    }
+
+    private Vector2 GetReturnToPlayerTargetPosition()
+    {
+        Transform target = Controller.DroneDockPivot != null
+            ? Controller.DroneDockPivot
+            : Controller.PlayerTransform;
+
+        return target != null
+            ? (Vector2)target.position
+            : Controller.Rigidbody.position;
     }
 
     private void StartRangeExceededReturnToDock()

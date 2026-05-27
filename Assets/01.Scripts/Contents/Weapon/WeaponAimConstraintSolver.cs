@@ -2,6 +2,11 @@ using UnityEngine;
 
 public static class WeaponAimConstraintSolver
 {
+    private const float NearOriginIgnoreDistance = 0.08f;
+    private const float WallNormalXThreshold = 0.45f;
+    private const float CeilingNormalYThreshold = -0.45f;
+    private const float FallbackSkin = 0.04f;
+
     public static Vector2 SolveReachablePosition(
         Vector2 origin,
         Vector2 desiredWorldPosition,
@@ -86,14 +91,14 @@ public static class WeaponAimConstraintSolver
         if (distance <= 0.0001f)
             return true;
 
-        RaycastHit2D hit = Physics2D.Raycast(
+        RaycastHit2D? blockingHit = FindBlockingHit(
             origin,
             direction.normalized,
             distance,
             wallMask
         );
 
-        return hit.collider == null;
+        return !blockingHit.HasValue;
     }
 
     private static Vector2 SolveBlockedFallback(
@@ -119,16 +124,66 @@ public static class WeaponAimConstraintSolver
         if (clampedDistance <= 0.0001f)
             return origin;
 
-        RaycastHit2D hit = Physics2D.Raycast(
+        Vector2 castDirection = clampedDirection.normalized;
+
+        RaycastHit2D? blockingHit = FindBlockingHit(
             origin,
-            clampedDirection.normalized,
+            castDirection,
             clampedDistance,
             wallMask
         );
 
-        if (hit.collider == null)
+        if (!blockingHit.HasValue)
             return clamped;
 
-        return hit.point;
+        return blockingHit.Value.point - castDirection * FallbackSkin;
+    }
+
+    private static RaycastHit2D? FindBlockingHit(
+        Vector2 origin,
+        Vector2 direction,
+        float distance,
+        LayerMask wallMask)
+    {
+        RaycastHit2D[] hits = Physics2D.RaycastAll(
+            origin,
+            direction,
+            distance,
+            wallMask
+        );
+
+        RaycastHit2D? result = null;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit2D hit = hits[i];
+
+            if (!ShouldBlockReachHit(hit))
+                continue;
+
+            if (!result.HasValue || hit.distance < result.Value.distance)
+                result = hit;
+        }
+
+        return result;
+    }
+
+    private static bool ShouldBlockReachHit(RaycastHit2D hit)
+    {
+        if (hit.collider == null)
+            return false;
+
+        if (hit.distance <= NearOriginIgnoreDistance)
+            return false;
+
+        Vector2 normal = hit.normal;
+
+        if (Mathf.Abs(normal.x) >= WallNormalXThreshold)
+            return true;
+
+        if (normal.y <= CeilingNormalYThreshold)
+            return true;
+
+        return false;
     }
 }
