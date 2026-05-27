@@ -56,6 +56,14 @@ public class WeaponActionRouter : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        foreach (WeaponActionModule module in EnumerateUniqueModules())
+        {
+            module.OnFrameTick();
+        }
+    }
+
     private void OnPrimaryAttack(PrimaryAttackEvent evt)
     {
         if (_controller != null && _controller.IsActionInputBlocked) return;
@@ -65,6 +73,8 @@ public class WeaponActionRouter : MonoBehaviour
 
         if (evt.IsStarted)
         {
+            WeaponActionInputContext inputContext = BuildInputContext(WeaponActionInputType.Primary);
+            primaryModule?.SetActiveInputContext(inputContext);
             _blockNextPrimaryRelease = false;
             if (secondaryModule != null && secondaryModule.TryHandlePinnedPrimary()) return;
             if (secondaryModule != null && secondaryModule.BlocksPrimaryInput)
@@ -80,10 +90,12 @@ public class WeaponActionRouter : MonoBehaviour
         if (_blockNextPrimaryRelease)
         {
             _blockNextPrimaryRelease = false;
+            primaryModule?.ClearActiveInputContext(WeaponActionInputType.Primary);
             return;
         }
 
         primaryModule?.OnRelease();
+        primaryModule?.ClearActiveInputContext(WeaponActionInputType.Primary);
     }
 
     private void OnSecondaryAttack(SecondaryAttackEvent evt)
@@ -94,13 +106,37 @@ public class WeaponActionRouter : MonoBehaviour
 
         if (evt.IsStarted)
         {
+            WeaponActionInputContext inputContext = BuildInputContext(WeaponActionInputType.Secondary);
+            secondaryModule?.SetActiveInputContext(inputContext);
             if (secondaryModule != null && secondaryModule.TryHandlePinnedSecondary()) return;
             secondaryModule?.OnPress();
         }
         else
         {
             secondaryModule?.OnRelease();
+            secondaryModule?.ClearActiveInputContext(WeaponActionInputType.Secondary);
         }
+    }
+
+    private static WeaponActionInputContext BuildInputContext(WeaponActionInputType actionType)
+    {
+        WeaponInputDevice device = WeaponInputDevice.Unknown;
+        InputReader input = InputReader.Instance;
+        if (input != null)
+        {
+            bool isGamepad = actionType == WeaponActionInputType.Primary
+                ? input.IsPrimaryAttackStartedFromGamepad()
+                : input.IsSecondaryAttackStartedFromGamepad();
+            device = isGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard;
+        }
+
+        return new WeaponActionInputContext
+        {
+            ActionType = actionType,
+            Device = device,
+            StartedFrame = Time.frameCount,
+            StartedTime = Time.unscaledTime
+        };
     }
 
     private WeaponActionModule GetPrimaryModule()

@@ -55,6 +55,8 @@ public class MeleeAttackModule : WeaponActionModule
     [Header("Trail")]
     [SerializeField] private TrailRenderer _slashTrail;
     [SerializeField] private bool _useTrail = true;
+    [Header("Input")]
+    [SerializeField, Range(0f, 1f)] private float _gamepadSlashXDeadzone = 0.2f;
 
     private AttackPhase _phase = AttackPhase.Idle;
     private int _comboIndex;
@@ -169,7 +171,7 @@ public class MeleeAttackModule : WeaponActionModule
         Controller.MeleeHoverFollow?.BeginAttackAnchor();
 
         SetTrail(false);
-        ApplyPose(Vector2.zero, 0f);
+        ApplyPose(Vector2.zero, _attackBaseAngle);
     }
 
     private void TickWindup(MeleeComboStep step)
@@ -291,7 +293,7 @@ public class MeleeAttackModule : WeaponActionModule
 
     private void ApplyPose(Vector2 resolvedOffset, float resolvedAngle)
     {
-        Controller.MeleeHoverFollow?.SetAttackPose(resolvedOffset, resolvedAngle);
+        Controller.MeleeHoverFollow?.SetAttackWorldPose(resolvedOffset, resolvedAngle);
     }
 
     private bool TryEvaluateWorldPose(Vector2 resolvedOffset, float resolvedAngle, out Vector3 worldPosition, out Quaternion worldRotation)
@@ -340,9 +342,7 @@ public class MeleeAttackModule : WeaponActionModule
                     continue;
 
                 Vector2 hitPoint = hit.ClosestPoint(samplePoint);
-                Vector2 knockbackDirection = forward.sqrMagnitude > 0.0001f
-                    ? forward.normalized
-                    : Vector2.right;
+                Vector2 knockbackDirection = ResolveMeleeKnockbackDirection(hit, samplePoint, forward);
 
                 damageable.TakeDamage(new DamageData
                 {
@@ -365,6 +365,30 @@ public class MeleeAttackModule : WeaponActionModule
         return hit.GetComponentInParent<IDamageable>();
     }
 
+    private Vector2 ResolveMeleeKnockbackDirection(Collider2D hit, Vector2 samplePoint, Vector2 fallbackDirection)
+    {
+        if (hit != null && Controller != null && Controller.PlayerTransform != null)
+        {
+            Vector2 fromPlayer = (Vector2)hit.bounds.center - (Vector2)Controller.PlayerTransform.position;
+
+            if (fromPlayer.sqrMagnitude > 0.0001f)
+                return fromPlayer.normalized;
+        }
+
+        if (hit != null)
+        {
+            Vector2 fromSample = (Vector2)hit.bounds.center - samplePoint;
+
+            if (fromSample.sqrMagnitude > 0.0001f)
+                return fromSample.normalized;
+        }
+
+        if (fallbackDirection.sqrMagnitude > 0.0001f)
+            return fallbackDirection.normalized;
+
+        return Vector2.right;
+    }
+
     private Vector2 ResolveOffset(Vector2 offset)
     {
         Vector3 rotated = _attackBasisRotation * new Vector3(offset.x, offset.y, 0f);
@@ -373,23 +397,45 @@ public class MeleeAttackModule : WeaponActionModule
 
     private float ResolveAngle(float angle)
     {
-        return angle;
+        return _attackBaseAngle + angle;
     }
 
     private Vector2 ResolveAimDirection()
     {
-        if (Controller == null || Controller.PlayerTransform == null)
+        if (Controller == null)
             return Vector2.right;
 
-        PlayerController playerController = Controller.PlayerTransform.GetComponent<PlayerController>();
-        if (playerController == null)
-            return Vector2.right;
+        if (IsActionFromGamepad(WeaponActionInputType.Primary))
+        {
+            Vector2 lookInput = InputReader.Instance != null
+                ? InputReader.Instance.GetLookInput()
+                : Vector2.zero;
 
-        Vector2 aimDirection = playerController.AimDirection;
-        if (aimDirection.sqrMagnitude > 0.0001f)
-            return aimDirection.normalized;
+            float deadzone = Mathf.Clamp01(_gamepadSlashXDeadzone);
 
-        return playerController.FacingSign >= 0 ? Vector2.right : Vector2.left;
+            if (lookInput.sqrMagnitude >= deadzone * deadzone)
+                return lookInput.normalized;
+        }
+
+        if (Controller.PlayerAimDirection.sqrMagnitude > 0.0001f)
+            return Controller.PlayerAimDirection.normalized;
+
+        if (Controller.Sensor != null && Controller.PlayerTransform != null)
+        {
+            Vector2 rawPointer = Controller.Sensor.GetRawPointerWorldPosition();
+            Vector2 direction = rawPointer - (Vector2)Controller.PlayerTransform.position;
+
+            if (direction.sqrMagnitude > 0.0001f)
+                return direction.normalized;
+        }
+
+        if (Controller.PlayerTransform != null &&
+            Controller.PlayerTransform.TryGetComponent<PlayerController>(out var playerController))
+        {
+            return playerController.FacingSign >= 0f ? Vector2.right : Vector2.left;
+        }
+
+        return Vector2.right;
     }
 
     private bool CanUseMelee()
