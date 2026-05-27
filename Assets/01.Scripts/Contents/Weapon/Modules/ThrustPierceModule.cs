@@ -136,6 +136,7 @@ public class ThrustPierceModule : WeaponActionModule
     {
         if (Controller == null) return;
 
+        EnsureSortingMatchesState();
         TickRemoteControlState();
         TickEnergy();
         TickPinnedCaptureDrain();
@@ -479,14 +480,13 @@ public class ThrustPierceModule : WeaponActionModule
         _snapCursorOnCurrentReturnFlow = false;
         Controller.StateMachine.ClearPinSource();
         Controller.ChangeState(WeaponState.PinningFlight);
-        Controller.View?.SetLaunchedSorting();
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _pinStartHitStopDuration });
 
         Controller.Movement.ExecutePinFlight(
             direction,
             Controller.Combat.PinSpeed,
             Controller.Combat.EnemyLayer,
-            Controller.WallAndEnvironmentLayer,
+            Controller.WallAndEnvironmentLayerForPin,
             () => Controller.PlayerTransform != null ? (Vector2)Controller.PlayerTransform.position : (Vector2)Controller.transform.position,
             Controller.ControlRadius * (1f + Mathf.Max(0f, _extraFlightRangeRatio)),
             _rangeBrakeDeceleration,
@@ -552,6 +552,7 @@ public class ThrustPierceModule : WeaponActionModule
 
                 Controller.Capture.UnbindAll(forcePhysicsRestore: true);
                 Controller.StateMachine.SetPinSource(WeaponPinSource.Wall);
+                Controller.View?.SetLaunchedSorting();
                 Controller.ChangeState(WeaponState.Pinned);
             },
             () =>
@@ -756,6 +757,32 @@ public class ThrustPierceModule : WeaponActionModule
             Controller.AimCursor?.SnapToPlayerPosition();
         _isDockWaiting = true;
         _dockRechargeRoutine = null;
+    }
+
+    private void EnsureSortingMatchesState()
+    {
+        if (Controller == null || Controller.View == null)
+            return;
+
+        bool keepEnemyPinnedSorting =
+            Controller.CurrentState == WeaponState.Pinned &&
+            Controller.StateMachine != null &&
+            Controller.StateMachine.IsPinnedToEnemy;
+
+        if (keepEnemyPinnedSorting)
+        {
+            Controller.View.SetEnemyPinnedSorting();
+            return;
+        }
+
+        bool keepLaunchedSorting =
+            Controller.CurrentState == WeaponState.PinningFlight ||
+            (Controller.CurrentState == WeaponState.Pinned &&
+             Controller.StateMachine != null &&
+             Controller.StateMachine.IsPinnedToWall);
+
+        if (!keepLaunchedSorting)
+            Controller.View.RestoreDefaultSorting();
     }
 
     private IEnumerator DockRechargeRoutine()

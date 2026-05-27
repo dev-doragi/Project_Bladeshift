@@ -19,15 +19,15 @@ MonoBehaviour:
   _knockbackTakenMultiplier: 1
   _canBeCaptured: 0
   _captureWeight: 0
-  _canBeExecuted: 1
+  _canBeExecuted: 0
   _usesGroggy: 1
   _groggyTriggerMode: 2
   _groggyThresholdRatio: 0.1
-  _maxGroggyGauge: 60
+  _maxGroggyGauge: 30
   _resetGroggyGaugeOnEnter: 1
   _resetGroggyGaugeOnExit: 1
   _groggyInvulnerableDuration: 0.5
-  _groggyDuration: 3
+  _groggyDuration: 5
   _usesGroggyRecovery: 0
   _groggyRecoveryTargetHealthRatio: 0.5
   _groggyRecoveryDuration: 5

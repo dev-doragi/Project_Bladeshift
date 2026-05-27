@@ -164,6 +164,26 @@ public sealed class BelialBossCore : MonoBehaviour
             if (_isBossDefeated)
                 yield break;
 
+            if (IsAnyHandGroggy())
+            {
+                if (_leftHand != null && !_leftHand.IsDisabledForBoss)
+                {
+                    bool leftGroggy = _leftHand.IsGroggy;
+                    _leftHand.SetContactDamageEnabled(false);
+                    _leftHand.SetAttackLocked(leftGroggy);
+                }
+
+                if (_rightHand != null && !_rightHand.IsDisabledForBoss)
+                {
+                    bool rightGroggy = _rightHand.IsGroggy;
+                    _rightHand.SetContactDamageEnabled(false);
+                    _rightHand.SetAttackLocked(rightGroggy);
+                }
+
+                yield return null;
+                continue;
+            }
+
             if (ShouldEnterBossGroggy())
             {
                 yield return BossGroggyRoutine();
@@ -484,7 +504,14 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private bool ShouldAbortPatternExecution()
     {
-        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy();
+        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy() || IsAnyHandGroggy();
+    }
+
+    private bool IsAnyHandGroggy()
+    {
+        bool leftGroggy = _leftHand != null && !_leftHand.IsDisabledForBoss && _leftHand.IsGroggy;
+        bool rightGroggy = _rightHand != null && !_rightHand.IsDisabledForBoss && _rightHand.IsGroggy;
+        return leftGroggy || rightGroggy;
     }
 
     private static Transform GetAnchor(Transform[] anchors, int index)

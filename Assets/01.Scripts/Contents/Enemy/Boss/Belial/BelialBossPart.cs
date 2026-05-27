@@ -34,6 +34,7 @@ public sealed class BelialBossPart : EnemyBase
     [Header("Visual FX")]
     [SerializeField] private Color _hitFlashColor = new Color(1f, 0.9f, 0.9f, 1f);
     [SerializeField, Min(0.01f)] private float _hitFlashDuration = 0.08f;
+    [SerializeField, Min(0f)] private float _finisherDisableDelay = 0.2f;
 
     [Header("Sweep Telegraph")]
     [SerializeField] private GameObject _sweepGhostPrefab;
@@ -44,6 +45,10 @@ public sealed class BelialBossPart : EnemyBase
     private Quaternion _initialLocalRotation;
     private Vector3 _initialLocalScale;
     private bool _cachedPose;
+    private Vector3 _disabledLocalPosition;
+    private Quaternion _disabledLocalRotation;
+    private Vector3 _disabledLocalScale;
+    private bool _hasDisabledPose;
 
     private Tween _moveTween;
     private Tween _rotateTween;
@@ -58,6 +63,19 @@ public sealed class BelialBossPart : EnemyBase
     private Color _visualTint = Color.white;
     private float _visualAlpha = 1f;
     private Coroutine _hitFlashRoutine;
+    private Coroutine _finisherDisableRoutine;
+    private bool _isPendingFinisherDisable;
+    private bool _frozenForBossGroggy;
+    private bool _frozenForSelfGroggy;
+    private int _scriptedMotionDepth;
+    private RigidbodyType2D _scriptedMotionOriginalBodyType;
+    private bool _hasScriptedMotionOriginalBodyType;
+    private Vector3 _frozenLocalPosition;
+    private Quaternion _frozenLocalRotation;
+    private Vector3 _frozenLocalScale;
+    private RigidbodyConstraints2D _cachedConstraints;
+    private RigidbodyType2D _cachedBodyType;
+    private bool _hasCachedRigidbodyState;
 
     public BelialBossPartRole Role => _role;
     public bool IsDisabledForBoss => _disabledForBoss;
@@ -96,6 +114,10 @@ public sealed class BelialBossPart : EnemyBase
         _initialLocalRotation = transform.localRotation;
         _initialLocalScale = transform.localScale;
         _cachedPose = true;
+        _disabledLocalPosition = _initialLocalPosition;
+        _disabledLocalRotation = _initialLocalRotation;
+        _disabledLocalScale = _initialLocalScale;
+        _hasDisabledPose = true;
     }
 
     public IEnumerator MoveToAnchor(Transform anchor, float duration)
@@ -105,10 +127,12 @@ public sealed class BelialBossPart : EnemyBase
 
         StopIdleBob();
         KillMotionTweens();
+        BeginScriptedMotion();
 
         _moveTween = transform.DOLocalMove(anchor.localPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(anchor.localRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
         yield return _moveTween.WaitForCompletion();
+        EndScriptedMotion();
     }
 
     public IEnumerator ReturnToInitialPose(float duration)
@@ -117,11 +141,13 @@ public sealed class BelialBossPart : EnemyBase
             yield break;
 
         KillMotionTweens();
+        BeginScriptedMotion();
 
         _moveTween = transform.DOLocalMove(_initialLocalPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(_initialLocalRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
         transform.localScale = _initialLocalScale;
         yield return _moveTween.WaitForCompletion();
+        EndScriptedMotion();
     }
 
     public void StartIdleBob()
@@ -197,10 +223,12 @@ public sealed class BelialBossPart : EnemyBase
 
         StopIdleBob();
         KillMotionTweens();
+        BeginScriptedMotion();
 
         _moveTween = transform.DOLocalMove(targetAnchor.localPosition, duration).SetEase(Ease.Linear).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(targetAnchor.localRotation, duration).SetEase(Ease.Linear).SetTarget(this);
         yield return _moveTween.WaitForCompletion();
+        EndScriptedMotion();
     }
 
     public IEnumerator PlaySweepTelegraph(Transform targetAnchor, float duration, float delay)
@@ -281,14 +309,31 @@ public sealed class BelialBossPart : EnemyBase
     {
         if (!IsHand())
             return;
+        if (_disabledForBoss || _isPendingFinisherDisable)
+            return;
 
-        DisableInternal(sourceDamage);
+        _isPendingFinisherDisable = true;
+        _attackLocked = true;
+        _contactDamageEnabled = false;
+        StopIdleBob();
+        KillMotionTweens();
+        DOTween.Kill(this);
+
+        if (_finisherDisableRoutine != null)
+            StopCoroutine(_finisherDisableRoutine);
+        _finisherDisableRoutine = StartCoroutine(FinisherDisableRoutine(sourceDamage));
     }
 
     public void RestoreFromBossGroggy()
     {
         if (!IsHand())
             return;
+
+        _frozenForBossGroggy = false;
+        _frozenForSelfGroggy = false;
+        _scriptedMotionDepth = 0;
+        if (!_frozenForSelfGroggy)
+            RestoreRigidbodyFromFreeze();
 
         _disabledForBoss = false;
         _attackLocked = false;
@@ -307,9 +352,18 @@ public sealed class BelialBossPart : EnemyBase
 
         if (_cachedPose)
         {
-            transform.localPosition = _initialLocalPosition;
-            transform.localRotation = _initialLocalRotation;
-            transform.localScale = _initialLocalScale;
+            if (_hasDisabledPose)
+            {
+                transform.localPosition = _disabledLocalPosition;
+                transform.localRotation = _disabledLocalRotation;
+                transform.localScale = _disabledLocalScale;
+            }
+            else
+            {
+                transform.localPosition = _initialLocalPosition;
+                transform.localRotation = _initialLocalRotation;
+                transform.localScale = _initialLocalScale;
+            }
         }
 
         ApplyVisualStyle();
@@ -321,11 +375,90 @@ public sealed class BelialBossPart : EnemyBase
         if (!IsHand())
             return;
 
+        _frozenForBossGroggy = true;
+        _frozenLocalPosition = transform.localPosition;
+        _frozenLocalRotation = transform.localRotation;
+        _frozenLocalScale = transform.localScale;
+
         _attackLocked = true;
         _contactDamageEnabled = false;
         StopIdleBob();
         KillMotionTweens();
         DOTween.Kill(this);
+
+        ApplyRigidbodyFreeze();
+    }
+
+    protected override void OnGroggyEntered(DamageData damageData)
+    {
+        base.OnGroggyEntered(damageData);
+
+        if (!IsHand())
+            return;
+
+        _frozenForSelfGroggy = true;
+        _attackLocked = true;
+        _contactDamageEnabled = false;
+        StopIdleBob();
+        KillMotionTweens();
+        DOTween.Kill(this);
+
+        _frozenLocalPosition = transform.localPosition;
+        _frozenLocalRotation = transform.localRotation;
+        _frozenLocalScale = transform.localScale;
+        ApplyRigidbodyFreeze();
+    }
+
+    protected override void OnGroggyExited()
+    {
+        base.OnGroggyExited();
+
+        if (!IsHand())
+            return;
+
+        _frozenForSelfGroggy = false;
+        if (!_frozenForBossGroggy)
+            RestoreRigidbodyFromFreeze();
+    }
+
+    private void ApplyRigidbodyFreeze()
+    {
+        if (_rb != null)
+        {
+            if (!_hasCachedRigidbodyState)
+            {
+                _cachedConstraints = _rb.constraints;
+                _cachedBodyType = _rb.bodyType;
+                _hasCachedRigidbodyState = true;
+            }
+
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _rb.constraints = RigidbodyConstraints2D.FreezeAll;
+        }
+    }
+
+    private void RestoreRigidbodyFromFreeze()
+    {
+        if (_rb != null)
+        {
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+
+            if (_hasCachedRigidbodyState)
+            {
+                _rb.bodyType = _cachedBodyType;
+                _rb.constraints = _cachedConstraints;
+            }
+            else
+            {
+                _rb.bodyType = RigidbodyType2D.Dynamic;
+                _rb.freezeRotation = true;
+            }
+        }
+
+        _hasCachedRigidbodyState = false;
     }
 
     public void SetContactDamageEnabled(bool enabled)
@@ -353,6 +486,9 @@ public sealed class BelialBossPart : EnemyBase
 
     public override void TakeDamage(DamageData damageData)
     {
+        if (_frozenForBossGroggy)
+            return;
+
         if (!_battleActive)
             return;
 
@@ -459,6 +595,9 @@ public sealed class BelialBossPart : EnemyBase
             return;
 
         _disabledForBoss = true;
+        _frozenForBossGroggy = false;
+        _frozenForSelfGroggy = false;
+        _scriptedMotionDepth = 0;
         _attackLocked = true;
 
         StopIdleBob();
@@ -470,6 +609,11 @@ public sealed class BelialBossPart : EnemyBase
         _currentGroggyGauge = 0f;
         _isCaptured = false;
         _isPierced = false;
+
+        _disabledLocalPosition = transform.localPosition;
+        _disabledLocalRotation = transform.localRotation;
+        _disabledLocalScale = transform.localScale;
+        _hasDisabledPose = true;
 
         if (_visualRoot != null)
             _visualRoot.gameObject.SetActive(false);
@@ -487,6 +631,17 @@ public sealed class BelialBossPart : EnemyBase
         _core?.NotifyHandDisabled(this);
     }
 
+    private IEnumerator FinisherDisableRoutine(DamageData sourceDamage)
+    {
+        float delay = Mathf.Max(0f, _finisherDisableDelay);
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        _finisherDisableRoutine = null;
+        _isPendingFinisherDisable = false;
+        DisableInternal(sourceDamage);
+    }
+
     private bool IsHand()
     {
         return _role == BelialBossPartRole.LeftHand || _role == BelialBossPartRole.RightHand;
@@ -498,6 +653,53 @@ public sealed class BelialBossPart : EnemyBase
         _rotateTween?.Kill();
         _moveTween = null;
         _rotateTween = null;
+        if (_scriptedMotionDepth > 0)
+        {
+            _scriptedMotionDepth = 0;
+            RestoreRigidbodyAfterScriptedMotion();
+        }
+    }
+
+    private void BeginScriptedMotion()
+    {
+        _scriptedMotionDepth++;
+        if (_scriptedMotionDepth != 1)
+            return;
+
+        if (_rb == null)
+            return;
+
+        _scriptedMotionOriginalBodyType = _rb.bodyType;
+        _hasScriptedMotionOriginalBodyType = true;
+        _rb.linearVelocity = Vector2.zero;
+        _rb.angularVelocity = 0f;
+        _rb.bodyType = RigidbodyType2D.Kinematic;
+    }
+
+    private void EndScriptedMotion()
+    {
+        if (_scriptedMotionDepth <= 0)
+            return;
+
+        _scriptedMotionDepth--;
+        if (_scriptedMotionDepth == 0)
+            RestoreRigidbodyAfterScriptedMotion();
+    }
+
+    private void RestoreRigidbodyAfterScriptedMotion()
+    {
+        if (_rb == null)
+            return;
+
+        if (_frozenForBossGroggy || _frozenForSelfGroggy)
+            return;
+
+        _rb.linearVelocity = Vector2.zero;
+        _rb.angularVelocity = 0f;
+        if (_hasScriptedMotionOriginalBodyType)
+            _rb.bodyType = _scriptedMotionOriginalBodyType;
+
+        _hasScriptedMotionOriginalBodyType = false;
     }
 
     private void CacheRendererBaseColors()
@@ -617,6 +819,16 @@ public sealed class BelialBossPart : EnemyBase
 
     protected override void OnDisable()
     {
+        _isPendingFinisherDisable = false;
+        if (_finisherDisableRoutine != null)
+        {
+            StopCoroutine(_finisherDisableRoutine);
+            _finisherDisableRoutine = null;
+        }
+
+        _frozenForBossGroggy = false;
+        _hasCachedRigidbodyState = false;
+
         StopIdleBob();
         KillMotionTweens();
         DOTween.Kill(this);
@@ -628,6 +840,22 @@ public sealed class BelialBossPart : EnemyBase
         }
 
         base.OnDisable();
+    }
+
+    private void LateUpdate()
+    {
+        if (!_frozenForBossGroggy && !_frozenForSelfGroggy)
+            return;
+
+        transform.localPosition = _frozenLocalPosition;
+        transform.localRotation = _frozenLocalRotation;
+        transform.localScale = _frozenLocalScale;
+
+        if (_rb != null)
+        {
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+        }
     }
 }
 

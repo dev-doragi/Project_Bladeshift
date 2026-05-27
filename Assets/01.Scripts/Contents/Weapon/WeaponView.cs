@@ -23,6 +23,8 @@ public class WeaponView : MonoBehaviour
     [Header("Launch Sorting")]
     [SerializeField] private string _launchedSortingLayerName = "Platform";
     [SerializeField] private int _launchedSortingOrder = -1;
+    [SerializeField] private string _enemyPinnedSortingLayerName = "Enemy";
+    [SerializeField] private int _enemyPinnedSortingOrder = -1;
 
     [Header("Gizmo Display")]
     [SerializeField] private bool _showControlRadius = true;
@@ -358,6 +360,15 @@ public class WeaponView : MonoBehaviour
 
         _weaponRenderer.sortingLayerName = _defaultSortingLayerName;
         _weaponRenderer.sortingOrder = _defaultSortingOrder;
+    }
+
+    public void SetEnemyPinnedSorting()
+    {
+        if (_weaponRenderer == null)
+            return;
+
+        _weaponRenderer.sortingLayerName = _enemyPinnedSortingLayerName;
+        _weaponRenderer.sortingOrder = _enemyPinnedSortingOrder;
     }
 
     public void DrawGizmos()

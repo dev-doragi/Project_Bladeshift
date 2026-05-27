@@ -93,7 +93,17 @@ public class WeaponController : MonoBehaviour
     public float SlowMotionHoldDuration => _slowMotionHoldDuration;
     public float ThrustDragThreshold => _thrustDragThreshold;
     public float RecallEnergyCost => _recallEnergyCost;
-    public LayerMask WallAndEnvironmentLayer => _wallAndEnvironmentLayer;
+    public LayerMask WallAndEnvironmentLayerForPin => _wallAndEnvironmentLayer;
+    public LayerMask WallAndEnvironmentLayer
+    {
+        get
+        {
+            int maskValue = _wallAndEnvironmentLayer.value;
+            if (CurrentMode == WeaponMode.Remote && _platformLayer >= 0 && _platformLayer <= 31)
+                maskValue &= ~(1 << _platformLayer);
+            return maskValue;
+        }
+    }
     public WeaponState CurrentState => _stateMachine != null ? _stateMachine.CurrentState : WeaponState.Grounded;
     public WeaponMode CurrentMode => _modeController != null ? _modeController.CurrentMode : WeaponMode.Remote;
     public bool IsOffline => _linkEnergy != null && _linkEnergy.IsOffline;
