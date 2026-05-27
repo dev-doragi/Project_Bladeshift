@@ -143,6 +143,12 @@ public sealed class BelialBossCore : MonoBehaviour
             _handsGroggyConsumed = true;
     }
 
+    public void NotifyHandGroggyChanged(BelialBossPart hand, bool isGroggy)
+    {
+        if (!_battleStarted || _isBossDefeated)
+            return;
+    }
+
     public bool CanHeadTakeDamage()
     {
         if (_isBossDefeated)
@@ -163,26 +169,6 @@ public sealed class BelialBossCore : MonoBehaviour
         {
             if (_isBossDefeated)
                 yield break;
-
-            if (IsAnyHandGroggy())
-            {
-                if (_leftHand != null && !_leftHand.IsDisabledForBoss)
-                {
-                    bool leftGroggy = _leftHand.IsGroggy;
-                    _leftHand.SetContactDamageEnabled(false);
-                    _leftHand.SetAttackLocked(leftGroggy);
-                }
-
-                if (_rightHand != null && !_rightHand.IsDisabledForBoss)
-                {
-                    bool rightGroggy = _rightHand.IsGroggy;
-                    _rightHand.SetContactDamageEnabled(false);
-                    _rightHand.SetAttackLocked(rightGroggy);
-                }
-
-                yield return null;
-                continue;
-            }
 
             if (ShouldEnterBossGroggy())
             {
@@ -223,10 +209,6 @@ public sealed class BelialBossCore : MonoBehaviour
 
         _leftHand?.FreezeForBossGroggy();
         _rightHand?.FreezeForBossGroggy();
-        _leftHand?.SetAttackLocked(true);
-        _rightHand?.SetAttackLocked(true);
-        _leftHand?.SetContactDamageEnabled(false);
-        _rightHand?.SetContactDamageEnabled(false);
         _leftHand?.StopIdleBob();
         _rightHand?.StopIdleBob();
         _head?.StopIdleBob();
@@ -245,9 +227,6 @@ public sealed class BelialBossCore : MonoBehaviour
 
         _leftHand?.RestoreFromBossGroggy();
         _rightHand?.RestoreFromBossGroggy();
-
-        _leftHand?.SetAttackLocked(false);
-        _rightHand?.SetAttackLocked(false);
 
         _head?.StartIdleBob();
         _leftHand?.StartIdleBob();
@@ -366,20 +345,20 @@ public sealed class BelialBossCore : MonoBehaviour
         yield return sweeper.MoveToAnchor(sourceAnchor, _handMoveDuration);
         if (ShouldAbortPatternExecution())
         {
-            sweeper.FreezeForBossGroggy();
+            sweeper.CancelPatternAction();
             yield break;
         }
         yield return sweeper.PlaySweepTelegraph(targetAnchor, _sweepDuration, _sweepTelegraphDelay);
         if (ShouldAbortPatternExecution())
         {
-            sweeper.FreezeForBossGroggy();
+            sweeper.CancelPatternAction();
             yield break;
         }
         sweeper.SetContactDamageEnabled(true);
         yield return sweeper.SweepTo(targetAnchor, _sweepDuration);
         if (ShouldAbortPatternExecution())
         {
-            sweeper.FreezeForBossGroggy();
+            sweeper.CancelPatternAction();
             yield break;
         }
 
@@ -504,7 +483,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private bool ShouldAbortPatternExecution()
     {
-        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy() || IsAnyHandGroggy();
+        bool bothHandsDisabled = _leftHand != null && _rightHand != null && _leftHand.IsDisabledForBoss && _rightHand.IsDisabledForBoss;
+        bool handInterrupt = (_leftHand != null && _leftHand.IsHandInterruptingPattern) || (_rightHand != null && _rightHand.IsHandInterruptingPattern);
+        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy() || bothHandsDisabled || handInterrupt;
     }
 
     private bool IsAnyHandGroggy()

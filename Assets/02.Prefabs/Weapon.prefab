@@ -445,7 +445,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -86905649
   m_SortingLayer: 3
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8037754079768486917, guid: 2b8c872480745744f88c0d7c773cd277, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -735,6 +735,7 @@ MonoBehaviour:
   _thrustDragThreshold: 6
   _recallEnergyCost: 0
   _fullRechargeDelayAfterReturn: 1.5
+  _platformLayerName: Platform
   _aimCursor: {fileID: 0}
   _mouseWorldProxyFollower: {fileID: 0}
 --- !u!114 &5923836136970560632
@@ -881,6 +882,8 @@ MonoBehaviour:
   _wallPinOutlineSize: 1
   _launchedSortingLayerName: Platform
   _launchedSortingOrder: -1
+  _enemyPinnedSortingLayerName: Enemy
+  _enemyPinnedSortingOrder: -1
   _showControlRadius: 1
   _showMouseCaptureRadius: 1
   _showMouseCaptureMaintainRadius: 1
@@ -917,6 +920,7 @@ MonoBehaviour:
   _minDrainPerSecond: 4
   _maxDrainPerSecond: 20
   _disconnectDrainPerSecond: 12
+  _occludedDrainMultiplier: 1.75
   _recoverRadiusRatio: 0.35
   _reactivationEnergyRatio: 0.2
   _depletionMode: 1
@@ -1048,7 +1052,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-    Damage: 10
+    Damage: 15
     GroggyDamage: 0
     HitRadius: 1
     SweepSamples: 7
@@ -1074,7 +1078,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-    Damage: 15
+    Damage: 20
     GroggyDamage: 0
     HitRadius: 1.05
     SweepSamples: 8
@@ -1100,7 +1104,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-    Damage: 15
+    Damage: 20
     GroggyDamage: 0
     HitRadius: 1.15
     SweepSamples: 9
@@ -1112,7 +1116,7 @@ MonoBehaviour:
     m_Bits: 512
   _defaultHitRadius: 2
   _hitBufferSize: 32
-  _knockbackPower: 10
+  _knockbackPower: 15
   _hitTriggers: 1
   _slashTrail: {fileID: 2225784806629533001}
   _useTrail: 1

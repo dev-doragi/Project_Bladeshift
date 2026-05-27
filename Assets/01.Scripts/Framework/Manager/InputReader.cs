@@ -203,15 +203,28 @@ public class InputReader : Singleton<InputReader>
 
     #region Callbacks
 
-    private void OnMovePerformed(InputAction.CallbackContext ctx) => PublishIfAllowed(new MoveInputEvent { Direction = ctx.ReadValue<Vector2>() });
+    private void OnMovePerformed(InputAction.CallbackContext ctx)
+    {
+        InputDeviceTracker.SetFromControl(ctx.control);
+        PublishIfAllowed(new MoveInputEvent { Direction = ctx.ReadValue<Vector2>() });
+    }
     private void OnMoveCanceled(InputAction.CallbackContext ctx) => PublishIfAllowed(new MoveInputEvent { Direction = Vector2.zero });
 
-    private void OnJumpStarted(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = true });
+    private void OnJumpStarted(InputAction.CallbackContext ctx)
+    {
+        InputDeviceTracker.SetFromControl(ctx.control);
+        PublishIfAllowed(new JumpInputEvent { IsStarted = true });
+    }
     private void OnJumpCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = false });
-    private void OnDashStarted(InputAction.CallbackContext _) => PublishIfAllowed(new DashInputEvent { IsStarted = true });
+    private void OnDashStarted(InputAction.CallbackContext ctx)
+    {
+        InputDeviceTracker.SetFromControl(ctx.control);
+        PublishIfAllowed(new DashInputEvent { IsStarted = true });
+    }
 
     private void OnPrimaryAttackStarted(InputAction.CallbackContext ctx)
     {
+        InputDeviceTracker.SetFromControl(ctx.control);
         _isPrimaryAttackStartedFromGamepad = ctx.control != null && ctx.control.device is Gamepad;
         PublishIfAllowed(new PrimaryAttackEvent { IsStarted = true });
     }
@@ -219,6 +232,7 @@ public class InputReader : Singleton<InputReader>
 
     private void OnSecondaryAttackStarted(InputAction.CallbackContext ctx)
     {
+        InputDeviceTracker.SetFromControl(ctx.control);
         _isSecondaryAttackStartedFromGamepad = ctx.control != null && ctx.control.device is Gamepad;
         PublishIfAllowed(new SecondaryAttackEvent { IsStarted = true });
     }
@@ -230,17 +244,23 @@ public class InputReader : Singleton<InputReader>
 
     private void OnRotatePerformed(InputAction.CallbackContext _) => PublishIfAllowed(new RotateEvent());
 
-    private void OnToggleWeaponModePerformed(InputAction.CallbackContext _) => PublishIfAllowed(new WeaponModeToggleEvent());
+    private void OnToggleWeaponModePerformed(InputAction.CallbackContext ctx)
+    {
+        InputDeviceTracker.SetFromControl(ctx.control);
+        PublishIfAllowed(new WeaponModeToggleEvent());
+    }
 
     private void OnScrollPerformed(InputAction.CallbackContext ctx)
     {
+        InputDeviceTracker.SetFromControl(ctx.control);
         float scrollValue = ctx.ReadValue<Vector2>().y;
         if (Mathf.Abs(scrollValue) > 0.01f)
             PublishIfAllowed(new ScrollEvent { Delta = scrollValue });
     }
 
-    private void OnPausePerformed(InputAction.CallbackContext _)
+    private void OnPausePerformed(InputAction.CallbackContext ctx)
     {
+        InputDeviceTracker.SetFromControl(ctx.control);
         if (_isInputBlocked) return;
         EventBus.Instance?.Publish(new PausePressedEvent());
     }

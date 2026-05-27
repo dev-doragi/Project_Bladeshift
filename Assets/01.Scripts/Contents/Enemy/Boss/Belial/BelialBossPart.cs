@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 
@@ -21,7 +21,6 @@ public sealed class BelialBossPart : EnemyBase
     [Header("Ranged")]
     [SerializeField] private EnemyDirectAttacker _directAttacker;
     [SerializeField] private EnemyProjectileAttackData _attackData;
-    [SerializeField] private Transform _projectileMuzzle;
 
     [Header("Idle Bob")]
     [SerializeField, Min(0f)] private float _bobAmplitude = 0.12f;
@@ -35,6 +34,7 @@ public sealed class BelialBossPart : EnemyBase
     [SerializeField] private Color _hitFlashColor = new Color(1f, 0.9f, 0.9f, 1f);
     [SerializeField, Min(0.01f)] private float _hitFlashDuration = 0.08f;
     [SerializeField, Min(0f)] private float _finisherDisableDelay = 0.2f;
+    [SerializeField, Min(0f)] private float _embeddedFinisherGraceDuration = 0.15f;
 
     [Header("Sweep Telegraph")]
     [SerializeField] private GameObject _sweepGhostPrefab;
@@ -45,40 +45,41 @@ public sealed class BelialBossPart : EnemyBase
     private Quaternion _initialLocalRotation;
     private Vector3 _initialLocalScale;
     private bool _cachedPose;
-    private Vector3 _disabledLocalPosition;
-    private Quaternion _disabledLocalRotation;
-    private Vector3 _disabledLocalScale;
-    private bool _hasDisabledPose;
 
     private Tween _moveTween;
     private Tween _rotateTween;
     private Tween _bobTween;
-    private bool _attackLocked;
-    private bool _disabledForBoss;
-    private bool _contactDamageEnabled;
+
     private bool _battleActive;
+    private bool _contactDamageEnabled;
+    private bool _attackLocked;
     private float _lastContactDamageTime = -999f;
 
     private Color[] _baseRendererColors;
     private Color _visualTint = Color.white;
     private float _visualAlpha = 1f;
+
     private Coroutine _hitFlashRoutine;
     private Coroutine _finisherDisableRoutine;
-    private bool _isPendingFinisherDisable;
-    private bool _frozenForBossGroggy;
-    private bool _frozenForSelfGroggy;
-    private int _scriptedMotionDepth;
-    private RigidbodyType2D _scriptedMotionOriginalBodyType;
-    private bool _hasScriptedMotionOriginalBodyType;
-    private Vector3 _frozenLocalPosition;
-    private Quaternion _frozenLocalRotation;
-    private Vector3 _frozenLocalScale;
-    private RigidbodyConstraints2D _cachedConstraints;
-    private RigidbodyType2D _cachedBodyType;
-    private bool _hasCachedRigidbodyState;
+    private Coroutine _finisherGraceRoutine;
+
+    private BelialBossPartState _currentState = BelialBossPartState.PreBattle;
 
     public BelialBossPartRole Role => _role;
-    public bool IsDisabledForBoss => _disabledForBoss;
+    public BelialBossPartState CurrentPartState => _currentState;
+    public bool IsDisabledForBoss => _currentState == BelialBossPartState.Disabled || _currentState == BelialBossPartState.BossGroggyFrozen;
+    public bool IsHandInterruptingPattern =>
+        _currentState == BelialBossPartState.HandGroggy ||
+        _currentState == BelialBossPartState.FinisherGrace ||
+        _currentState == BelialBossPartState.FinisherPending ||
+        _currentState == BelialBossPartState.Disabled ||
+        _currentState == BelialBossPartState.BossGroggyFrozen ||
+        _currentState == BelialBossPartState.Dead;
+    public bool CanRunPattern => IsHand() && _battleActive && _currentState == BelialBossPartState.Idle;
+    public bool CanAcceptEmbeddedFinisher =>
+        _currentState == BelialBossPartState.HandGroggy ||
+        _currentState == BelialBossPartState.FinisherGrace ||
+        _currentState == BelialBossPartState.FinisherPending;
 
     public override bool CanBeCaptured => false;
     public override float CaptureWeight => 9999f;
@@ -89,18 +90,16 @@ public sealed class BelialBossPart : EnemyBase
 
         if (_visualRoot == null)
             _visualRoot = transform;
-
         if (_hitCollider == null)
             _hitCollider = GetComponent<Collider2D>();
-
         if (_directAttacker == null)
             _directAttacker = GetComponent<EnemyDirectAttacker>();
-
         if (_core == null)
             _core = GetComponentInParent<BelialBossCore>();
 
         CacheRendererBaseColors();
         ApplyVisualStyle();
+        ChangeState(BelialBossPartState.PreBattle);
     }
 
     public void Bind(BelialBossCore core)
@@ -114,45 +113,36 @@ public sealed class BelialBossPart : EnemyBase
         _initialLocalRotation = transform.localRotation;
         _initialLocalScale = transform.localScale;
         _cachedPose = true;
-        _disabledLocalPosition = _initialLocalPosition;
-        _disabledLocalRotation = _initialLocalRotation;
-        _disabledLocalScale = _initialLocalScale;
-        _hasDisabledPose = true;
     }
 
     public IEnumerator MoveToAnchor(Transform anchor, float duration)
     {
-        if (_disabledForBoss || anchor == null)
+        if (!CanRunPattern || anchor == null)
             yield break;
 
-        StopIdleBob();
+        ChangeState(BelialBossPartState.PatternMoving);
         KillMotionTweens();
-        BeginScriptedMotion();
 
         _moveTween = transform.DOLocalMove(anchor.localPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(anchor.localRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
         yield return _moveTween.WaitForCompletion();
-        EndScriptedMotion();
     }
 
     public IEnumerator ReturnToInitialPose(float duration)
     {
-        if (_disabledForBoss || !_cachedPose)
+        if (IsDisabledForBoss || !_cachedPose)
             yield break;
 
         KillMotionTweens();
-        BeginScriptedMotion();
-
         _moveTween = transform.DOLocalMove(_initialLocalPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(_initialLocalRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
         transform.localScale = _initialLocalScale;
         yield return _moveTween.WaitForCompletion();
-        EndScriptedMotion();
     }
 
     public void StartIdleBob()
     {
-        if (_disabledForBoss || _role == BelialBossPartRole.Head)
+        if (IsDisabledForBoss || _role == BelialBossPartRole.Head)
             return;
 
         if (!_cachedPose)
@@ -180,67 +170,46 @@ public sealed class BelialBossPart : EnemyBase
 
     public IEnumerator ChargeAndFire(Transform target, float chargeDuration)
     {
-        if (_disabledForBoss || _attackLocked || _role == BelialBossPartRole.Head)
+        if (IsDisabledForBoss || _role == BelialBossPartRole.Head)
             yield break;
 
-        if (_directAttacker == null)
-        {
-            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: EnemyDirectAttacker is null.", this);
-            yield break;
-        }
+        ChangeState(BelialBossPartState.Charging);
 
-        if (_attackData == null)
-        {
-            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: AttackData is null.", this);
+        if (_directAttacker == null || _attackData == null || target == null)
             yield break;
-        }
-
-        if (target == null)
-        {
-            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: target is null.", this);
-            yield break;
-        }
 
         float safeDuration = Mathf.Max(0.01f, chargeDuration);
         Vector3 chargeScale = _initialLocalScale * 1.1f;
         Tween t = transform.DOScale(chargeScale, safeDuration).SetEase(Ease.InOutSine).SetTarget(this);
         yield return t.WaitForCompletion();
 
-        if (!_disabledForBoss && !_attackLocked)
-        {
-            bool fired = _directAttacker.TryPerformAttack(target, _attackData);
-            if (!fired)
-                Debug.LogError($"[BelialBossPart:{name}] TryPerformAttack returned false. Check AttackData.ProjectilePrefab and PoolManager registration.", this);
-        }
+        if (_currentState == BelialBossPartState.Charging && !_attackLocked)
+            _directAttacker.TryPerformAttack(target, _attackData);
 
         transform.DOScale(_initialLocalScale, 0.1f).SetEase(Ease.OutSine).SetTarget(this);
     }
 
     public IEnumerator SweepTo(Transform targetAnchor, float duration)
     {
-        if (_disabledForBoss || targetAnchor == null || _role == BelialBossPartRole.Head)
+        if (IsDisabledForBoss || targetAnchor == null || _role == BelialBossPartRole.Head)
             yield break;
 
-        StopIdleBob();
+        ChangeState(BelialBossPartState.Sweeping);
         KillMotionTweens();
-        BeginScriptedMotion();
 
         _moveTween = transform.DOLocalMove(targetAnchor.localPosition, duration).SetEase(Ease.Linear).SetTarget(this);
         _rotateTween = transform.DOLocalRotateQuaternion(targetAnchor.localRotation, duration).SetEase(Ease.Linear).SetTarget(this);
         yield return _moveTween.WaitForCompletion();
-        EndScriptedMotion();
     }
 
     public IEnumerator PlaySweepTelegraph(Transform targetAnchor, float duration, float delay)
     {
         float safeDuration = Mathf.Max(0.01f, duration);
-
         if (targetAnchor == null)
             yield break;
 
         if (_sweepGhostPrefab == null)
         {
-            Debug.LogWarning($"[BelialBossPart:{name}] Sweep telegraph skipped: ghost prefab is null.", this);
             yield return new WaitForSeconds(safeDuration + Mathf.Max(0f, delay));
             yield break;
         }
@@ -259,9 +228,7 @@ public sealed class BelialBossPart : EnemyBase
         {
             if (ghostRenderers[i] == null)
                 continue;
-
-            Color c = _sweepGhostColor;
-            ghostRenderers[i].color = c;
+            ghostRenderers[i].color = _sweepGhostColor;
         }
 
         Quaternion targetRotation = targetAnchor.rotation;
@@ -269,15 +236,12 @@ public sealed class BelialBossPart : EnemyBase
         seq.Join(ghost.transform.DOMove(targetAnchor.position, safeDuration).SetEase(_sweepGhostEase));
         seq.Join(ghost.transform.DORotateQuaternion(targetRotation, safeDuration).SetEase(_sweepGhostEase));
 
-        if (ghostRenderers.Length > 0)
+        for (int i = 0; i < ghostRenderers.Length; i++)
         {
-            for (int i = 0; i < ghostRenderers.Length; i++)
-            {
-                SpriteRenderer sr = ghostRenderers[i];
-                if (sr == null)
-                    continue;
-                seq.Join(sr.DOFade(0f, safeDuration).SetEase(Ease.Linear));
-            }
+            SpriteRenderer sr = ghostRenderers[i];
+            if (sr == null)
+                continue;
+            seq.Join(sr.DOFade(0f, safeDuration).SetEase(Ease.Linear));
         }
 
         yield return seq.WaitForCompletion();
@@ -297,31 +261,31 @@ public sealed class BelialBossPart : EnemyBase
     public void SetBattleActive(bool active)
     {
         _battleActive = active;
-
-        if (_hitCollider != null)
-            _hitCollider.enabled = active && !_disabledForBoss;
-
         if (!active)
+        {
             _contactDamageEnabled = false;
+            ChangeState(BelialBossPartState.PreBattle);
+            return;
+        }
+
+        if (_currentState == BelialBossPartState.PreBattle)
+        {
+            ChangeState(BelialBossPartState.Idle);
+            return;
+        }
+
+        if (_currentState == BelialBossPartState.Disabled || _currentState == BelialBossPartState.BossGroggyFrozen || _currentState == BelialBossPartState.Dead)
+            return;
+
+        ChangeState(_currentState);
     }
 
     public void DisableByFinisher(DamageData sourceDamage)
     {
         if (!IsHand())
             return;
-        if (_disabledForBoss || _isPendingFinisherDisable)
-            return;
 
-        _isPendingFinisherDisable = true;
-        _attackLocked = true;
-        _contactDamageEnabled = false;
-        StopIdleBob();
-        KillMotionTweens();
-        DOTween.Kill(this);
-
-        if (_finisherDisableRoutine != null)
-            StopCoroutine(_finisherDisableRoutine);
-        _finisherDisableRoutine = StartCoroutine(FinisherDisableRoutine(sourceDamage));
+        BeginFinisherDisable(sourceDamage);
     }
 
     public void RestoreFromBossGroggy()
@@ -329,22 +293,12 @@ public sealed class BelialBossPart : EnemyBase
         if (!IsHand())
             return;
 
-        _frozenForBossGroggy = false;
-        _frozenForSelfGroggy = false;
-        _scriptedMotionDepth = 0;
-        if (!_frozenForSelfGroggy)
-            RestoreRigidbodyFromFreeze();
-
-        _disabledForBoss = false;
-        _attackLocked = false;
+        if (_currentState != BelialBossPartState.Disabled && _currentState != BelialBossPartState.BossGroggyFrozen)
+            return;
 
         if (_visualRoot != null)
             _visualRoot.gameObject.SetActive(true);
 
-        if (_hitCollider != null)
-            _hitCollider.enabled = _battleActive;
-
-        StopGroggyRoutines();
         _currentHealth = _maxHealth;
         _currentGroggyGauge = 0f;
         _isCaptured = false;
@@ -352,22 +306,13 @@ public sealed class BelialBossPart : EnemyBase
 
         if (_cachedPose)
         {
-            if (_hasDisabledPose)
-            {
-                transform.localPosition = _disabledLocalPosition;
-                transform.localRotation = _disabledLocalRotation;
-                transform.localScale = _disabledLocalScale;
-            }
-            else
-            {
-                transform.localPosition = _initialLocalPosition;
-                transform.localRotation = _initialLocalRotation;
-                transform.localScale = _initialLocalScale;
-            }
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
         }
 
         ApplyVisualStyle();
-        StartIdleBob();
+        ChangeState(BelialBossPartState.Idle);
     }
 
     public void FreezeForBossGroggy()
@@ -375,90 +320,7 @@ public sealed class BelialBossPart : EnemyBase
         if (!IsHand())
             return;
 
-        _frozenForBossGroggy = true;
-        _frozenLocalPosition = transform.localPosition;
-        _frozenLocalRotation = transform.localRotation;
-        _frozenLocalScale = transform.localScale;
-
-        _attackLocked = true;
-        _contactDamageEnabled = false;
-        StopIdleBob();
-        KillMotionTweens();
-        DOTween.Kill(this);
-
-        ApplyRigidbodyFreeze();
-    }
-
-    protected override void OnGroggyEntered(DamageData damageData)
-    {
-        base.OnGroggyEntered(damageData);
-
-        if (!IsHand())
-            return;
-
-        _frozenForSelfGroggy = true;
-        _attackLocked = true;
-        _contactDamageEnabled = false;
-        StopIdleBob();
-        KillMotionTweens();
-        DOTween.Kill(this);
-
-        _frozenLocalPosition = transform.localPosition;
-        _frozenLocalRotation = transform.localRotation;
-        _frozenLocalScale = transform.localScale;
-        ApplyRigidbodyFreeze();
-    }
-
-    protected override void OnGroggyExited()
-    {
-        base.OnGroggyExited();
-
-        if (!IsHand())
-            return;
-
-        _frozenForSelfGroggy = false;
-        if (!_frozenForBossGroggy)
-            RestoreRigidbodyFromFreeze();
-    }
-
-    private void ApplyRigidbodyFreeze()
-    {
-        if (_rb != null)
-        {
-            if (!_hasCachedRigidbodyState)
-            {
-                _cachedConstraints = _rb.constraints;
-                _cachedBodyType = _rb.bodyType;
-                _hasCachedRigidbodyState = true;
-            }
-
-            _rb.linearVelocity = Vector2.zero;
-            _rb.angularVelocity = 0f;
-            _rb.bodyType = RigidbodyType2D.Kinematic;
-            _rb.constraints = RigidbodyConstraints2D.FreezeAll;
-        }
-    }
-
-    private void RestoreRigidbodyFromFreeze()
-    {
-        if (_rb != null)
-        {
-            _rb.linearVelocity = Vector2.zero;
-            _rb.angularVelocity = 0f;
-
-            if (_hasCachedRigidbodyState)
-            {
-                _rb.bodyType = _cachedBodyType;
-                _rb.constraints = _cachedConstraints;
-            }
-            else
-            {
-                _rb.bodyType = RigidbodyType2D.Dynamic;
-                _rb.freezeRotation = true;
-            }
-        }
-
-        _hasCachedRigidbodyState = false;
+        ChangeState(BelialBossPartState.BossGroggyFrozen);
     }
 
     public void SetContactDamageEnabled(bool enabled)
@@ -484,16 +346,51 @@ public sealed class BelialBossPart : EnemyBase
         ApplyVisualStyle();
     }
 
-    public override void TakeDamage(DamageData damageData)
+    public void CancelPatternAction()
     {
-        if (_frozenForBossGroggy)
+        if (_currentState != BelialBossPartState.PatternMoving &&
+            _currentState != BelialBossPartState.Charging &&
+            _currentState != BelialBossPartState.Sweeping)
             return;
 
+        KillMotionTweens();
+        _contactDamageEnabled = false;
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
+
+        ChangeState(BelialBossPartState.Idle);
+    }
+
+    public override void TakeDamage(DamageData damageData)
+    {
         if (!_battleActive)
             return;
 
-        if (_disabledForBoss)
+        if (_currentState == BelialBossPartState.Disabled ||
+            _currentState == BelialBossPartState.BossGroggyFrozen ||
+            _currentState == BelialBossPartState.Dead ||
+            _currentState == BelialBossPartState.FinisherPending)
             return;
+
+        bool isEmbeddedFinisher =
+            damageData.AttackKind == WeaponAttackKind.EmbeddedAttack ||
+            damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut;
+
+        if (IsHand() && isEmbeddedFinisher)
+        {
+            if (CanAcceptEmbeddedFinisher)
+            {
+                BeginFinisherDisable(damageData);
+                return;
+            }
+
+            return;
+        }
 
         if (_role == BelialBossPartRole.Head)
         {
@@ -507,9 +404,6 @@ public sealed class BelialBossPart : EnemyBase
 
         base.TakeDamage(damageData);
         PlayUnifiedHitFlash();
-
-        if (damageData.AttackKind == WeaponAttackKind.EmbeddedAttack || damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut)
-            DisableByFinisher(damageData);
     }
 
     protected override void Die(Vector2 knockbackForce)
@@ -521,7 +415,8 @@ public sealed class BelialBossPart : EnemyBase
             return;
         }
 
-        DisableInternal(new DamageData
+        ChangeState(BelialBossPartState.Dead);
+        BeginFinisherDisable(new DamageData
         {
             Damage = 0f,
             GroggyDamage = 0f,
@@ -532,6 +427,38 @@ public sealed class BelialBossPart : EnemyBase
             IsExecution = false,
             AttackKind = WeaponAttackKind.None
         });
+    }
+
+    protected override void OnGroggyEntered(DamageData damageData)
+    {
+        base.OnGroggyEntered(damageData);
+
+        if (!IsHand() || IsDisabledForBoss)
+            return;
+
+        ChangeState(BelialBossPartState.HandGroggy);
+        _core?.NotifyHandGroggyChanged(this, true);
+    }
+
+    protected override void OnGroggyExited()
+    {
+        base.OnGroggyExited();
+
+        if (!IsHand())
+            return;
+
+        _core?.NotifyHandGroggyChanged(this, false);
+
+        if (_currentState == BelialBossPartState.FinisherPending ||
+            _currentState == BelialBossPartState.Disabled ||
+            _currentState == BelialBossPartState.BossGroggyFrozen ||
+            _currentState == BelialBossPartState.Dead)
+            return;
+
+        if (_finisherGraceRoutine != null)
+            StopCoroutine(_finisherGraceRoutine);
+
+        _finisherGraceRoutine = StartCoroutine(FinisherGraceRoutine());
     }
 
     protected override void OnTriggerEnter2D(Collider2D other)
@@ -560,6 +487,180 @@ public sealed class BelialBossPart : EnemyBase
         return false;
     }
 
+    private IEnumerator FinisherGraceRoutine()
+    {
+        ChangeState(BelialBossPartState.FinisherGrace);
+        float delay = Mathf.Max(0f, _embeddedFinisherGraceDuration);
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        _finisherGraceRoutine = null;
+
+        if (_currentState == BelialBossPartState.FinisherPending ||
+            _currentState == BelialBossPartState.Disabled ||
+            _currentState == BelialBossPartState.BossGroggyFrozen ||
+            _currentState == BelialBossPartState.Dead)
+            yield break;
+
+        ChangeState(BelialBossPartState.Idle);
+    }
+
+    private void BeginFinisherDisable(DamageData sourceDamage)
+    {
+        if (_currentState == BelialBossPartState.Disabled ||
+            _currentState == BelialBossPartState.FinisherPending ||
+            _currentState == BelialBossPartState.BossGroggyFrozen ||
+            _currentState == BelialBossPartState.Dead)
+            return;
+
+        if (_finisherGraceRoutine != null)
+        {
+            StopCoroutine(_finisherGraceRoutine);
+            _finisherGraceRoutine = null;
+        }
+
+        ChangeState(BelialBossPartState.FinisherPending);
+
+        StopGroggyRoutines();
+        _currentHealth = _maxHealth;
+        _currentGroggyGauge = 0f;
+        _isCaptured = false;
+        _isPierced = false;
+
+        if (_finisherDisableRoutine != null)
+            StopCoroutine(_finisherDisableRoutine);
+
+        _finisherDisableRoutine = StartCoroutine(FinisherDisableRoutine(sourceDamage));
+    }
+
+    private IEnumerator FinisherDisableRoutine(DamageData sourceDamage)
+    {
+        float delay = Mathf.Max(0f, _finisherDisableDelay);
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        _finisherDisableRoutine = null;
+
+        ChangeState(BelialBossPartState.Disabled);
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
+
+        _core?.NotifyHandDisabled(this);
+    }
+
+    private void ChangeState(BelialBossPartState nextState)
+    {
+        if (_currentState == nextState)
+            return;
+
+        _currentState = nextState;
+
+        switch (nextState)
+        {
+            case BelialBossPartState.PreBattle:
+                SetColliderEnabled(false);
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                StopIdleBob();
+                break;
+
+            case BelialBossPartState.Idle:
+                if (IsDisabledForBoss)
+                    break;
+                SetColliderEnabled(_battleActive);
+                _contactDamageEnabled = false;
+                _attackLocked = false;
+                StartIdleBob();
+                break;
+
+            case BelialBossPartState.PatternMoving:
+                SetColliderEnabled(true);
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                StopIdleBob();
+                break;
+
+            case BelialBossPartState.Charging:
+                SetColliderEnabled(true);
+                _contactDamageEnabled = false;
+                _attackLocked = false;
+                StopIdleBob();
+                break;
+
+            case BelialBossPartState.Sweeping:
+                SetColliderEnabled(true);
+                _contactDamageEnabled = true;
+                _attackLocked = true;
+                StopIdleBob();
+                break;
+
+            case BelialBossPartState.HandGroggy:
+            case BelialBossPartState.FinisherGrace:
+                KillMotionTweens();
+                StopIdleBob();
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                SetColliderEnabled(true);
+                break;
+
+            case BelialBossPartState.FinisherPending:
+                KillMotionTweens();
+                StopIdleBob();
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                SetColliderEnabled(false);
+                break;
+
+            case BelialBossPartState.Disabled:
+                KillMotionTweens();
+                StopIdleBob();
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                SetColliderEnabled(false);
+                if (_visualRoot != null)
+                    _visualRoot.gameObject.SetActive(false);
+                _currentHealth = _maxHealth;
+                _currentGroggyGauge = 0f;
+                _isCaptured = false;
+                _isPierced = false;
+                break;
+
+            case BelialBossPartState.BossGroggyFrozen:
+                KillMotionTweens();
+                StopIdleBob();
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                SetColliderEnabled(false);
+                if (_visualRoot != null)
+                    _visualRoot.gameObject.SetActive(false);
+                break;
+
+            case BelialBossPartState.Dead:
+                KillMotionTweens();
+                StopIdleBob();
+                _contactDamageEnabled = false;
+                _attackLocked = true;
+                SetColliderEnabled(false);
+                break;
+        }
+    }
+
+    private void SetColliderEnabled(bool enabled)
+    {
+        if (_hitCollider != null)
+            _hitCollider.enabled = enabled;
+    }
+
+    private bool IsHand()
+    {
+        return _role == BelialBossPartRole.LeftHand || _role == BelialBossPartRole.RightHand;
+    }
+
     private void TryDealSweepContactDamage(Collider2D other)
     {
         if (!_contactDamageEnabled || _sweepContactDamage <= 0)
@@ -571,7 +672,6 @@ public sealed class BelialBossPart : EnemyBase
         PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
         if (playerHealth == null)
             playerHealth = other.GetComponentInParent<PlayerHealth>();
-
         if (playerHealth == null)
             return;
 
@@ -589,117 +689,12 @@ public sealed class BelialBossPart : EnemyBase
         });
     }
 
-    private void DisableInternal(DamageData sourceDamage)
-    {
-        if (_disabledForBoss)
-            return;
-
-        _disabledForBoss = true;
-        _frozenForBossGroggy = false;
-        _frozenForSelfGroggy = false;
-        _scriptedMotionDepth = 0;
-        _attackLocked = true;
-
-        StopIdleBob();
-        KillMotionTweens();
-        DOTween.Kill(this);
-
-        StopGroggyRoutines();
-        _currentHealth = _maxHealth;
-        _currentGroggyGauge = 0f;
-        _isCaptured = false;
-        _isPierced = false;
-
-        _disabledLocalPosition = transform.localPosition;
-        _disabledLocalRotation = transform.localRotation;
-        _disabledLocalScale = transform.localScale;
-        _hasDisabledPose = true;
-
-        if (_visualRoot != null)
-            _visualRoot.gameObject.SetActive(false);
-
-        if (_hitCollider != null)
-            _hitCollider.enabled = false;
-
-        if (_cachedPose)
-        {
-            transform.localPosition = _initialLocalPosition;
-            transform.localRotation = _initialLocalRotation;
-            transform.localScale = _initialLocalScale;
-        }
-
-        _core?.NotifyHandDisabled(this);
-    }
-
-    private IEnumerator FinisherDisableRoutine(DamageData sourceDamage)
-    {
-        float delay = Mathf.Max(0f, _finisherDisableDelay);
-        if (delay > 0f)
-            yield return new WaitForSeconds(delay);
-
-        _finisherDisableRoutine = null;
-        _isPendingFinisherDisable = false;
-        DisableInternal(sourceDamage);
-    }
-
-    private bool IsHand()
-    {
-        return _role == BelialBossPartRole.LeftHand || _role == BelialBossPartRole.RightHand;
-    }
-
     private void KillMotionTweens()
     {
         _moveTween?.Kill();
         _rotateTween?.Kill();
         _moveTween = null;
         _rotateTween = null;
-        if (_scriptedMotionDepth > 0)
-        {
-            _scriptedMotionDepth = 0;
-            RestoreRigidbodyAfterScriptedMotion();
-        }
-    }
-
-    private void BeginScriptedMotion()
-    {
-        _scriptedMotionDepth++;
-        if (_scriptedMotionDepth != 1)
-            return;
-
-        if (_rb == null)
-            return;
-
-        _scriptedMotionOriginalBodyType = _rb.bodyType;
-        _hasScriptedMotionOriginalBodyType = true;
-        _rb.linearVelocity = Vector2.zero;
-        _rb.angularVelocity = 0f;
-        _rb.bodyType = RigidbodyType2D.Kinematic;
-    }
-
-    private void EndScriptedMotion()
-    {
-        if (_scriptedMotionDepth <= 0)
-            return;
-
-        _scriptedMotionDepth--;
-        if (_scriptedMotionDepth == 0)
-            RestoreRigidbodyAfterScriptedMotion();
-    }
-
-    private void RestoreRigidbodyAfterScriptedMotion()
-    {
-        if (_rb == null)
-            return;
-
-        if (_frozenForBossGroggy || _frozenForSelfGroggy)
-            return;
-
-        _rb.linearVelocity = Vector2.zero;
-        _rb.angularVelocity = 0f;
-        if (_hasScriptedMotionOriginalBodyType)
-            _rb.bodyType = _scriptedMotionOriginalBodyType;
-
-        _hasScriptedMotionOriginalBodyType = false;
     }
 
     private void CacheRendererBaseColors()
@@ -736,7 +731,7 @@ public sealed class BelialBossPart : EnemyBase
 
     private void PlayUnifiedHitFlash()
     {
-        if (_renderers == null || _renderers.Length == 0 || _disabledForBoss)
+        if (_renderers == null || _renderers.Length == 0 || IsDisabledForBoss)
             return;
 
         if (_blinkRoutine != null)
@@ -819,15 +814,17 @@ public sealed class BelialBossPart : EnemyBase
 
     protected override void OnDisable()
     {
-        _isPendingFinisherDisable = false;
         if (_finisherDisableRoutine != null)
         {
             StopCoroutine(_finisherDisableRoutine);
             _finisherDisableRoutine = null;
         }
 
-        _frozenForBossGroggy = false;
-        _hasCachedRigidbodyState = false;
+        if (_finisherGraceRoutine != null)
+        {
+            StopCoroutine(_finisherGraceRoutine);
+            _finisherGraceRoutine = null;
+        }
 
         StopIdleBob();
         KillMotionTweens();
@@ -841,21 +838,4 @@ public sealed class BelialBossPart : EnemyBase
 
         base.OnDisable();
     }
-
-    private void LateUpdate()
-    {
-        if (!_frozenForBossGroggy && !_frozenForSelfGroggy)
-            return;
-
-        transform.localPosition = _frozenLocalPosition;
-        transform.localRotation = _frozenLocalRotation;
-        transform.localScale = _frozenLocalScale;
-
-        if (_rb != null)
-        {
-            _rb.linearVelocity = Vector2.zero;
-            _rb.angularVelocity = 0f;
-        }
-    }
 }
-
