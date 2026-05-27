@@ -78,6 +78,16 @@ public class WeaponController : MonoBehaviour
     public Transform PlayerTransform => _playerTransform;
     public Transform DroneDockPivot => _droneDockPivot;
     public float ControlRadius => _playerController != null ? _playerController.ControlRadius : 0f;
+    public Vector2 PlayerAimDirection
+    {
+        get
+        {
+            if (_playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f)
+                return _playerController.AimDirection.normalized;
+
+            return Vector2.right;
+        }
+    }
     public float SlowMotionScale => _slowMotionScale;
     public float SlowMotionHoldDuration => _slowMotionHoldDuration;
     public float ThrustDragThreshold => _thrustDragThreshold;

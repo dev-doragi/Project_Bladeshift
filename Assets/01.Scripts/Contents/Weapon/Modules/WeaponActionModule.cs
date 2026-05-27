@@ -11,6 +11,7 @@ public abstract class WeaponActionModule : MonoBehaviour
     }
 
     public virtual void OnPress() { }
+    public virtual void OnFrameTick() { }
     public virtual void OnTick() { }
     public virtual void OnRelease() { }
     public virtual bool TryHandlePinnedPrimary() { return false; }

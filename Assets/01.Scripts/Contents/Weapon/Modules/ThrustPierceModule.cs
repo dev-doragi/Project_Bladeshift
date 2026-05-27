@@ -8,6 +8,7 @@ public class ThrustPierceModule : WeaponActionModule
     [SerializeField] private float _focusHoldCostPerSecond = 10f;
     [SerializeField] private float _captureHoldCostPerSecond = 10f;
     [SerializeField] private ContinuousEnergySpendMode _captureHoldSpendMode = ContinuousEnergySpendMode.DepleteToZero;
+    [SerializeField] private float _gamepadAimDeadzone = 0.2f;
     [Header("Pin Flight Tuning")]
     [SerializeField] private float _pinStartHitStopDuration = 0.15f;
     [SerializeField] private ShakeIntensity _pinWallHitShakeIntensity = ShakeIntensity.Weak;
@@ -29,6 +30,11 @@ public class ThrustPierceModule : WeaponActionModule
     private Vector2 _aimLockPosition;
     private Vector2 _aimMouseStartPosition;
     private bool _isAiming;
+    private bool _isGamepadHoldAim;
+    private bool _hasGamepadAimDirection;
+    private Vector2 _gamepadAimDirection;
+    private Vector2 _lastAimDirection;
+    private bool _lastAimWasGamepad;
     private bool _isAutoReturning;
     private bool _isDockWaiting;
     private bool _isFinisherRunning;
@@ -58,35 +64,89 @@ public class ThrustPierceModule : WeaponActionModule
         _isAiming = true;
         _hasActivatedSlowMotion = false;
         _aimCanceledByEnergyShortage = false;
+        _isGamepadHoldAim = false;
+        _hasGamepadAimDirection = false;
+        _lastAimWasGamepad = false;
+        _lastAimDirection = ResolveFallbackAimDirection();
         Controller.Movement.StopFollow();
+        Controller.Movement.HoldPosition(_aimLockPosition);
+    }
+
+    public override void OnFrameTick()
+    {
+        if (Controller == null) return;
+
+        WeaponView view = Controller.View;
+        if (view == null) return;
+
+        if (!_isAiming)
+        {
+            view.HideTrajectory();
+            return;
+        }
+
+        if (Controller.CurrentMode != WeaponMode.Remote || Controller.CurrentState != WeaponState.Controlled)
+        {
+            view.HideTrajectory();
+            return;
+        }
+
+        TryResolveCurrentAim(out Vector2 direction, out Vector2 visualTarget, out bool canFire, out _);
+        if (direction.sqrMagnitude > 0.0001f)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            Controller.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        }
+
+        view.ShowTrajectory(_aimLockPosition, visualTarget);
+
+        if (canFire && !_hasActivatedSlowMotion)
+        {
+            _hasActivatedSlowMotion = true;
+            Controller.PublishSlowMotion();
+        }
+        else if (!canFire && _hasActivatedSlowMotion)
+        {
+            _hasActivatedSlowMotion = false;
+            Controller.ResetTimeScale();
+        }
+
+        Controller.Movement.HoldPosition(_aimLockPosition);
     }
 
     public override void OnTick()
     {
         if (Controller == null) return;
 
-        TickModeSpecificVisuals();
         TickRemoteControlState();
         TickEnergy();
         TickPinnedCaptureDrain();
         TickDockWait();
+        TickFocusHoldEnergy();
     }
 
     public override void OnRelease()
     {
         if (Controller == null || !_isAiming) return;
 
-        Vector2 releaseMousePos = Controller.Sensor.GetMouseWorldPosition();
-        float dragDistance = Vector2.Distance(_aimMouseStartPosition, releaseMousePos);
-        EndAiming();
+        TryResolveCurrentAim(out Vector2 direction, out _, out bool canFire, out bool isGamepadAim);
 
         if (_aimCanceledByEnergyShortage)
         {
             _aimCanceledByEnergyShortage = false;
+            EndAiming();
             return;
         }
 
-        if (dragDistance < Controller.ThrustDragThreshold)
+        EndAiming();
+
+        if (!canFire)
+        {
+            Controller.ChangeState(WeaponState.Controlled);
+            return;
+        }
+
+        if (direction.sqrMagnitude <= 0.0001f)
         {
             Controller.ChangeState(WeaponState.Controlled);
             return;
@@ -98,58 +158,7 @@ public class ThrustPierceModule : WeaponActionModule
             return;
         }
 
-        Vector2 direction = (releaseMousePos - _aimLockPosition).normalized;
-        StartPinSequence(direction);
-    }
-
-    private void TickModeSpecificVisuals()
-    {
-        WeaponView view = Controller.View;
-        if (view == null) return;
-
-        if (_isAiming && Controller.CurrentMode == WeaponMode.Remote && Controller.CurrentState == WeaponState.Controlled)
-        {
-            Vector2 mouseWorldPos = Controller.Sensor.GetMouseWorldPosition();
-            float dragDistance = Vector2.Distance(_aimMouseStartPosition, mouseWorldPos);
-            bool canFireByDrag = dragDistance >= Controller.ThrustDragThreshold;
-
-            if (_focusHoldCostPerSecond > 0f && Controller.LinkEnergy != null)
-            {
-                bool keepAiming = Controller.LinkEnergy.SpendEnergyOverTime(_focusHoldCostPerSecond, ContinuousEnergySpendMode.DepleteToZero, Time.unscaledDeltaTime);
-                if (!keepAiming)
-                {
-                    _aimCanceledByEnergyShortage = true;
-                    EndAiming();
-                    Controller.ChangeState(WeaponState.Controlled);
-                    return;
-                }
-            }
-
-            if (canFireByDrag)
-            {
-                if (!_hasActivatedSlowMotion)
-                {
-                    _hasActivatedSlowMotion = true;
-                    Controller.PublishSlowMotion();
-                }
-            }
-            else if (_hasActivatedSlowMotion)
-            {
-                _hasActivatedSlowMotion = false;
-                Controller.ResetTimeScale();
-            }
-
-            Vector2 dir = mouseWorldPos - (Vector2)Controller.transform.position;
-            if (dir.sqrMagnitude > 0f)
-                Controller.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
-
-            view.ShowTrajectory(Controller.transform.position, mouseWorldPos);
-            Controller.Movement.HoldPosition(_aimLockPosition);
-        }
-        else
-        {
-            view.HideTrajectory();
-        }
+        StartPinSequence(direction.normalized, isGamepadAim);
     }
 
     private void TickRemoteControlState()
@@ -226,6 +235,100 @@ public class ThrustPierceModule : WeaponActionModule
         if (!_isDockWaiting) return;
         if (_dockRechargeRoutine != null) return;
         _dockRechargeRoutine = StartCoroutine(DockRechargeRoutine());
+    }
+
+    private void TickFocusHoldEnergy()
+    {
+        if (!_isAiming) return;
+        if (Controller.CurrentMode != WeaponMode.Remote) return;
+        if (Controller.CurrentState != WeaponState.Controlled) return;
+        if (_focusHoldCostPerSecond <= 0f || Controller.LinkEnergy == null) return;
+
+        bool keepAiming = Controller.LinkEnergy.SpendEnergyOverTime(
+            _focusHoldCostPerSecond,
+            ContinuousEnergySpendMode.DepleteToZero,
+            Time.unscaledDeltaTime);
+
+        if (keepAiming)
+            return;
+
+        _aimCanceledByEnergyShortage = true;
+        EndAiming();
+        Controller.ChangeState(WeaponState.Controlled);
+    }
+
+    private bool TryResolveCurrentAim(
+        out Vector2 direction,
+        out Vector2 visualTarget,
+        out bool canFire,
+        out bool isGamepadAim)
+    {
+        direction = ResolveFallbackAimDirection();
+        float visualDistance = Mathf.Max(
+            Controller != null ? Controller.ControlRadius : 0f,
+            Controller != null ? Controller.ThrustDragThreshold + 0.01f : 0.01f);
+        visualTarget = _aimLockPosition + direction * visualDistance;
+        canFire = false;
+        isGamepadAim = false;
+
+        if (Controller == null)
+            return false;
+
+        InputReader input = InputReader.Instance;
+        if (input != null)
+        {
+            Vector2 look = input.GetLookInput();
+            float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
+            if (input.IsLookInputFromGamepad() && look.sqrMagnitude >= deadzone * deadzone)
+            {
+                _isGamepadHoldAim = true;
+                _gamepadAimDirection = look.normalized;
+                _hasGamepadAimDirection = true;
+                _lastAimDirection = _gamepadAimDirection;
+                _lastAimWasGamepad = true;
+
+                direction = _gamepadAimDirection;
+                visualTarget = _aimLockPosition + direction * visualDistance;
+                canFire = true;
+                isGamepadAim = true;
+                return true;
+            }
+        }
+
+        if (_isGamepadHoldAim && _hasGamepadAimDirection)
+        {
+            direction = _gamepadAimDirection;
+            visualTarget = _aimLockPosition + direction * visualDistance;
+            canFire = true;
+            isGamepadAim = true;
+            return true;
+        }
+
+        Vector2 mouseWorld = Controller.Sensor.GetMouseWorldPosition();
+        Vector2 delta = mouseWorld - _aimLockPosition;
+        float dragDistance = delta.magnitude;
+        visualTarget = mouseWorld;
+        canFire = dragDistance >= Controller.ThrustDragThreshold;
+        isGamepadAim = false;
+
+        if (delta.sqrMagnitude <= 0.0001f)
+            return false;
+
+        direction = delta.normalized;
+        _lastAimDirection = direction;
+        _lastAimWasGamepad = false;
+        return true;
+    }
+
+    private Vector2 ResolveFallbackAimDirection()
+    {
+        if (Controller != null && Controller.PlayerAimDirection.sqrMagnitude > 0.0001f)
+            return Controller.PlayerAimDirection.normalized;
+
+        if (Controller != null && Controller.transform.right.sqrMagnitude > 0.0001f)
+            return ((Vector2)Controller.transform.right).normalized;
+
+        return Vector2.right;
     }
 
     private bool CanStartControl()
@@ -343,7 +446,7 @@ public class ThrustPierceModule : WeaponActionModule
         return true;
     }
 
-    private void StartPinSequence(Vector2 direction)
+    private void StartPinSequence(Vector2 direction, bool isGamepadAim)
     {
         if (Controller.Movement == null || Controller.Combat == null || Controller.Capture == null || Controller.StateMachine == null) return;
 
@@ -376,7 +479,7 @@ public class ThrustPierceModule : WeaponActionModule
                     if (_groggyEnteredDuringCurrentPin.Contains(enemy))
                         return false;
 
-                    return TryHandleGroggyEnemyPierce(enemy, targetTransform);
+                    return TryHandleGroggyEnemyPierce(enemy, targetTransform, isGamepadAim);
                 }
 
                 bool damageApplied = Controller.Combat.PerformPinDamage(targetTransform, Controller.transform.position, direction, _pierceHitTargets);
@@ -399,6 +502,12 @@ public class ThrustPierceModule : WeaponActionModule
                     Controller.Capture.BindEnemy(targetTransform);
                     AddCaptureWeight(enemy);
                     Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
+                    if (isGamepadAim)
+                    {
+                        StartGamepadCapturedEnemyReturn();
+                        return true;
+                    }
+
                     // Keep flying while carrying captured enemy.
                     // Pinned state is finalized only on wall hit or range-end.
                     return false;
@@ -453,6 +562,33 @@ public class ThrustPierceModule : WeaponActionModule
             });
     }
 
+    private void StartGamepadCapturedEnemyReturn()
+    {
+        if (Controller == null)
+            return;
+
+        if (Controller.PlayerTransform == null || Controller.Movement == null)
+        {
+            Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
+            Controller.ChangeState(WeaponState.Pinned);
+            return;
+        }
+
+        Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
+        Controller.AimCursor?.ResetToPlayerAimOffset(_lastAimDirection);
+        Controller.ChangeState(WeaponState.Returning);
+
+        Controller.Movement.ExecuteReturn(
+            GetGamepadCapturedReturnTargetPosition,
+            Controller.ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
+            _ =>
+            {
+                Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
+                Controller.ChangeState(WeaponState.Pinned);
+            });
+    }
+
     private Vector2 GetReturnToPlayerTargetPosition()
     {
         Transform target = Controller.DroneDockPivot != null
@@ -462,6 +598,25 @@ public class ThrustPierceModule : WeaponActionModule
         return target != null
             ? (Vector2)target.position
             : Controller.Rigidbody.position;
+    }
+
+    private Vector2 GetGamepadCapturedReturnTargetPosition()
+    {
+        if (Controller != null && Controller.AimCursor != null)
+            return Controller.AimCursor.AimWorldPosition;
+
+        if (Controller != null && Controller.PlayerTransform != null)
+        {
+            Vector2 direction = _lastAimDirection.sqrMagnitude > 0.0001f
+                ? _lastAimDirection.normalized
+                : ResolveFallbackAimDirection();
+            float distance = Mathf.Max(0.5f, Controller.ControlRadius * 0.45f);
+            return (Vector2)Controller.PlayerTransform.position + direction * distance;
+        }
+
+        return Controller != null && Controller.Rigidbody != null
+            ? Controller.Rigidbody.position
+            : Vector2.zero;
     }
 
     private void StartRangeExceededReturnToDock()
@@ -528,7 +683,7 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.ChangeState(WeaponState.Grounded);
     }
 
-    private bool TryHandleGroggyEnemyPierce(EnemyBase enemy, Transform enemyTransform)
+    private bool TryHandleGroggyEnemyPierce(EnemyBase enemy, Transform enemyTransform, bool isGamepadAim)
     {
         if (enemy == null || enemyTransform == null)
             return false;
@@ -544,6 +699,12 @@ public class ThrustPierceModule : WeaponActionModule
                 Controller.Capture.BindEnemy(enemyTransform);
                 AddCaptureWeight(enemy);
                 Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
+                if (isGamepadAim)
+                {
+                    StartGamepadCapturedEnemyReturn();
+                    return true;
+                }
+
                 Controller.ChangeState(WeaponState.Pinned);
                 return true;
 
@@ -572,6 +733,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (_hasActivatedSlowMotion)
             Controller.ResetTimeScale();
         _hasActivatedSlowMotion = false;
+        _isGamepadHoldAim = false;
     }
 
     private bool CanCaptureByWeight(EnemyBase enemy)

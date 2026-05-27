@@ -147,6 +147,14 @@ public class WeaponAimCursor : MonoBehaviour
 
     public void ResetToPlayerAimOffset(float normalizedRadius = 0.45f, float minDistance = 0.5f)
     {
+        Vector2 fallbackDirection = _playerController != null
+            ? _playerController.AimDirection
+            : Vector2.right;
+        ResetToPlayerAimOffset(fallbackDirection, normalizedRadius, minDistance);
+    }
+
+    public void ResetToPlayerAimOffset(Vector2 aimDirection, float normalizedRadius = 0.45f, float minDistance = 0.5f)
+    {
         if (_playerTransform == null)
             return;
 
@@ -154,12 +162,14 @@ public class WeaponAimCursor : MonoBehaviour
         float clampedRatio = Mathf.Clamp01(normalizedRadius);
         float distance = Mathf.Max(minDistance, radius * clampedRatio);
 
-        Vector2 aimDirection = _playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
-            ? _playerController.AimDirection.normalized
-            : Vector2.right;
+        Vector2 direction = aimDirection.sqrMagnitude > 0.0001f
+            ? aimDirection.normalized
+            : (_playerController != null && _playerController.AimDirection.sqrMagnitude > 0.0001f
+                ? _playerController.AimDirection.normalized
+                : Vector2.right);
 
         Vector2 origin = _playerTransform.position;
-        Vector2 desired = origin + aimDirection * distance;
+        Vector2 desired = origin + direction * distance;
 
         CurrentWorldPosition = ClampToControlRadius(desired);
         _fallbackGamepadStartPosition = CurrentWorldPosition;

@@ -45,7 +45,7 @@ public class WeaponSensor : MonoBehaviour
         if (_aimCursor != null && _aimCursor.IsInitialized)
         {
             _aimCursor.Tick();
-            _lastValidMousePos = _aimCursor.CurrentWorldPosition;
+            _lastValidMousePos = _aimCursor.AimWorldPosition;
             return _lastValidMousePos;
         }
 
