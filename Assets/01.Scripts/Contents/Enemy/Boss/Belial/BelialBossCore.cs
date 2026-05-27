@@ -201,8 +201,12 @@ public sealed class BelialBossCore : MonoBehaviour
 
         _isBossGroggy = true;
 
+        _leftHand?.FreezeForBossGroggy();
+        _rightHand?.FreezeForBossGroggy();
         _leftHand?.SetAttackLocked(true);
         _rightHand?.SetAttackLocked(true);
+        _leftHand?.SetContactDamageEnabled(false);
+        _rightHand?.SetContactDamageEnabled(false);
         _leftHand?.StopIdleBob();
         _rightHand?.StopIdleBob();
         _head?.StopIdleBob();
@@ -261,6 +265,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private IEnumerator ExecutePattern(BelialPatternType pattern)
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         _leftHand?.SetContactDamageEnabled(false);
         _rightHand?.SetContactDamageEnabled(false);
 
@@ -286,6 +293,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private IEnumerator ShootDynamic()
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         Transform player = ResolvePlayerTarget();
         if (player == null)
             yield break;
@@ -303,13 +313,23 @@ public sealed class BelialBossCore : MonoBehaviour
             ? GetAnchor(_rightHandAnchors, secondaryLayer)
             : GetAnchor(_rightHandAnchors, primaryLayer);
 
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         yield return MoveHandsToAnchors(leftAnchor, rightAnchor);
+        if (ShouldAbortPatternExecution())
+            yield break;
         yield return FireHands(player);
+        if (ShouldAbortPatternExecution())
+            yield break;
         yield return ReturnHandsToIdle();
     }
 
     private IEnumerator Sweep(BelialBossPart sweeper, Transform[] targetAnchors, int targetLayer)
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         if (sweeper == null || sweeper.IsDisabledForBoss)
             yield break;
 
@@ -324,9 +344,24 @@ public sealed class BelialBossCore : MonoBehaviour
         sweeper.SetContactDamage(_sweepContactDamage, _sweepContactDamageInterval);
 
         yield return sweeper.MoveToAnchor(sourceAnchor, _handMoveDuration);
+        if (ShouldAbortPatternExecution())
+        {
+            sweeper.FreezeForBossGroggy();
+            yield break;
+        }
         yield return sweeper.PlaySweepTelegraph(targetAnchor, _sweepDuration, _sweepTelegraphDelay);
+        if (ShouldAbortPatternExecution())
+        {
+            sweeper.FreezeForBossGroggy();
+            yield break;
+        }
         sweeper.SetContactDamageEnabled(true);
         yield return sweeper.SweepTo(targetAnchor, _sweepDuration);
+        if (ShouldAbortPatternExecution())
+        {
+            sweeper.FreezeForBossGroggy();
+            yield break;
+        }
 
         sweeper.SetContactDamageEnabled(false);
         sweeper.SetAttackLocked(false);
@@ -337,6 +372,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private IEnumerator MoveHandsToAnchors(Transform leftAnchor, Transform rightAnchor)
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         bool leftDone = true;
         bool rightDone = true;
 
@@ -357,11 +395,18 @@ public sealed class BelialBossCore : MonoBehaviour
         }
 
         while (!leftDone || !rightDone)
+        {
+            if (ShouldAbortPatternExecution())
+                yield break;
             yield return null;
+        }
     }
 
     private IEnumerator FireHands(Transform player)
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         if (player == null)
         {
             Debug.LogWarning("[BelialBossCore] FireHands skipped: player target not found.", this);
@@ -386,7 +431,11 @@ public sealed class BelialBossCore : MonoBehaviour
         }
 
         while (!leftDone || !rightDone)
+        {
+            if (ShouldAbortPatternExecution())
+                yield break;
             yield return null;
+        }
 
         _leftHand?.SetAttackLocked(true);
         _rightHand?.SetAttackLocked(true);
@@ -397,6 +446,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private IEnumerator ReturnHandsToIdle()
     {
+        if (ShouldAbortPatternExecution())
+            yield break;
+
         bool leftDone = true;
         bool rightDone = true;
 
@@ -423,7 +475,16 @@ public sealed class BelialBossCore : MonoBehaviour
         }
 
         while (!leftDone || !rightDone)
+        {
+            if (ShouldAbortPatternExecution())
+                yield break;
             yield return null;
+        }
+    }
+
+    private bool ShouldAbortPatternExecution()
+    {
+        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy();
     }
 
     private static Transform GetAnchor(Transform[] anchors, int index)

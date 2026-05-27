@@ -191,7 +191,7 @@ public class WeaponSensor : MonoBehaviour
 
     public bool ShouldReleaseRemoteControl(Vector3 weaponPosition, Vector2 aimWorldPos, LayerMask wallMask)
     {
-        return !IsPlayerInRange(weaponPosition) || !IsMouseInRange(aimWorldPos, true) || !HasLineOfSight(weaponPosition, wallMask);
+        return !IsPlayerInRange(weaponPosition) || !IsMouseInRange(aimWorldPos, true);
     }
 
     public bool ShouldAcquireControl(Vector3 weaponPosition, Vector2 mousePos, LayerMask wallMask)

@@ -10,6 +10,7 @@ public class WeaponLinkEnergy : MonoBehaviour
     [SerializeField] private float _minDrainPerSecond = 4f;
     [SerializeField] private float _maxDrainPerSecond = 28f;
     [SerializeField] private float _disconnectDrainPerSecond = 12f;
+    [SerializeField] private float _occludedDrainMultiplier = 1.75f;
     [SerializeField, Range(0f, 1f)] private float _recoverRadiusRatio = 0.25f;
     [SerializeField, Range(0f, 1f)] private float _reactivationEnergyRatio = 0.2f;
     [SerializeField] private LinkEnergyDepletionMode _depletionMode = LinkEnergyDepletionMode.DropGrounded;
@@ -46,12 +47,13 @@ public class WeaponLinkEnergy : MonoBehaviour
         _minDrainPerSecond = Mathf.Max(0f, _minDrainPerSecond);
         _maxDrainPerSecond = Mathf.Max(_minDrainPerSecond, _maxDrainPerSecond);
         _disconnectDrainPerSecond = Mathf.Max(0f, _disconnectDrainPerSecond);
+        _occludedDrainMultiplier = Mathf.Max(1f, _occludedDrainMultiplier);
         _reactivationEnergyRatio = Mathf.Clamp01(_reactivationEnergyRatio);
         IsControlLocked = _currentEnergy <= Epsilon;
         _controller = GetComponent<WeaponController>();
     }
 
-    public void Tick(float distance, float controlRadius, bool isRemoteControlling, float deltaTime)
+    public void Tick(float distance, float controlRadius, bool isRemoteControlling, bool isOccluded, float deltaTime)
     {
         float safeDelta = Mathf.Max(0f, deltaTime);
         float safeControlRadius = Mathf.Max(Epsilon, controlRadius);
@@ -108,6 +110,8 @@ public class WeaponLinkEnergy : MonoBehaviour
                 float drainPerSecond = isDisconnected
                     ? _disconnectDrainPerSecond
                     : Mathf.Lerp(_minDrainPerSecond, _maxDrainPerSecond, DistanceRatio);
+                if (isOccluded)
+                    drainPerSecond *= _occludedDrainMultiplier;
                 float drainDelta = isDisconnected ? Mathf.Max(0f, Time.deltaTime) : safeDelta;
                 _currentEnergy -= drainPerSecond * drainDelta;
             }
@@ -356,3 +360,4 @@ public class WeaponLinkEnergy : MonoBehaviour
         _isRecoveryBlocked = false;
     }
 }
+

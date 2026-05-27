@@ -316,6 +316,18 @@ public sealed class BelialBossPart : EnemyBase
         StartIdleBob();
     }
 
+    public void FreezeForBossGroggy()
+    {
+        if (!IsHand())
+            return;
+
+        _attackLocked = true;
+        _contactDamageEnabled = false;
+        StopIdleBob();
+        KillMotionTweens();
+        DOTween.Kill(this);
+    }
+
     public void SetContactDamageEnabled(bool enabled)
     {
         _contactDamageEnabled = enabled;

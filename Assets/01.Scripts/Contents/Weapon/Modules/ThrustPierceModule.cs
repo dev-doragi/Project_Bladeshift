@@ -226,7 +226,9 @@ public class ThrustPierceModule : WeaponActionModule
              Controller.CurrentState == WeaponState.Pinned);
 
         float distance = Vector2.Distance(Controller.PlayerTransform.position, Controller.transform.position);
-        linkEnergy.Tick(distance, Controller.ControlRadius, isRemoteControlling, Time.fixedDeltaTime);
+        bool isOccluded = Controller.Sensor != null &&
+                          !Controller.Sensor.HasLineOfSight(Controller.transform.position, Controller.WallAndEnvironmentLayer);
+        linkEnergy.Tick(distance, Controller.ControlRadius, isRemoteControlling, isOccluded, Time.fixedDeltaTime);
         linkEnergy.ClearFrameSpendFlag();
         if (isWallPinned) return;
 

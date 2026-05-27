@@ -2,6 +2,8 @@ using UnityEngine;
 
 public static class WeaponAimConstraintSolver
 {
+    private const float ReachabilityLinecastMargin = 0.2f;
+
     public static Vector2 SolveReachablePosition(
         Vector2 origin,
         Vector2 desiredWorldPosition,
@@ -86,10 +88,14 @@ public static class WeaponAimConstraintSolver
         if (distance <= 0.0001f)
             return true;
 
+        float checkDistance = Mathf.Max(0f, distance - ReachabilityLinecastMargin);
+        if (checkDistance <= 0.0001f)
+            return true;
+
         RaycastHit2D[] hits = Physics2D.RaycastAll(
             origin,
             direction.normalized,
-            distance,
+            checkDistance,
             wallMask
         );
 
@@ -131,10 +137,14 @@ public static class WeaponAimConstraintSolver
         if (clampedDistance <= 0.0001f)
             return origin;
 
+        float checkDistance = Mathf.Max(0f, clampedDistance - ReachabilityLinecastMargin);
+        if (checkDistance <= 0.0001f)
+            return clamped;
+
         RaycastHit2D[] hits = Physics2D.RaycastAll(
             origin,
             clampedDirection.normalized,
-            clampedDistance,
+            checkDistance,
             wallMask
         );
 
