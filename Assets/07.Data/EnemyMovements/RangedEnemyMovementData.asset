@@ -21,8 +21,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   _moveAfterAttack: 0
-  _maintainDistanceRange: {x: 8, y: 11}
-  _repositionTravelDistanceRange: {x: 6, y: 7}
+  _maintainDistanceRange: {x: 9, y: 11}
+  _repositionTravelDistanceRange: {x: 5, y: 7}
   _repositionSpeedRange: {x: 11, y: 13}
   _repositionIntervalRange: {x: 0.3, y: 0.5}
   _arriveDistance: 0.7

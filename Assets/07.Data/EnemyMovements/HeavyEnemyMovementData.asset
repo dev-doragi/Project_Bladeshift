@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: HeavyEnemyMovementData
   m_EditorClassIdentifier: 
   _moveSpeed: 8.5
-  _detectRange: 22.5
+  _detectRange: 23.5
   _stopDistance: 0.1
   _keepChasingAfterDetection: 1
   _requiresLineOfSight: 1
