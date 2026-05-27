@@ -21,7 +21,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   _chargeCooldown: 4
-  _chargeSpeed: 22
+  _chargeSpeed: 25
   _chargeDistance: 16
   _chargeStartDistanceRange: {x: 0, y: 14}
   _chargeWarmupDuration: 1
@@ -32,7 +32,8 @@ MonoBehaviour:
   _chargeWarningBlinkSpeed: 8
   _chargeWarningMaxAlpha: 0.58
   _chargeWarningMinAlpha: 0.12
-  _platformHitKnockback: 20
+  _platformHitKnockback: 100
+  _platformHitShakeIntensity: 2
   _chargeBlockerLayer:
     serializedVersion: 2
     m_Bits: 128

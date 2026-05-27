@@ -299,6 +299,11 @@ public class HeavyEnemyController : EnemyController
         ThrustPierceModule thrustPierce = collider.GetComponentInParent<ThrustPierceModule>();
         thrustPierce?.ForceReturnPinnedWallToPlayer();
 
+        EventBus.Instance?.Publish(new CameraShakeEvent
+        {
+            Intensity = _heavyMovementData.PlatformHitShakeIntensity
+        });
+
         if (EnemyBase != null)
         {
             EnemyBase.IsDamageBlocked = false;

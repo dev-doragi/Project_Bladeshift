@@ -21,6 +21,7 @@ public class HeavyEnemyMovementData : GroundEnemyMovementData
 
     [Header("Charge Collision")]
     [SerializeField, Min(0f)] private float _platformHitKnockback = 12f;
+    [SerializeField] private ShakeIntensity _platformHitShakeIntensity = ShakeIntensity.Strong;
     [SerializeField] private LayerMask _chargeBlockerLayer;
 
     [Header("Charge After Image")]
@@ -39,6 +40,7 @@ public class HeavyEnemyMovementData : GroundEnemyMovementData
     public float ChargeWarningMaxAlpha => _chargeWarningMaxAlpha;
     public float ChargeWarningMinAlpha => _chargeWarningMinAlpha;
     public float PlatformHitKnockback => _platformHitKnockback;
+    public ShakeIntensity PlatformHitShakeIntensity => _platformHitShakeIntensity;
     public LayerMask ChargeBlockerLayer => _chargeBlockerLayer;
     public Color ChargeAfterImageColor => _chargeAfterImageColor;
 
