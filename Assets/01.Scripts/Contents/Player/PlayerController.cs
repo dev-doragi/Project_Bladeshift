@@ -112,8 +112,6 @@ public class PlayerController : MonoBehaviour
         if (InputReader.Instance.IsInputBlocked)
             return;
 
-        _weaponAimCursor?.Tick();
-
         if (_weaponModeController != null && _weaponModeController.CurrentMode == WeaponMode.Melee)
         {
             UpdateMeleeAimDirectionFromLook();

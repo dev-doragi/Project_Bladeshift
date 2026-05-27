@@ -14,6 +14,7 @@ public class WeaponSensor : MonoBehaviour
     private Camera _mainCamera;
     private float _controlRadius;
     private Vector2 _lastValidMousePos;
+    private Vector2 _lastRawMousePos;
 
     private Vector2 _lastReachableTargetPosition;
     private bool _hasLastReachableTargetPosition;
@@ -26,6 +27,7 @@ public class WeaponSensor : MonoBehaviour
         if (_aimCursor == null)
             _aimCursor = GetComponentInChildren<WeaponAimCursor>(true);
         _lastValidMousePos = _playerTransform != null ? (Vector2)_playerTransform.position : Vector2.zero;
+        _lastRawMousePos = _lastValidMousePos;
 
         ResetAimConstraintCache();
     }
@@ -44,14 +46,19 @@ public class WeaponSensor : MonoBehaviour
 
         if (_aimCursor != null && _aimCursor.IsInitialized)
         {
-            _aimCursor.Tick();
-            _lastValidMousePos = _aimCursor.CurrentWorldPosition;
+            _lastValidMousePos = _aimCursor.AimWorldPosition;
             return _lastValidMousePos;
         }
 
+        _lastValidMousePos = GetRawPointerWorldPosition();
+        return _lastValidMousePos;
+    }
+
+    public Vector2 GetRawPointerWorldPosition()
+    {
         InputReader inputReader = InputReader.Instance;
         if (_mainCamera == null || inputReader == null)
-            return _lastValidMousePos;
+            return _lastRawMousePos;
 
         if (!PointerWorldPositionUtility.TryGetMouseWorldPosition(
                 _mainCamera,
@@ -59,10 +66,10 @@ public class WeaponSensor : MonoBehaviour
                 ignorePointerOutsideScreen: true,
                 out Vector2 worldPos))
         {
-            return _lastValidMousePos;
+            return _lastRawMousePos;
         }
 
-        _lastValidMousePos = worldPos;
+        _lastRawMousePos = worldPos;
         return worldPos;
     }
 
@@ -102,7 +109,6 @@ public class WeaponSensor : MonoBehaviour
 
         if (_aimCursor != null && _aimCursor.IsInitialized)
         {
-            _aimCursor.Tick();
             _lastReachableTargetPosition = _aimCursor.AimWorldPosition;
             _hasLastReachableTargetPosition = true;
             return _lastReachableTargetPosition;

@@ -26,6 +26,17 @@ public class MouseWorldProxyFollower : MonoBehaviour
     private PlayerController _playerController;
     private Vector3 _proxyVelocity;
 
+    public void SetAimCursor(WeaponAimCursor aimCursor)
+    {
+        _aimCursor = aimCursor;
+    }
+
+    public void SetPlayerTransform(Transform playerTransform)
+    {
+        _playerTransform = playerTransform;
+        _playerController = _playerTransform != null ? _playerTransform.GetComponent<PlayerController>() : null;
+    }
+
     public void SnapToPlayerPosition()
     {
         ResolvePlayer();
@@ -49,11 +60,9 @@ public class MouseWorldProxyFollower : MonoBehaviour
         bool isGamepadMode = inputReader != null && inputReader.IsGamepadControlSchemeActive();
         if (isGamepadMode)
         {
-            ResolveAimCursor();
             if (_aimCursor != null && _aimCursor.IsInitialized)
             {
-                _aimCursor.Tick();
-                Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
+                Vector3 aimWorld = _aimCursor.AimWorldPosition;
                 aimWorld.z = transform.position.z;
                 transform.position = GetProxyPosition(aimWorld);
                 _proxyVelocity = Vector3.zero;
@@ -111,7 +120,6 @@ public class MouseWorldProxyFollower : MonoBehaviour
 
         if (isGamepadMode)
         {
-            ResolveAimCursor();
             if (_aimCursor == null || !_aimCursor.IsInitialized)
             {
                 if (_playerTransform != null)
@@ -119,8 +127,7 @@ public class MouseWorldProxyFollower : MonoBehaviour
                 return;
             }
 
-            _aimCursor.Tick();
-            Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
+            Vector3 aimWorld = _aimCursor.AimWorldPosition;
             aimWorld.z = transform.position.z;
 
             if (_playerTransform == null)
@@ -214,20 +221,7 @@ public class MouseWorldProxyFollower : MonoBehaviour
 
     private void ResolvePlayer()
     {
-        if (_playerTransform == null)
-        {
-            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-            if (playerObject != null)
-                _playerTransform = playerObject.transform;
-        }
-
         if (_playerController == null && _playerTransform != null)
             _playerController = _playerTransform.GetComponent<PlayerController>();
-    }
-
-    private void ResolveAimCursor()
-    {
-        if (_aimCursor == null)
-            _aimCursor = FindObjectOfType<WeaponAimCursor>();
     }
 }

@@ -56,6 +56,14 @@ public class WeaponActionRouter : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        foreach (WeaponActionModule module in EnumerateUniqueModules())
+        {
+            module.OnFrameTick();
+        }
+    }
+
     private void OnPrimaryAttack(PrimaryAttackEvent evt)
     {
         if (_controller != null && _controller.IsActionInputBlocked) return;
