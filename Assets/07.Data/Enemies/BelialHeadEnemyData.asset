@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _enemyId: BelialHead
   _category: 3
-  _maxHealth: 500
+  _maxHealth: 300
   _weight: 10
   _knockbackTakenMultiplier: 1
   _canBeCaptured: 0

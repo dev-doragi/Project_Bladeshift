@@ -66,6 +66,7 @@ public sealed class BelialBossCore : MonoBehaviour
     private bool _battleStarted;
     private bool _isBossGroggy;
     private bool _handsGroggyConsumed;
+    private bool _isBossDefeated;
     private int _patternIndex;
     private Color _headDefaultColor = Color.white;
 
@@ -132,7 +133,7 @@ public sealed class BelialBossCore : MonoBehaviour
 
     public void NotifyHandDisabled(BelialBossPart hand)
     {
-        if (!_battleStarted || _isBossGroggy || _handsGroggyConsumed)
+        if (!_battleStarted || _isBossGroggy || _handsGroggyConsumed || _isBossDefeated)
             return;
 
         if (_leftHand == null || _rightHand == null)
@@ -142,6 +143,17 @@ public sealed class BelialBossCore : MonoBehaviour
             _handsGroggyConsumed = true;
     }
 
+    public bool CanHeadTakeDamage()
+    {
+        if (_isBossDefeated)
+            return false;
+
+        if (_leftHand == null || _rightHand == null)
+            return false;
+
+        return _leftHand.IsDisabledForBoss && _rightHand.IsDisabledForBoss;
+    }
+
     private IEnumerator BattleRoutine()
     {
         if (_patternStartDelay > 0f)
@@ -149,6 +161,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
         while (true)
         {
+            if (_isBossDefeated)
+                yield break;
+
             if (ShouldEnterBossGroggy())
             {
                 yield return BossGroggyRoutine();
@@ -167,6 +182,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private bool ShouldEnterBossGroggy()
     {
+        if (_isBossDefeated)
+            return false;
+
         if (_isBossGroggy || !_handsGroggyConsumed)
             return false;
 
@@ -178,6 +196,9 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private IEnumerator BossGroggyRoutine()
     {
+        if (_isBossDefeated)
+            yield break;
+
         _isBossGroggy = true;
 
         _leftHand?.SetAttackLocked(true);
@@ -210,6 +231,32 @@ public sealed class BelialBossCore : MonoBehaviour
 
         _isBossGroggy = false;
         _handsGroggyConsumed = false;
+    }
+
+    public void NotifyHeadDied()
+    {
+        if (_isBossDefeated)
+            return;
+
+        _isBossDefeated = true;
+        _battleStarted = false;
+
+        if (_battleRoutine != null)
+        {
+            StopCoroutine(_battleRoutine);
+            _battleRoutine = null;
+        }
+
+        _leftHand?.SetContactDamageEnabled(false);
+        _rightHand?.SetContactDamageEnabled(false);
+        _leftHand?.SetAttackLocked(true);
+        _rightHand?.SetAttackLocked(true);
+
+        if (_leftHand != null && !_leftHand.IsDead)
+            _leftHand.ExecuteDeath(Vector2.zero);
+
+        if (_rightHand != null && !_rightHand.IsDead)
+            _rightHand.ExecuteDeath(Vector2.zero);
     }
 
     private IEnumerator ExecutePattern(BelialPatternType pattern)

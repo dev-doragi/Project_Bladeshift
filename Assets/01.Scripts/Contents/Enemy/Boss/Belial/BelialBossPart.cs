@@ -349,6 +349,9 @@ public sealed class BelialBossPart : EnemyBase
 
         if (_role == BelialBossPartRole.Head)
         {
+            if (_core != null && !_core.CanHeadTakeDamage())
+                return;
+
             base.TakeDamage(damageData);
             PlayUnifiedHitFlash();
             return;
@@ -365,6 +368,7 @@ public sealed class BelialBossPart : EnemyBase
     {
         if (_role == BelialBossPartRole.Head)
         {
+            _core?.NotifyHeadDied();
             base.Die(knockbackForce);
             return;
         }

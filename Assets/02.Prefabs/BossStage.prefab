@@ -1752,9 +1752,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1891988234117079037}
     m_Modifications:
+    - target: {fileID: 1964570061054185559, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2964708318911963122, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: m_Name
       value: Boss
+      objectReference: {fileID: 0}
+    - target: {fileID: 3940273655313111507, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4598630731172990862, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: _sweepGhostColor.a
@@ -1813,6 +1821,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7545316923991141023, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
+      propertyPath: _maxHealth
+      value: 500
+      objectReference: {fileID: 0}
+    - target: {fileID: 7545316923991141023, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: _bobAmplitude
       value: 0.24
       objectReference: {fileID: 0}
@@ -1826,7 +1838,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8293420362964480772, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: _chargeDuration
-      value: 1
+      value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 8293420362964480772, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: _handMoveDuration
@@ -1834,7 +1846,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8293420362964480772, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: _patternStartDelay
-      value: 3
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8293420362964480772, guid: e1d836b09872ea44b93aa8c7cf3c328a, type: 3}
       propertyPath: '_leftHandAnchors.Array.data[0]'
