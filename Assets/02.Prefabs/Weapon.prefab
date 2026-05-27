@@ -939,6 +939,7 @@ MonoBehaviour:
   _bobAmplitude: 0.03
   _bobFrequency: 3
   _enableAimOrbit: 1
+  _rotatePivotToAim: 1
   _maxOrbitAngle: 15
   _orbitSmoothTime: 0.08
   _counterRotateHoldPoint: 1

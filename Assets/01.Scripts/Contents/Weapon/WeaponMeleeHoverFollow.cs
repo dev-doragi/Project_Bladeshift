@@ -47,6 +47,7 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
     private Vector2 _attackLocalOffset;
     private float _attackLocalAngle;
+    private bool _attackPoseUsesWorldRotation;
     private bool _hasAttackPose;
     private Vector3 _attackAnchorPosition;
     private Quaternion _attackAnchorRotation;
@@ -151,11 +152,22 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
 
     public void SetAttackPose(Vector2 localOffset, float localAngle)
     {
+        SetAttackPoseInternal(localOffset, localAngle, false);
+    }
+
+    public void SetAttackWorldPose(Vector2 worldOffset, float worldAngle)
+    {
+        SetAttackPoseInternal(worldOffset, worldAngle, true);
+    }
+
+    private void SetAttackPoseInternal(Vector2 offset, float angle, bool usesWorldRotation)
+    {
         if (!_hasAttackPose)
             _followVelocity = Vector3.zero;
 
-        _attackLocalOffset = localOffset;
-        _attackLocalAngle = localAngle;
+        _attackLocalOffset = offset;
+        _attackLocalAngle = angle;
+        _attackPoseUsesWorldRotation = usesWorldRotation;
         _hasAttackPose = true;
     }
 
@@ -180,6 +192,7 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
     {
         _attackLocalOffset = Vector2.zero;
         _attackLocalAngle = 0f;
+        _attackPoseUsesWorldRotation = false;
         _hasAttackPose = false;
         _followVelocity = Vector3.zero;
     }
@@ -307,7 +320,9 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
             if (!_disableBobDuringAttack)
                 targetPosition += (Vector3)GetBobOffset();
 
-            targetRotation = anchorRotation * Quaternion.Euler(0f, 0f, _attackLocalAngle);
+            targetRotation = _attackPoseUsesWorldRotation
+                ? Quaternion.Euler(0f, 0f, _attackLocalAngle)
+                : anchorRotation * Quaternion.Euler(0f, 0f, _attackLocalAngle);
 
             return;
         }
@@ -324,7 +339,9 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
         if (_hasAttackAnchor)
         {
             worldPosition = _attackAnchorPosition + (Vector3)localOffset;
-            worldRotation = _attackAnchorRotation * Quaternion.Euler(0f, 0f, localAngle);
+            worldRotation = _attackPoseUsesWorldRotation
+                ? Quaternion.Euler(0f, 0f, localAngle)
+                : _attackAnchorRotation * Quaternion.Euler(0f, 0f, localAngle);
             return true;
         }
 
@@ -332,16 +349,10 @@ public class WeaponMeleeHoverFollow : MonoBehaviour
             return false;
 
         worldPosition = _meleeHoverHoldPoint.position + (Vector3)localOffset;
-        worldRotation = _meleeHoverHoldPoint.rotation * Quaternion.Euler(0f, 0f, localAngle);
+        worldRotation = _attackPoseUsesWorldRotation
+            ? Quaternion.Euler(0f, 0f, localAngle)
+            : _meleeHoverHoldPoint.rotation * Quaternion.Euler(0f, 0f, localAngle);
         return true;
-    }
-
-    private float ResolveFacingSign()
-    {
-        if (_playerController == null)
-            return 1f;
-
-        return _playerController.FacingSign >= 0 ? 1f : -1f;
     }
 
     private void CacheOrbitPose()
