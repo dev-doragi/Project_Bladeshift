@@ -20,6 +20,10 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     [SerializeField, Min(0f)] private float _fallingLinearDamping = 0f;
     [SerializeField] private float _fallingVelocityThreshold = -0.05f;
 
+    [Header("Death Sequence")]
+    [SerializeField, Min(0f)] private float _deathCollisionWaitTimeout = 8f;
+    [SerializeField, Min(0f)] private float _deathSettleTimeout = 4f;
+
     protected float _currentHealth;
 
     protected Rigidbody2D _rb;
@@ -38,6 +42,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected bool _isCaptured;
     protected bool _isPierced;
     protected bool _hasHitWallAfterDeath = false;
+    protected bool _hasTouchedSurfaceAfterDeath = false;
     protected float _currentGroggyGauge;
     private Quaternion _originalRotation;
 
@@ -63,7 +68,10 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual float EmbeddedTearOutDamage => _enemyData != null ? _enemyData.EmbeddedTearOutDamage : 50f;
     public virtual float EmbeddedAttackDamage => _enemyData != null ? _enemyData.EmbeddedAttackDamage : 100f;
     public virtual float EmbeddedAttackRange => _enemyData != null ? _enemyData.EmbeddedAttackRange : 2f;
+    public event Action<EnemyBase> GroggyStateEntered;
     public event Action<EnemyBase> GroggyStateExited;
+    public bool IsDamageBlocked { get; set; }
+    public bool IsKnockbackBlocked { get; set; }
 
     protected virtual void Awake()
     {
@@ -105,6 +113,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual void TakeDamage(DamageData damageData)
     {
         if (IsDead) return;
+        if (IsDamageBlocked) return;
         if (_isGroggy && damageData.IsPiercing && !damageData.IsExecution) return;
         if (_isGroggyInvulnerable && !CanBypassGroggyInvulnerability(damageData)) return;
 
@@ -114,7 +123,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
         _currentHealth -= damageData.Damage;
 
-        if (_rb != null && damageData.KnockbackForce.sqrMagnitude > 0.0001f)
+        if (_rb != null && !IsKnockbackBlocked && damageData.KnockbackForce.sqrMagnitude > 0.0001f)
         {
             Vector2 adjustedKnockback = damageData.KnockbackForce * GetKnockbackTakenMultiplier();
             _rb.linearVelocity = Vector2.zero;
@@ -135,7 +144,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
         if (_currentHealth <= 0f)
         {
-            Die(damageData.KnockbackForce);
+            Die(IsKnockbackBlocked ? Vector2.zero : damageData.KnockbackForce);
         }
     }
 
@@ -304,10 +313,14 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         {
             _rb.linearVelocity = Vector2.zero;
             _rb.angularVelocity = 0f;
-            Vector2 recoilDirection = damageData.KnockbackForce.sqrMagnitude > 0.0001f
-                ? damageData.KnockbackForce.normalized
-                : -Vector2.right;
-            _rb.AddForce(recoilDirection * _groggyRecoilForce, ForceMode2D.Impulse);
+
+            if (!IsKnockbackBlocked)
+            {
+                Vector2 recoilDirection = damageData.KnockbackForce.sqrMagnitude > 0.0001f
+                    ? damageData.KnockbackForce.normalized
+                    : -Vector2.right;
+                _rb.AddForce(recoilDirection * _groggyRecoilForce, ForceMode2D.Impulse);
+            }
         }
 
         if (_blinkRoutine != null)
@@ -317,6 +330,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         }
 
         OnGroggyEntered(damageData);
+        GroggyStateEntered?.Invoke(this);
         StartGroggyPose();
         StartGroggyVisual();
         RestartGroggyHold();
@@ -553,10 +567,29 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         Die(knockbackForce);
     }
 
+    public virtual void ForceEnterGroggy(Vector2 knockbackForce)
+    {
+        if (IsDead || _isCaptured || _isGroggy)
+            return;
+
+        EnterGroggy(new DamageData
+        {
+            Damage = 0f,
+            GroggyDamage = 0f,
+            AttackerTeam = TeamType.Player,
+            HitPoint = transform.position,
+            KnockbackForce = knockbackForce,
+            IsPiercing = false,
+            IsExecution = false,
+            AttackKind = WeaponAttackKind.None
+        });
+    }
+
     protected virtual void Die(Vector2 knockbackForce)
     {
         StopGroggyRoutines();
         _hasHitWallAfterDeath = false;
+        _hasTouchedSurfaceAfterDeath = false;
 
         int weaponLayer = LayerMask.NameToLayer("Weapon");
         for (int i = transform.childCount - 1; i >= 0; i--)
@@ -591,10 +624,19 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         yield return new WaitForSeconds(0.5f);
         if (_rb != null)
         {
-            float timeout = 4f;
-            while (_rb.linearVelocity.sqrMagnitude > 0.5f && timeout > 0f)
+            float collisionTimeout = _deathCollisionWaitTimeout;
+            while (!_hasTouchedSurfaceAfterDeath
+                   && _rb.linearVelocity.sqrMagnitude > 0.5f
+                   && collisionTimeout > 0f)
             {
-                timeout -= Time.deltaTime;
+                collisionTimeout -= Time.deltaTime;
+                yield return null;
+            }
+
+            float settleTimeout = _deathSettleTimeout;
+            while (_rb.linearVelocity.sqrMagnitude > 0.5f && settleTimeout > 0f)
+            {
+                settleTimeout -= Time.deltaTime;
                 yield return null;
             }
         }
@@ -735,6 +777,8 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
         if (IsDead && !_hasHitWallAfterDeath && _rb != null && _rb.bodyType == RigidbodyType2D.Dynamic)
         {
+            _hasTouchedSurfaceAfterDeath = true;
+
             if (collision.relativeVelocity.sqrMagnitude > 25f)
             {
                 _hasHitWallAfterDeath = true;

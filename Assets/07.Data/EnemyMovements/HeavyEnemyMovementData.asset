@@ -12,11 +12,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bea3dbeb3fa4cf19e495c28c01df797, type: 3}
   m_Name: HeavyEnemyMovementData
   m_EditorClassIdentifier: 
-  _moveSpeed: 9
-  _detectRange: 15
+  _moveSpeed: 8.5
+  _detectRange: 23.5
   _stopDistance: 0.1
   _keepChasingAfterDetection: 1
   _requiresLineOfSight: 1
   _lineOfSightBlockerLayer:
     serializedVersion: 2
     m_Bits: 128
+  _chargeCooldown: 4
+  _chargeSpeed: 25
+  _chargeDistance: 16
+  _chargeStartDistanceRange: {x: 0, y: 14}
+  _chargeWarmupDuration: 1
+  _preChargeDropSpeed: 24
+  _preChargeGroundCheckDistance: 0.15
+  _preChargeLandingShakeIntensity: 1
+  _chargeWarningWidth: 1
+  _chargeWarningBlinkSpeed: 8
+  _chargeWarningMaxAlpha: 0.58
+  _chargeWarningMinAlpha: 0.12
+  _platformHitKnockback: 100
+  _platformHitShakeIntensity: 2
+  _chargeBlockerLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  _chargeAfterImageColor: {r: 0.6431373, g: 0, b: 0, a: 0.5}

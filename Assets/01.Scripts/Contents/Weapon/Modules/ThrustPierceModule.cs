@@ -55,6 +55,16 @@ public class ThrustPierceModule : WeaponActionModule
     public override bool TryHandlePinnedPrimary() => TryHandlePinnedAction();
     public override bool TryHandlePinnedSecondary() => TryHandlePinnedAction();
 
+    public bool ForceReturnPinnedWallToPlayer()
+    {
+        if (Controller == null) return false;
+        if (Controller.CurrentState != WeaponState.Pinned) return false;
+        if (Controller.StateMachine == null || !Controller.StateMachine.IsPinnedToWall) return false;
+
+        StartReturnToPlayer();
+        return true;
+    }
+
     public override void OnPress()
     {
         if (Controller == null) return;

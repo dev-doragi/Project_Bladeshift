@@ -83,7 +83,15 @@ public class EnemyController : MonoBehaviour
     {
         UpdateDetectionState();
 
-        if (!TryGetMoveTarget(out Vector2 moveTarget) || !CanMove())
+        if (!CanMove())
+        {
+            if (_enemyBase == null || !_enemyBase.IsDead)
+                StopMovement();
+
+            return;
+        }
+
+        if (!TryGetMoveTarget(out Vector2 moveTarget))
         {
             StopMovement();
             return;

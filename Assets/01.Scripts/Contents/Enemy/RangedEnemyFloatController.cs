@@ -14,11 +14,13 @@ public class RangedEnemyFloatController : MonoBehaviour
 
     private Rigidbody2D _rigidbody;
     private EnemyBase _enemyBase;
+    private FlyingEnemyController _flyingEnemyController;
 
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         _enemyBase = GetComponent<EnemyBase>();
+        _flyingEnemyController = GetComponent<FlyingEnemyController>();
 
         _rigidbody.gravityScale = 0f;
     }
@@ -44,8 +46,12 @@ public class RangedEnemyFloatController : MonoBehaviour
             return;
         }
 
+        float maxAllowedSpeed = _maxKnockbackSpeed;
+        if (_flyingEnemyController != null && _flyingEnemyController.HasActiveMoveTarget)
+            maxAllowedSpeed = Mathf.Max(maxAllowedSpeed, _flyingEnemyController.CurrentMoveSpeed);
+
         _rigidbody.linearVelocity = Vector2.ClampMagnitude(
             _rigidbody.linearVelocity,
-            _maxKnockbackSpeed);
+            maxAllowedSpeed);
     }
 }

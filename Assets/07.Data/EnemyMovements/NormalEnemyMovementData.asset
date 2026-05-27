@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: NormalEnemyMovementData
   m_EditorClassIdentifier: 
   _moveSpeed: 6
-  _detectRange: 15
+  _detectRange: 22.5
   _stopDistance: 0.1
   _keepChasingAfterDetection: 1
   _requiresLineOfSight: 1
