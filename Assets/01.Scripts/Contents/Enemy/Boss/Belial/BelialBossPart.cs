@@ -76,6 +76,26 @@ public sealed class BelialBossPart : EnemyBase
         _currentState == BelialBossPartState.BossGroggyFrozen ||
         _currentState == BelialBossPartState.Dead;
     public bool CanRunPattern => IsHand() && _battleActive && _currentState == BelialBossPartState.Idle;
+    public bool CanMoveForPattern => CanRunPattern && !_isGroggy && !_isCaptured && !IsDead;
+    public bool CanAttackInPattern =>
+        IsHand() &&
+        _battleActive &&
+        !_isGroggy &&
+        !_isCaptured &&
+        !IsDisabledForBoss &&
+        !IsDead &&
+        (_currentState == BelialBossPartState.Idle || _currentState == BelialBossPartState.PatternMoving);
+    public bool CanReturnFromPattern =>
+        IsHand() &&
+        _battleActive &&
+        !_isGroggy &&
+        !_isCaptured &&
+        !IsDisabledForBoss &&
+        !IsDead &&
+        (_currentState == BelialBossPartState.Idle ||
+         _currentState == BelialBossPartState.PatternMoving ||
+         _currentState == BelialBossPartState.Charging ||
+         _currentState == BelialBossPartState.Sweeping);
     public bool CanAcceptEmbeddedFinisher =>
         _currentState == BelialBossPartState.HandGroggy ||
         _currentState == BelialBossPartState.FinisherGrace ||
@@ -117,7 +137,7 @@ public sealed class BelialBossPart : EnemyBase
 
     public IEnumerator MoveToAnchor(Transform anchor, float duration)
     {
-        if (!CanRunPattern || anchor == null)
+        if (!CanMoveForPattern || anchor == null)
             yield break;
 
         ChangeState(BelialBossPartState.PatternMoving);
@@ -130,7 +150,14 @@ public sealed class BelialBossPart : EnemyBase
 
     public IEnumerator ReturnToInitialPose(float duration)
     {
-        if (IsDisabledForBoss || !_cachedPose)
+        if (IsDisabledForBoss || !_cachedPose || IsDead)
+            yield break;
+
+        if (_currentState == BelialBossPartState.HandGroggy ||
+            _currentState == BelialBossPartState.FinisherGrace ||
+            _currentState == BelialBossPartState.FinisherPending ||
+            _currentState == BelialBossPartState.BossGroggyFrozen ||
+            _currentState == BelialBossPartState.PreBattle)
             yield break;
 
         KillMotionTweens();
@@ -138,6 +165,13 @@ public sealed class BelialBossPart : EnemyBase
         _rotateTween = transform.DOLocalRotateQuaternion(_initialLocalRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
         transform.localScale = _initialLocalScale;
         yield return _moveTween.WaitForCompletion();
+
+        if (_currentState == BelialBossPartState.PatternMoving ||
+            _currentState == BelialBossPartState.Charging ||
+            _currentState == BelialBossPartState.Sweeping)
+        {
+            ChangeState(BelialBossPartState.Idle);
+        }
     }
 
     public void StartIdleBob()
@@ -170,7 +204,7 @@ public sealed class BelialBossPart : EnemyBase
 
     public IEnumerator ChargeAndFire(Transform target, float chargeDuration)
     {
-        if (IsDisabledForBoss || _role == BelialBossPartRole.Head)
+        if (!CanAttackInPattern || _role == BelialBossPartRole.Head)
             yield break;
 
         ChangeState(BelialBossPartState.Charging);
@@ -191,7 +225,7 @@ public sealed class BelialBossPart : EnemyBase
 
     public IEnumerator SweepTo(Transform targetAnchor, float duration)
     {
-        if (IsDisabledForBoss || targetAnchor == null || _role == BelialBossPartRole.Head)
+        if (!CanAttackInPattern || targetAnchor == null || _role == BelialBossPartRole.Head)
             yield break;
 
         ChangeState(BelialBossPartState.Sweeping);
@@ -364,6 +398,26 @@ public sealed class BelialBossPart : EnemyBase
         }
 
         ChangeState(BelialBossPartState.Idle);
+    }
+
+    public void ForceResetToInitialPose()
+    {
+        if (IsDisabledForBoss || _currentState == BelialBossPartState.Dead)
+            return;
+
+        KillMotionTweens();
+        StopIdleBob();
+        _contactDamageEnabled = false;
+        _attackLocked = false;
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
+
+        ChangeState(_battleActive ? BelialBossPartState.Idle : BelialBossPartState.PreBattle);
     }
 
     public override void TakeDamage(DamageData damageData)

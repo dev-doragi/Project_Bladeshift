@@ -39,6 +39,7 @@ public sealed class BelialBossCore : MonoBehaviour
     [SerializeField, Min(0.05f)] private float _chargeDuration = 0.7f;
     [SerializeField, Min(0f)] private float _afterFireDelay = 0.2f;
     [SerializeField, Min(0.05f)] private float _sweepDuration = 0.5f;
+    [SerializeField, Min(0.2f)] private float _handStuckRecoveryDelay = 6f;
 
     [Header("Sweep")]
     [SerializeField, Min(0)] private int _sweepContactDamage = 1;
@@ -69,6 +70,8 @@ public sealed class BelialBossCore : MonoBehaviour
     private bool _isBossDefeated;
     private int _patternIndex;
     private Color _headDefaultColor = Color.white;
+    private float _leftHandPatternStateElapsed;
+    private float _rightHandPatternStateElapsed;
 
     private void Awake()
     {
@@ -94,6 +97,15 @@ public sealed class BelialBossCore : MonoBehaviour
 
         if (_autoStartPatternOnEnable)
             StartBattle();
+    }
+
+    private void Update()
+    {
+        if (!_battleStarted || _isBossDefeated || _isBossGroggy)
+            return;
+
+        _leftHandPatternStateElapsed = UpdateAndTryRecoverHand(_leftHand, _leftHandPatternStateElapsed, "Left");
+        _rightHandPatternStateElapsed = UpdateAndTryRecoverHand(_rightHand, _rightHandPatternStateElapsed, "Right");
     }
 
     public void StartBattle()
@@ -329,7 +341,7 @@ public sealed class BelialBossCore : MonoBehaviour
         if (ShouldAbortPatternExecution())
             yield break;
 
-        if (sweeper == null || sweeper.IsDisabledForBoss)
+        if (sweeper == null || !sweeper.CanMoveForPattern)
             yield break;
 
         Transform[] sourceAnchors = sweeper.Role == BelialBossPartRole.LeftHand ? _leftHandAnchors : _rightHandAnchors;
@@ -377,7 +389,7 @@ public sealed class BelialBossCore : MonoBehaviour
         bool leftDone = true;
         bool rightDone = true;
 
-        if (_leftHand != null && !_leftHand.IsDisabledForBoss && leftAnchor != null)
+        if (_leftHand != null && _leftHand.CanMoveForPattern && leftAnchor != null)
         {
             _leftHand.StopIdleBob();
             _leftHand.SetAttackLocked(true);
@@ -385,7 +397,7 @@ public sealed class BelialBossCore : MonoBehaviour
             StartCoroutine(RunAndMarkDone(_leftHand.MoveToAnchor(leftAnchor, _handMoveDuration), () => leftDone = true));
         }
 
-        if (_rightHand != null && !_rightHand.IsDisabledForBoss && rightAnchor != null)
+        if (_rightHand != null && _rightHand.CanMoveForPattern && rightAnchor != null)
         {
             _rightHand.StopIdleBob();
             _rightHand.SetAttackLocked(true);
@@ -415,14 +427,14 @@ public sealed class BelialBossCore : MonoBehaviour
         bool leftDone = true;
         bool rightDone = true;
 
-        if (_leftHand != null && !_leftHand.IsDisabledForBoss)
+        if (_leftHand != null && _leftHand.CanAttackInPattern)
         {
             _leftHand.SetAttackLocked(false);
             leftDone = false;
             StartCoroutine(RunAndMarkDone(_leftHand.ChargeAndFire(player, _chargeDuration), () => leftDone = true));
         }
 
-        if (_rightHand != null && !_rightHand.IsDisabledForBoss)
+        if (_rightHand != null && _rightHand.CanAttackInPattern)
         {
             _rightHand.SetAttackLocked(false);
             rightDone = false;
@@ -451,7 +463,7 @@ public sealed class BelialBossCore : MonoBehaviour
         bool leftDone = true;
         bool rightDone = true;
 
-        if (_leftHand != null && !_leftHand.IsDisabledForBoss)
+        if (_leftHand != null && _leftHand.CanReturnFromPattern)
         {
             leftDone = false;
             StartCoroutine(RunAndMarkDone(_leftHand.ReturnToInitialPose(_handMoveDuration), () =>
@@ -462,7 +474,7 @@ public sealed class BelialBossCore : MonoBehaviour
             }));
         }
 
-        if (_rightHand != null && !_rightHand.IsDisabledForBoss)
+        if (_rightHand != null && _rightHand.CanReturnFromPattern)
         {
             rightDone = false;
             StartCoroutine(RunAndMarkDone(_rightHand.ReturnToInitialPose(_handMoveDuration), () =>
@@ -484,8 +496,31 @@ public sealed class BelialBossCore : MonoBehaviour
     private bool ShouldAbortPatternExecution()
     {
         bool bothHandsDisabled = _leftHand != null && _rightHand != null && _leftHand.IsDisabledForBoss && _rightHand.IsDisabledForBoss;
-        bool handInterrupt = (_leftHand != null && _leftHand.IsHandInterruptingPattern) || (_rightHand != null && _rightHand.IsHandInterruptingPattern);
-        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy() || bothHandsDisabled || handInterrupt;
+        return _isBossDefeated || _isBossGroggy || ShouldEnterBossGroggy() || bothHandsDisabled;
+    }
+
+    private float UpdateAndTryRecoverHand(BelialBossPart hand, float elapsed, string handLabel)
+    {
+        if (hand == null || hand.IsDisabledForBoss || hand.IsDead)
+            return 0f;
+
+        if (!IsRecoverablePatternState(hand.CurrentPartState))
+            return 0f;
+
+        elapsed += Time.deltaTime;
+        if (elapsed < _handStuckRecoveryDelay)
+            return elapsed;
+
+        Debug.LogWarning($"[BelialBossCore] {handLabel} hand stuck in {hand.CurrentPartState}. Force recovering to initial pose.", this);
+        hand.ForceResetToInitialPose();
+        return 0f;
+    }
+
+    private static bool IsRecoverablePatternState(BelialBossPartState state)
+    {
+        return state == BelialBossPartState.PatternMoving ||
+               state == BelialBossPartState.Charging ||
+               state == BelialBossPartState.Sweeping;
     }
 
     private bool IsAnyHandGroggy()
