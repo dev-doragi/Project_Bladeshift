@@ -405,7 +405,9 @@ public class MeleeAttackModule : WeaponActionModule
         if (Controller == null)
             return Vector2.right;
 
-        if (IsActionFromGamepad(WeaponActionInputType.Primary))
+        bool isGamepadInput = IsActionFromGamepad(WeaponActionInputType.Primary);
+
+        if (isGamepadInput)
         {
             Vector2 lookInput = InputReader.Instance != null
                 ? InputReader.Instance.GetLookInput()
@@ -417,10 +419,9 @@ public class MeleeAttackModule : WeaponActionModule
                 return lookInput.normalized;
         }
 
-        if (Controller.PlayerAimDirection.sqrMagnitude > 0.0001f)
-            return Controller.PlayerAimDirection.normalized;
-
-        if (Controller.Sensor != null && Controller.PlayerTransform != null)
+        // In melee mode PlayerAimDirection can be forced to left/right only.
+        // For mouse input, resolve slash direction directly from the raw pointer vector.
+        if (!isGamepadInput && Controller.Sensor != null && Controller.PlayerTransform != null)
         {
             Vector2 rawPointer = Controller.Sensor.GetRawPointerWorldPosition();
             Vector2 direction = rawPointer - (Vector2)Controller.PlayerTransform.position;
@@ -428,6 +429,9 @@ public class MeleeAttackModule : WeaponActionModule
             if (direction.sqrMagnitude > 0.0001f)
                 return direction.normalized;
         }
+
+        if (Controller.PlayerAimDirection.sqrMagnitude > 0.0001f)
+            return Controller.PlayerAimDirection.normalized;
 
         if (Controller.PlayerTransform != null &&
             Controller.PlayerTransform.TryGetComponent<PlayerController>(out var playerController))
