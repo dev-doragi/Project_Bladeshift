@@ -55,6 +55,7 @@ public class MeleeAttackModule : WeaponActionModule
     [Header("Trail")]
     [SerializeField] private TrailRenderer _slashTrail;
     [SerializeField] private bool _useTrail = true;
+
     [Header("Input")]
     [SerializeField, Range(0f, 1f)] private float _gamepadSlashXDeadzone = 0.2f;
 
@@ -65,6 +66,7 @@ public class MeleeAttackModule : WeaponActionModule
     private float _lastComboEndTime;
     private bool _bufferedInput;
     private bool _isPrimaryHeld;
+
     private Vector2 _attackDirection = Vector2.right;
     private float _attackBaseAngle;
     private Quaternion _attackBasisRotation = Quaternion.identity;
@@ -160,7 +162,6 @@ public class MeleeAttackModule : WeaponActionModule
         _phase = AttackPhase.Windup;
         _phaseTime = 0f;
         _bufferedInput = false;
-        Controller.MeleeHoverFollow?.ForceRotatePivotToAim();
 
         _attackDirection = ResolveAimDirection();
         _attackBaseAngle = Mathf.Atan2(_attackDirection.y, _attackDirection.x) * Mathf.Rad2Deg;
@@ -182,7 +183,7 @@ public class MeleeAttackModule : WeaponActionModule
         float eased = EaseInOut(t);
 
         Vector2 offset = Vector2.LerpUnclamped(Vector2.zero, ResolveOffset(step.WindupOffset), eased);
-        float angle = Mathf.LerpUnclamped(0f, ResolveAngle(step.WindupAngle), eased);
+        float angle = Mathf.LerpUnclamped(_attackBaseAngle, ResolveAngle(step.WindupAngle), eased);
 
         ApplyPose(offset, angle);
 
@@ -242,7 +243,7 @@ public class MeleeAttackModule : WeaponActionModule
         float curvedT = EvaluateCurve(step.ReturnCurve, t, EaseInOut(t));
 
         Vector2 offset = Vector2.LerpUnclamped(ResolveOffset(step.StrikeOffset), Vector2.zero, curvedT);
-        float angle = Mathf.LerpUnclamped(ResolveAngle(step.StrikeAngle), 0f, curvedT);
+        float angle = Mathf.LerpUnclamped(ResolveAngle(step.StrikeAngle), _attackBaseAngle, curvedT);
 
         ApplyPose(offset, angle);
 
@@ -293,7 +294,8 @@ public class MeleeAttackModule : WeaponActionModule
 
     private void ApplyPose(Vector2 resolvedOffset, float resolvedAngle)
     {
-        Controller.MeleeHoverFollow?.SetAttackWorldPose(resolvedOffset, resolvedAngle);
+        WeaponMeleeHoverFollow hoverFollow = Controller != null ? Controller.MeleeHoverFollow : null;
+        hoverFollow?.SetAttackWorldPose(resolvedOffset, resolvedAngle);
     }
 
     private bool TryEvaluateWorldPose(Vector2 resolvedOffset, float resolvedAngle, out Vector3 worldPosition, out Quaternion worldRotation)
@@ -419,8 +421,6 @@ public class MeleeAttackModule : WeaponActionModule
                 return lookInput.normalized;
         }
 
-        // In melee mode PlayerAimDirection can be forced to left/right only.
-        // For mouse input, resolve slash direction directly from the raw pointer vector.
         if (!isGamepadInput && Controller.Sensor != null && Controller.PlayerTransform != null)
         {
             Vector2 rawPointer = Controller.Sensor.GetRawPointerWorldPosition();
