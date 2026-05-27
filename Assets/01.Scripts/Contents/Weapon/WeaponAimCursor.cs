@@ -8,6 +8,8 @@ public class WeaponAimCursor : MonoBehaviour
     [SerializeField] private float _gamepadAimDeadzone = 0.2f;
     [SerializeField] private bool _showCursorInGamepadModeOnly = false;
     [SerializeField] private LayerMask _wallMask;
+    [SerializeField] private bool _followPlayerMovementInGamepadMode = true;
+    [SerializeField] private bool _followPlayerVerticalInGamepadMode = false;
 
     public Vector2 CurrentWorldPosition { get; private set; }
     public Vector2 AimWorldPosition { get; private set; }
@@ -24,6 +26,7 @@ public class WeaponAimCursor : MonoBehaviour
     private bool _isCursorVisibleByUser = true;
     private bool _isSuppressedByMode;
     private Vector2 _lastPlayerPosition;
+    private float _gamepadConstraintAnchorY;
 
     private Vector2 _lastReachableCursorPosition;
     private bool _hasLastReachableCursorPosition;
@@ -107,6 +110,7 @@ public class WeaponAimCursor : MonoBehaviour
         _fallbackGamepadStartPosition = CurrentWorldPosition;
         _hasValidCursorPosition = true;
         _lastPlayerPosition = _playerTransform != null ? (Vector2)_playerTransform.position : CurrentWorldPosition;
+        _gamepadConstraintAnchorY = CurrentWorldPosition.y;
         RefreshAimWorldPosition();
         UpdateCursorTransformOnly();
     }
@@ -140,6 +144,7 @@ public class WeaponAimCursor : MonoBehaviour
             _fallbackGamepadStartPosition = CurrentWorldPosition;
             _hasValidCursorPosition = true;
             _lastPlayerPosition = _playerTransform.position;
+            _gamepadConstraintAnchorY = CurrentWorldPosition.y;
             RefreshAimWorldPosition();
             UpdateCursorTransformOnly();
         }
@@ -175,6 +180,7 @@ public class WeaponAimCursor : MonoBehaviour
         _fallbackGamepadStartPosition = CurrentWorldPosition;
         _hasValidCursorPosition = true;
         _lastPlayerPosition = origin;
+        _gamepadConstraintAnchorY = CurrentWorldPosition.y;
         IsGamepadCursorMode = true;
 
         RefreshAimWorldPosition();
@@ -203,10 +209,15 @@ public class WeaponAimCursor : MonoBehaviour
             return;
         }
 
+        Vector2 previousPlayerPosition = _lastPlayerPosition;
         Vector2 currentPlayerPosition = _playerTransform.position;
-        Vector2 playerDelta = currentPlayerPosition - _lastPlayerPosition;
+        Vector2 rawPlayerDelta = currentPlayerPosition - previousPlayerPosition;
         _lastPlayerPosition = currentPlayerPosition;
-        SyncReachableCacheWithPlayerDelta(playerDelta);
+        Vector2 gamepadFollowDelta = (IsGamepadCursorMode && _followPlayerMovementInGamepadMode)
+            ? GetGamepadFollowDelta(rawPlayerDelta)
+            : Vector2.zero;
+        Vector2 reachableCacheDelta = IsGamepadCursorMode ? gamepadFollowDelta : rawPlayerDelta;
+        SyncReachableCacheWithPlayerDelta(reachableCacheDelta);
 
         if (_camera == null)
             _camera = Camera.main;
@@ -223,6 +234,7 @@ public class WeaponAimCursor : MonoBehaviour
         bool hasGamepadLookInput =
             inputReader.IsLookInputFromGamepad() &&
             lookInput.sqrMagnitude >= deadzone * deadzone;
+        bool isGamepadControlMode = inputReader.IsGamepadControlSchemeActive();
 
         if (_isSuppressedByMode)
         {
@@ -231,8 +243,20 @@ public class WeaponAimCursor : MonoBehaviour
         }
 
         bool mouseMoved = inputReader.IsMouseAiming();
+        bool shouldUseGamepadCursorMode = isGamepadControlMode;
 
-        if (mouseMoved)
+        if (shouldUseGamepadCursorMode && !IsGamepadCursorMode)
+        {
+            IsGamepadCursorMode = true;
+            EnsureGamepadModeStartPosition();
+            _gamepadConstraintAnchorY = CurrentWorldPosition.y;
+        }
+        else if (!shouldUseGamepadCursorMode && IsGamepadCursorMode && mouseMoved)
+        {
+            IsGamepadCursorMode = false;
+        }
+
+        if (mouseMoved && !isGamepadControlMode)
         {
             IsGamepadCursorMode = false;
 
@@ -244,16 +268,10 @@ public class WeaponAimCursor : MonoBehaviour
         }
         else if (hasGamepadLookInput)
         {
-            if (!IsGamepadCursorMode)
-            {
-                IsGamepadCursorMode = true;
-                EnsureGamepadModeStartPosition();
-            }
-
             CurrentWorldPosition = AdvanceGamepadCursorWorldPosition(
                 currentPlayerPosition,
-                lookInput
-            );
+                gamepadFollowDelta,
+                lookInput);
             _hasValidCursorPosition = true;
         }
         else
@@ -268,7 +286,9 @@ public class WeaponAimCursor : MonoBehaviour
             }
             else
             {
-                CurrentWorldPosition = RebuildGamepadCursorWorldPosition(currentPlayerPosition);
+                CurrentWorldPosition = RebuildGamepadCursorWorldPosition(
+                    currentPlayerPosition,
+                    gamepadFollowDelta);
             }
         }
 
@@ -302,16 +322,47 @@ public class WeaponAimCursor : MonoBehaviour
         _hasValidCursorPosition = true;
     }
 
-    private Vector2 AdvanceGamepadCursorWorldPosition(Vector2 playerWorldPosition, Vector2 lookInput)
+    private Vector2 AdvanceGamepadCursorWorldPosition(
+        Vector2 currentPlayerWorldPosition,
+        Vector2 followDelta,
+        Vector2 lookInput)
     {
-        Vector2 basePosition = RebuildGamepadCursorWorldPosition(playerWorldPosition);
+        Vector2 basePosition = RebuildGamepadCursorWorldPosition(
+            currentPlayerWorldPosition,
+            followDelta);
         Vector2 next = basePosition + lookInput * Mathf.Max(0f, _gamepadCursorSpeed) * Time.unscaledDeltaTime;
-        return ClampAroundOrigin(playerWorldPosition, next);
+        if (!_followPlayerVerticalInGamepadMode)
+            _gamepadConstraintAnchorY = next.y;
+
+        Vector2 constraintOrigin = GetGamepadConstraintOrigin(currentPlayerWorldPosition);
+        return ClampAroundOrigin(constraintOrigin, next);
     }
 
-    private Vector2 RebuildGamepadCursorWorldPosition(Vector2 playerWorldPosition)
+    private Vector2 RebuildGamepadCursorWorldPosition(
+        Vector2 currentPlayerWorldPosition,
+        Vector2 followDelta)
     {
-        return ClampAroundOrigin(playerWorldPosition, CurrentWorldPosition);
+        Vector2 rebuiltWorld = _followPlayerMovementInGamepadMode
+            ? (CurrentWorldPosition + followDelta)
+            : CurrentWorldPosition;
+        Vector2 constraintOrigin = GetGamepadConstraintOrigin(currentPlayerWorldPosition);
+        return ClampAroundOrigin(constraintOrigin, rebuiltWorld);
+    }
+
+    private Vector2 GetGamepadConstraintOrigin(Vector2 currentPlayerWorldPosition)
+    {
+        if (_followPlayerVerticalInGamepadMode)
+            return currentPlayerWorldPosition;
+
+        return new Vector2(currentPlayerWorldPosition.x, _gamepadConstraintAnchorY);
+    }
+
+    private Vector2 GetGamepadFollowDelta(Vector2 playerDelta)
+    {
+        if (_followPlayerVerticalInGamepadMode)
+            return playerDelta;
+
+        return new Vector2(playerDelta.x, 0f);
     }
 
     private bool TryGetMouseWorldPosition(out Vector2 worldPosition)

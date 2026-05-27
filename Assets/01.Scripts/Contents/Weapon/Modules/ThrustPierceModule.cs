@@ -60,7 +60,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (Controller.CurrentState != WeaponState.Controlled) return;
 
         _aimLockPosition = Controller.transform.position;
-        _aimMouseStartPosition = Controller.Sensor.GetMouseWorldPosition();
+        _aimMouseStartPosition = Controller.Sensor.GetRawPointerWorldPosition();
         _isAiming = true;
         _hasActivatedSlowMotion = false;
         _aimCanceledByEnergyShortage = false;
@@ -275,11 +275,14 @@ public class ThrustPierceModule : WeaponActionModule
             return false;
 
         InputReader input = InputReader.Instance;
+        bool isMouseAiming = input != null && input.IsMouseAiming();
+        bool hasGamepadLookSource = input != null && input.IsLookInputFromGamepad();
+        bool isGamepadControlMode = hasGamepadLookSource || (_isGamepadHoldAim && !isMouseAiming);
         if (input != null)
         {
             Vector2 look = input.GetLookInput();
             float deadzone = Mathf.Max(0f, _gamepadAimDeadzone);
-            if (input.IsLookInputFromGamepad() && look.sqrMagnitude >= deadzone * deadzone)
+            if (isGamepadControlMode && input.IsLookInputFromGamepad() && look.sqrMagnitude >= deadzone * deadzone)
             {
                 _isGamepadHoldAim = true;
                 _gamepadAimDirection = look.normalized;
@@ -295,7 +298,10 @@ public class ThrustPierceModule : WeaponActionModule
             }
         }
 
-        if (_isGamepadHoldAim && _hasGamepadAimDirection)
+        if (!isGamepadControlMode)
+            _isGamepadHoldAim = false;
+
+        if (isGamepadControlMode && _isGamepadHoldAim && _hasGamepadAimDirection)
         {
             direction = _gamepadAimDirection;
             visualTarget = _aimLockPosition + direction * visualDistance;
@@ -304,9 +310,9 @@ public class ThrustPierceModule : WeaponActionModule
             return true;
         }
 
-        Vector2 mouseWorld = Controller.Sensor.GetMouseWorldPosition();
+        Vector2 mouseWorld = Controller.Sensor.GetRawPointerWorldPosition();
         Vector2 delta = mouseWorld - _aimLockPosition;
-        float dragDistance = delta.magnitude;
+        float dragDistance = Vector2.Distance(_aimMouseStartPosition, mouseWorld);
         visualTarget = mouseWorld;
         canFire = dragDistance >= Controller.ThrustDragThreshold;
         isGamepadAim = false;
@@ -548,7 +554,9 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.StateMachine?.ClearPinSource();
         Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
 
-        Controller.AimCursor?.SnapToPlayerPosition();
+        bool isGamepadMode = InputReader.Instance != null && InputReader.Instance.IsGamepadControlSchemeActive();
+        if (isGamepadMode)
+            Controller.AimCursor?.SnapToPlayerPosition();
         Controller.ChangeState(WeaponState.Returning);
 
         Controller.Movement.ExecuteReturn(
@@ -557,7 +565,8 @@ public class ThrustPierceModule : WeaponActionModule
             (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
             _ =>
             {
-                Controller.AimCursor?.SnapToPlayerPosition();
+                if (isGamepadMode)
+                    Controller.AimCursor?.SnapToPlayerPosition();
                 Controller.ChangeState(WeaponState.Controlled);
             });
     }

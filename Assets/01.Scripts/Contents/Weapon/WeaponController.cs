@@ -60,6 +60,7 @@ public class WeaponController : MonoBehaviour
     private MethodInfo _handleLinkEnergyDepletedMethod;
     private bool _isModeSwitchInProgress;
     private bool _isMeleeRechargeWaiting;
+    private Coroutine _meleeModeRechargeRoutine;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -208,6 +209,11 @@ public class WeaponController : MonoBehaviour
             _modeController.ModeChanged -= OnWeaponModeChanged;
         _isModeSwitchInProgress = false;
         _isMeleeRechargeWaiting = false;
+        if (_meleeModeRechargeRoutine != null)
+        {
+            StopCoroutine(_meleeModeRechargeRoutine);
+            _meleeModeRechargeRoutine = null;
+        }
     }
 
     private void Update()
@@ -235,6 +241,16 @@ public class WeaponController : MonoBehaviour
 
     private void OnWeaponModeChanged(WeaponMode previousMode, WeaponMode newMode)
     {
+        if (newMode != WeaponMode.Melee)
+        {
+            _isMeleeRechargeWaiting = false;
+            if (_meleeModeRechargeRoutine != null)
+            {
+                StopCoroutine(_meleeModeRechargeRoutine);
+                _meleeModeRechargeRoutine = null;
+            }
+        }
+
         bool shouldReset = previousMode != newMode;
         ApplyAimCursorModePolicy(newMode, shouldReset);
         RefreshAimCursorVisibilityFromState();
@@ -317,8 +333,6 @@ public class WeaponController : MonoBehaviour
     private bool CanToggleWeaponMode()
     {
         if (_modeController == null) return false;
-        if (_isMeleeRechargeWaiting) return false;
-        if (_isMeleeRechargeWaiting) return false;
         if (_isModeSwitchInProgress) return false;
         if (IsActionInputBlocked) return false;
         if (IsDepletionSequenceActive) return false;
@@ -401,17 +415,32 @@ public class WeaponController : MonoBehaviour
         if (_linkEnergy == null || _linkEnergy.IsFull)
             yield break;
 
-        _isMeleeRechargeWaiting = true;
+        BeginMeleeModeRecharge();
+    }
 
-        while (_modeController != null &&
-               _modeController.CurrentMode == WeaponMode.Melee &&
-               _linkEnergy != null &&
-               !_linkEnergy.IsFull)
+    private void BeginMeleeModeRecharge()
+    {
+        if (_linkEnergy == null)
+            return;
+
+        if (_meleeModeRechargeRoutine != null)
         {
-            yield return null;
+            StopCoroutine(_meleeModeRechargeRoutine);
+            _meleeModeRechargeRoutine = null;
         }
 
+        _meleeModeRechargeRoutine = StartCoroutine(MeleeModeRechargeRoutine());
+    }
+
+    private IEnumerator MeleeModeRechargeRoutine()
+    {
+        _isMeleeRechargeWaiting = true;
+
+        float rechargeDuration = Mathf.Max(0.01f, _fullRechargeDelayAfterReturn);
+        yield return StartCoroutine(_linkEnergy.RechargeToFullAndUnlockOverDuration(rechargeDuration));
+
         _isMeleeRechargeWaiting = false;
+        _meleeModeRechargeRoutine = null;
     }
 
     private Vector2 GetModeSwitchReturnTargetPosition()

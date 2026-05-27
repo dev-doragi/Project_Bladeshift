@@ -52,7 +52,6 @@ public class MouseWorldProxyFollower : MonoBehaviour
             ResolveAimCursor();
             if (_aimCursor != null && _aimCursor.IsInitialized)
             {
-                _aimCursor.Tick();
                 Vector3 aimWorld = _aimCursor.AimWorldPosition;
                 aimWorld.z = transform.position.z;
                 transform.position = GetProxyPosition(aimWorld);
@@ -119,7 +118,6 @@ public class MouseWorldProxyFollower : MonoBehaviour
                 return;
             }
 
-            _aimCursor.Tick();
             Vector3 aimWorld = _aimCursor.AimWorldPosition;
             aimWorld.z = transform.position.z;
 

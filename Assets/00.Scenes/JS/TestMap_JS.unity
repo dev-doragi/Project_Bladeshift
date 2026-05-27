@@ -1280,7 +1280,7 @@ PrefabInstance:
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
-      objectReference: {fileID: 1029272964}
+      objectReference: {fileID: 670350075}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _droneDockPivot
       value: 
@@ -1289,6 +1289,10 @@ PrefabInstance:
       propertyPath: _playerTransform
       value: 
       objectReference: {fileID: 1089678679}
+    - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _mouseWorldProxyFollower
+      value: 
+      objectReference: {fileID: 2002283710}
     - target: {fileID: 2573951358506072716, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.81
@@ -1332,7 +1336,7 @@ PrefabInstance:
     - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
-      objectReference: {fileID: 1029272964}
+      objectReference: {fileID: 670350075}
     - target: {fileID: 7554338162925912487, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _meleeOrbitRoot
       value: 
@@ -2554,6 +2558,74 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1001 &670350074
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1183617872846569668, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_Name
+      value: AimCursor
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5053036119146759336, guid: fbf6031369889334090b1a70320e3922, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fbf6031369889334090b1a70320e3922, type: 3}
+--- !u!114 &670350075 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8527731487195251343, guid: fbf6031369889334090b1a70320e3922, type: 3}
+  m_PrefabInstance: {fileID: 670350074}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1 &674435292
 GameObject:
   m_ObjectHideFlags: 0
@@ -3268,17 +3340,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1029272964 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
-  m_PrefabInstance: {fileID: 1493108795789087930}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4c59b32889f50f4dbcf4cd01b65d61c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponAimCursor
 --- !u!1 &1034891865
 GameObject:
   m_ObjectHideFlags: 0
@@ -5979,7 +6040,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MouseWorldProxyFollower
   _targetCamera: {fileID: 519420031}
   _playerTransform: {fileID: 1089678679}
-  _aimCursor: {fileID: 1029272964}
+  _aimCursor: {fileID: 0}
   _usePlayerControlRadius: 0
   _cameraInfluenceRadius: 7.5
   _recoverDeadZoneRadius: 0
@@ -6753,10 +6814,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 5685921721219222157, guid: 916123afff0eaec4caff932178703efb, type: 3}
-      propertyPath: _gamepadCursorSpeed
-      value: 25
-      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.86
@@ -6805,6 +6862,10 @@ PrefabInstance:
       propertyPath: _weaponSensor
       value: 
       objectReference: {fileID: 1239430059}
+    - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _weaponAimCursor
+      value: 
+      objectReference: {fileID: 670350075}
     - target: {fileID: 8701013109909184830, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: _weaponModeController
       value: 
@@ -7321,6 +7382,7 @@ SceneRoots:
   - {fileID: 2069730402}
   - {fileID: 701524090}
   - {fileID: 1493108795789087930}
+  - {fileID: 670350074}
   - {fileID: 506990839}
   - {fileID: 7905168344170264855}
   - {fileID: 2118085206}
