@@ -4,8 +4,11 @@ using UnityEngine;
 public class FlyingEnemyMovementData : EnemyMovementData
 {
     [Header("Reposition")]
+    [SerializeField] private bool _moveAfterAttack;
     [SerializeField] private Vector2 _maintainDistanceRange = new(4f, 6f);
+    [SerializeField] private Vector2 _repositionTravelDistanceRange = new(3f, 7f);
     [SerializeField] private Vector2 _repositionSpeedRange = new(6f, 9f);
+    [SerializeField] private Vector2 _repositionIntervalRange = new(0f, 0f);
     [SerializeField, Min(0.01f)] private float _arriveDistance = 0.25f;
     [SerializeField, Min(1)] private int _positionSampleAttempts = 12;
 
@@ -16,8 +19,11 @@ public class FlyingEnemyMovementData : EnemyMovementData
     [SerializeField, Min(0f)] private float _floorAvoidanceDistance = 1.2f;
     [SerializeField, Min(0f)] private float _ceilingAvoidanceDistance = 0.35f;
 
+    public bool MoveAfterAttack => _moveAfterAttack;
     public Vector2 MaintainDistanceRange => _maintainDistanceRange;
+    public Vector2 RepositionTravelDistanceRange => _repositionTravelDistanceRange;
     public Vector2 RepositionSpeedRange => _repositionSpeedRange;
+    public Vector2 RepositionIntervalRange => _repositionIntervalRange;
     public float ArriveDistance => _arriveDistance;
     public int PositionSampleAttempts => _positionSampleAttempts;
     public LayerMask ObstacleLayer => _obstacleLayer;
@@ -32,8 +38,12 @@ public class FlyingEnemyMovementData : EnemyMovementData
 
         _maintainDistanceRange.x = Mathf.Max(0f, _maintainDistanceRange.x);
         _maintainDistanceRange.y = Mathf.Max(_maintainDistanceRange.x, _maintainDistanceRange.y);
+        _repositionTravelDistanceRange.x = Mathf.Max(0f, _repositionTravelDistanceRange.x);
+        _repositionTravelDistanceRange.y = Mathf.Max(_repositionTravelDistanceRange.x, _repositionTravelDistanceRange.y);
         _repositionSpeedRange.x = Mathf.Max(0f, _repositionSpeedRange.x);
         _repositionSpeedRange.y = Mathf.Max(_repositionSpeedRange.x, _repositionSpeedRange.y);
+        _repositionIntervalRange.x = Mathf.Max(0f, _repositionIntervalRange.x);
+        _repositionIntervalRange.y = Mathf.Max(_repositionIntervalRange.x, _repositionIntervalRange.y);
         _arriveDistance = Mathf.Max(0.01f, _arriveDistance);
         _positionSampleAttempts = Mathf.Max(1, _positionSampleAttempts);
         _clearanceRadius = Mathf.Max(0f, _clearanceRadius);

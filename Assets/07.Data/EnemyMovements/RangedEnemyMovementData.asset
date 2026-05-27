@@ -12,22 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6716120934af4ddba1f557bebec4e3f9, type: 3}
   m_Name: RangedEnemyMovementData
   m_EditorClassIdentifier: 
-  _moveSpeed: 2
-  _detectRange: 8
+  _moveSpeed: 9
+  _detectRange: 22.5
   _stopDistance: 5
   _keepChasingAfterDetection: 1
   _requiresLineOfSight: 1
   _lineOfSightBlockerLayer:
     serializedVersion: 2
     m_Bits: 128
-  _maintainDistanceRange: {x: 4, y: 6}
-  _repositionSpeedRange: {x: 6, y: 9}
-  _arriveDistance: 0.25
-  _positionSampleAttempts: 12
+  _moveAfterAttack: 0
+  _maintainDistanceRange: {x: 8, y: 11}
+  _repositionTravelDistanceRange: {x: 6, y: 7}
+  _repositionSpeedRange: {x: 11, y: 13}
+  _repositionIntervalRange: {x: 0.3, y: 0.5}
+  _arriveDistance: 0.7
+  _positionSampleAttempts: 20
   _obstacleLayer:
     serializedVersion: 2
     m_Bits: 128
   _clearanceRadius: 0.45
-  _wallAvoidanceDistance: 0.7
-  _floorAvoidanceDistance: 1.2
+  _wallAvoidanceDistance: 1.5
+  _floorAvoidanceDistance: 1.5
   _ceilingAvoidanceDistance: 0.35

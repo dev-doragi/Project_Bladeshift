@@ -17,5 +17,6 @@ MonoBehaviour:
   _lifeTime: 5
   _damage: 1
   _knockbackPower: 0
-  _attackCooldown: 2
-  _attackRange: 10
+  _initialAttackDelay: 0.3
+  _attackCooldown: 1
+  _attackRange: 15
