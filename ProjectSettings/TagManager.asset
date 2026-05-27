@@ -18,7 +18,7 @@ TagManager:
   - Corpse
   - Projectile
   - Platform
-  - 
+  - Invincible
   - 
   - 
   - 
@@ -44,11 +44,11 @@ TagManager:
   - name: Platform
     uniqueID: 1303627651
     locked: 0
-  - name: Weapon
-    uniqueID: 4208061647
-    locked: 0
   - name: Enemy
     uniqueID: 3021872177
+    locked: 0
+  - name: Weapon
+    uniqueID: 4208061647
     locked: 0
   - name: Player
     uniqueID: 4193429871

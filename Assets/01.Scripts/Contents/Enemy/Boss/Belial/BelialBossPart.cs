@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 
@@ -11,79 +11,78 @@ public enum BelialBossPartRole
 
 public sealed class BelialBossPart : EnemyBase
 {
-    [Header("Boss Part")]
+    [Header("Part")]
     [SerializeField] private BelialBossPartRole _role;
     [SerializeField] private BelialBossCore _core;
+    [SerializeField] private Transform _visualRoot;
+    [SerializeField] private SpriteRenderer[] _renderers;
+    [SerializeField] private Collider2D _hitCollider;
 
-    [Header("Hand Attack")]
+    [Header("Ranged")]
+    [SerializeField] private EnemyDirectAttacker _directAttacker;
     [SerializeField] private EnemyProjectileAttackData _attackData;
-    [SerializeField] private Transform _targetOverride;
-    [SerializeField, Min(0.1f)] private float _attackRange = 12f;
-    [SerializeField, Min(0.05f)] private float _chargeDuration = 0.8f;
-    [SerializeField, Min(0.01f)] private float _chargeRecoverDuration = 0.12f;
-    [SerializeField, Min(0.05f)] private float _attackCooldown = 1.5f;
-    [SerializeField] private Vector3 _chargeScaleMultiplier = new Vector3(1.18f, 1.18f, 1f);
+    [SerializeField] private Transform _projectileMuzzle;
 
-    [Header("Hand Disable")]
-    [SerializeField, Min(0.1f)] private float _disabledDuration = 6f;
-    [SerializeField, Min(0.01f)] private float _disableTweenDuration = 0.18f;
-    [SerializeField] private Vector3 _disabledScaleMultiplier = new Vector3(0.82f, 0.82f, 1f);
+    [Header("Idle Bob")]
+    [SerializeField, Min(0f)] private float _bobAmplitude = 0.12f;
+    [SerializeField, Min(0.1f)] private float _bobDuration = 1.2f;
 
-    [Header("Disable Shockwave")]
-    [SerializeField, Min(0f)] private float _disableShockwaveRadius = 4f;
-    [SerializeField, Min(0f)] private float _disableShockwaveGroggyDamage = 100f;
-    [SerializeField] private LayerMask _disableShockwaveTargetLayer;
+    [Header("Contact")]
+    [SerializeField, Min(0)] private int _sweepContactDamage = 1;
+    [SerializeField, Min(0.05f)] private float _sweepContactDamageInterval = 0.25f;
 
-    private EnemyDirectAttacker _directAttacker;
-    private Transform _target;
-    private Vector3 _baseScale;
-    private Tween _scaleTween;
-    private Coroutine _attackRoutine;
-    private Coroutine _recoverRoutine;
-    private bool _isTemporarilyDisabled;
-    private bool _isHeadVulnerable;
-    private bool _isDestroyed;
-    private bool _externalAttackLock;
+    [Header("Visual FX")]
+    [SerializeField] private Color _hitFlashColor = new Color(1f, 0.9f, 0.9f, 1f);
+    [SerializeField, Min(0.01f)] private float _hitFlashDuration = 0.08f;
+
+    [Header("Sweep Telegraph")]
+    [SerializeField] private GameObject _sweepGhostPrefab;
+    [SerializeField] private Color _sweepGhostColor = new Color(1f, 1f, 1f, 0.35f);
+    [SerializeField] private Ease _sweepGhostEase = Ease.OutQuad;
+
+    private Vector3 _initialLocalPosition;
+    private Quaternion _initialLocalRotation;
+    private Vector3 _initialLocalScale;
+    private bool _cachedPose;
+
+    private Tween _moveTween;
+    private Tween _rotateTween;
+    private Tween _bobTween;
+    private bool _attackLocked;
+    private bool _disabledForBoss;
+    private bool _contactDamageEnabled;
+    private bool _battleActive;
+    private float _lastContactDamageTime = -999f;
+
+    private Color[] _baseRendererColors;
+    private Color _visualTint = Color.white;
+    private float _visualAlpha = 1f;
+    private Coroutine _hitFlashRoutine;
 
     public BelialBossPartRole Role => _role;
-    public bool IsTemporarilyDisabled => _isTemporarilyDisabled;
-    public bool IsHeadVulnerable => _isHeadVulnerable;
-    public override bool IsDead => _isDestroyed;
+    public bool IsDisabledForBoss => _disabledForBoss;
+
+    public override bool CanBeCaptured => false;
+    public override float CaptureWeight => 9999f;
 
     protected override void Awake()
     {
         base.Awake();
 
-        _baseScale = transform.localScale;
-        _directAttacker = GetComponent<EnemyDirectAttacker>();
+        if (_visualRoot == null)
+            _visualRoot = transform;
+
+        if (_hitCollider == null)
+            _hitCollider = GetComponent<Collider2D>();
+
+        if (_directAttacker == null)
+            _directAttacker = GetComponent<EnemyDirectAttacker>();
 
         if (_core == null)
             _core = GetComponentInParent<BelialBossCore>();
 
-        _core?.RegisterPart(this);
-    }
-
-    private void OnEnable()
-    {
-        if (EventBus.Instance != null)
-            EventBus.Instance.Subscribe<PlayerSpawnedEvent>(HandlePlayerSpawned);
-
-        ResolveTarget();
-
-        if (IsHand() && _attackRoutine == null)
-            _attackRoutine = StartCoroutine(AttackRoutine());
-    }
-
-    protected override void OnDisable()
-    {
-        if (EventBus.Instance != null)
-            EventBus.Instance.Unsubscribe<PlayerSpawnedEvent>(HandlePlayerSpawned);
-
-        StopPartRoutines();
-        _scaleTween?.Kill();
-        transform.localScale = _baseScale;
-
-        base.OnDisable();
+        CacheRendererBaseColors();
+        ApplyVisualStyle();
     }
 
     public void Bind(BelialBossCore core)
@@ -91,222 +90,385 @@ public sealed class BelialBossPart : EnemyBase
         _core = core;
     }
 
-    public void SetHeadVulnerable(bool vulnerable)
+    public void CacheInitialPose()
     {
-        if (_role != BelialBossPartRole.Head)
-            return;
-
-        _isHeadVulnerable = vulnerable;
-        _scaleTween?.Kill();
-        _scaleTween = transform.DOScale(vulnerable ? _baseScale * 1.08f : _baseScale, 0.15f).SetEase(Ease.OutQuad);
+        _initialLocalPosition = transform.localPosition;
+        _initialLocalRotation = transform.localRotation;
+        _initialLocalScale = transform.localScale;
+        _cachedPose = true;
     }
 
-    public void SetExternalAttackLock(bool locked)
+    public IEnumerator MoveToAnchor(Transform anchor, float duration)
     {
-        _externalAttackLock = locked;
+        if (_disabledForBoss || anchor == null)
+            yield break;
 
-        if (locked)
-            CancelChargeVisual();
+        StopIdleBob();
+        KillMotionTweens();
+
+        _moveTween = transform.DOLocalMove(anchor.localPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
+        _rotateTween = transform.DOLocalRotateQuaternion(anchor.localRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
+        yield return _moveTween.WaitForCompletion();
+    }
+
+    public IEnumerator ReturnToInitialPose(float duration)
+    {
+        if (_disabledForBoss || !_cachedPose)
+            yield break;
+
+        KillMotionTweens();
+
+        _moveTween = transform.DOLocalMove(_initialLocalPosition, duration).SetEase(Ease.InOutSine).SetTarget(this);
+        _rotateTween = transform.DOLocalRotateQuaternion(_initialLocalRotation, duration).SetEase(Ease.InOutSine).SetTarget(this);
+        transform.localScale = _initialLocalScale;
+        yield return _moveTween.WaitForCompletion();
+    }
+
+    public void StartIdleBob()
+    {
+        if (_disabledForBoss || _role == BelialBossPartRole.Head)
+            return;
+
+        if (!_cachedPose)
+            CacheInitialPose();
+
+        if (_bobTween != null && _bobTween.IsActive())
+            return;
+
+        transform.localPosition = _initialLocalPosition;
+        _bobTween = transform
+            .DOLocalMoveY(_initialLocalPosition.y + _bobAmplitude, _bobDuration)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo)
+            .SetTarget(this);
+    }
+
+    public void StopIdleBob()
+    {
+        if (_bobTween != null)
+        {
+            _bobTween.Kill();
+            _bobTween = null;
+        }
+    }
+
+    public IEnumerator ChargeAndFire(Transform target, float chargeDuration)
+    {
+        if (_disabledForBoss || _attackLocked || _role == BelialBossPartRole.Head)
+            yield break;
+
+        if (_directAttacker == null)
+        {
+            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: EnemyDirectAttacker is null.", this);
+            yield break;
+        }
+
+        if (_attackData == null)
+        {
+            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: AttackData is null.", this);
+            yield break;
+        }
+
+        if (target == null)
+        {
+            Debug.LogError($"[BelialBossPart:{name}] ChargeAndFire failed: target is null.", this);
+            yield break;
+        }
+
+        float safeDuration = Mathf.Max(0.01f, chargeDuration);
+        Vector3 chargeScale = _initialLocalScale * 1.1f;
+        Tween t = transform.DOScale(chargeScale, safeDuration).SetEase(Ease.InOutSine).SetTarget(this);
+        yield return t.WaitForCompletion();
+
+        if (!_disabledForBoss && !_attackLocked)
+        {
+            bool fired = _directAttacker.TryPerformAttack(target, _attackData);
+            if (!fired)
+                Debug.LogError($"[BelialBossPart:{name}] TryPerformAttack returned false. Check AttackData.ProjectilePrefab and PoolManager registration.", this);
+        }
+
+        transform.DOScale(_initialLocalScale, 0.1f).SetEase(Ease.OutSine).SetTarget(this);
+    }
+
+    public IEnumerator SweepTo(Transform targetAnchor, float duration)
+    {
+        if (_disabledForBoss || targetAnchor == null || _role == BelialBossPartRole.Head)
+            yield break;
+
+        StopIdleBob();
+        KillMotionTweens();
+
+        _moveTween = transform.DOLocalMove(targetAnchor.localPosition, duration).SetEase(Ease.Linear).SetTarget(this);
+        _rotateTween = transform.DOLocalRotateQuaternion(targetAnchor.localRotation, duration).SetEase(Ease.Linear).SetTarget(this);
+        yield return _moveTween.WaitForCompletion();
+    }
+
+    public IEnumerator PlaySweepTelegraph(Transform targetAnchor, float duration, float delay)
+    {
+        float safeDuration = Mathf.Max(0.01f, duration);
+
+        if (targetAnchor == null)
+            yield break;
+
+        if (_sweepGhostPrefab == null)
+        {
+            Debug.LogWarning($"[BelialBossPart:{name}] Sweep telegraph skipped: ghost prefab is null.", this);
+            yield return new WaitForSeconds(safeDuration + Mathf.Max(0f, delay));
+            yield break;
+        }
+
+        GameObject ghost = Instantiate(_sweepGhostPrefab, transform.position, transform.rotation);
+        if (ghost == null)
+        {
+            yield return new WaitForSeconds(safeDuration + Mathf.Max(0f, delay));
+            yield break;
+        }
+
+        RemoveGhostGameplayComponents(ghost);
+
+        SpriteRenderer[] ghostRenderers = ghost.GetComponentsInChildren<SpriteRenderer>(true);
+        for (int i = 0; i < ghostRenderers.Length; i++)
+        {
+            if (ghostRenderers[i] == null)
+                continue;
+
+            Color c = _sweepGhostColor;
+            ghostRenderers[i].color = c;
+        }
+
+        Quaternion targetRotation = targetAnchor.rotation;
+        Sequence seq = DOTween.Sequence();
+        seq.Join(ghost.transform.DOMove(targetAnchor.position, safeDuration).SetEase(_sweepGhostEase));
+        seq.Join(ghost.transform.DORotateQuaternion(targetRotation, safeDuration).SetEase(_sweepGhostEase));
+
+        if (ghostRenderers.Length > 0)
+        {
+            for (int i = 0; i < ghostRenderers.Length; i++)
+            {
+                SpriteRenderer sr = ghostRenderers[i];
+                if (sr == null)
+                    continue;
+                seq.Join(sr.DOFade(0f, safeDuration).SetEase(Ease.Linear));
+            }
+        }
+
+        yield return seq.WaitForCompletion();
+
+        if (ghost != null)
+            Destroy(ghost);
+
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+    }
+
+    public void SetAttackLocked(bool locked)
+    {
+        _attackLocked = locked;
+    }
+
+    public void SetBattleActive(bool active)
+    {
+        _battleActive = active;
+
+        if (_hitCollider != null)
+            _hitCollider.enabled = active && !_disabledForBoss;
+
+        if (!active)
+            _contactDamageEnabled = false;
+    }
+
+    public void DisableByFinisher(DamageData sourceDamage)
+    {
+        if (!IsHand())
+            return;
+
+        DisableInternal(sourceDamage);
+    }
+
+    public void RestoreFromBossGroggy()
+    {
+        if (!IsHand())
+            return;
+
+        _disabledForBoss = false;
+        _attackLocked = false;
+
+        if (_visualRoot != null)
+            _visualRoot.gameObject.SetActive(true);
+
+        if (_hitCollider != null)
+            _hitCollider.enabled = _battleActive;
+
+        StopGroggyRoutines();
+        _currentHealth = _maxHealth;
+        _currentGroggyGauge = 0f;
+        _isCaptured = false;
+        _isPierced = false;
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
+
+        ApplyVisualStyle();
+        StartIdleBob();
+    }
+
+    public void SetContactDamageEnabled(bool enabled)
+    {
+        _contactDamageEnabled = enabled;
+    }
+
+    public void SetContactDamage(int damage, float interval)
+    {
+        _sweepContactDamage = Mathf.Max(0, damage);
+        _sweepContactDamageInterval = Mathf.Max(0.05f, interval);
+    }
+
+    public void SetVisualTint(Color tint)
+    {
+        _visualTint = tint;
+        ApplyVisualStyle();
+    }
+
+    public void SetVisualAlpha(float alpha)
+    {
+        _visualAlpha = Mathf.Clamp01(alpha);
+        ApplyVisualStyle();
     }
 
     public override void TakeDamage(DamageData damageData)
     {
-        if (_role == BelialBossPartRole.Head && !_isHeadVulnerable)
+        if (!_battleActive)
             return;
 
-        if (IsHand() && _isTemporarilyDisabled)
+        if (_disabledForBoss)
             return;
+
+        if (_role == BelialBossPartRole.Head)
+        {
+            base.TakeDamage(damageData);
+            PlayUnifiedHitFlash();
+            return;
+        }
 
         base.TakeDamage(damageData);
+        PlayUnifiedHitFlash();
 
-        if (IsHand() && IsDisableTrigger(damageData))
-            DisableHand(damageData);
+        if (damageData.AttackKind == WeaponAttackKind.EmbeddedAttack || damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut)
+            DisableByFinisher(damageData);
     }
 
     protected override void Die(Vector2 knockbackForce)
     {
         if (_role == BelialBossPartRole.Head)
         {
-            DestroyHead();
+            base.Die(knockbackForce);
             return;
         }
 
-        DisableHand(new DamageData
+        DisableInternal(new DamageData
         {
             Damage = 0f,
+            GroggyDamage = 0f,
             AttackerTeam = TeamType.Player,
             HitPoint = transform.position,
             KnockbackForce = knockbackForce,
+            IsPiercing = false,
+            IsExecution = false,
             AttackKind = WeaponAttackKind.None
         });
     }
 
-    protected override void OnGroggyEntered(DamageData damageData)
+    protected override void OnTriggerEnter2D(Collider2D other)
     {
-        CancelChargeVisual();
-    }
-
-    private IEnumerator AttackRoutine()
-    {
-        while (true)
-        {
-            yield return null;
-
-            if (!CanAttack())
-                continue;
-
-            ResolveTarget();
-            if (_target == null || !IsTargetInRange())
-                continue;
-
-            yield return ChargeAndFireRoutine();
-            yield return new WaitForSeconds(_attackCooldown);
-        }
-    }
-
-    private IEnumerator ChargeAndFireRoutine()
-    {
-        CancelChargeVisual();
-
-        Vector3 chargeScale = Vector3.Scale(_baseScale, _chargeScaleMultiplier);
-        _scaleTween = transform.DOScale(chargeScale, _chargeDuration).SetEase(Ease.InOutSine);
-        yield return _scaleTween.WaitForCompletion();
-
-        if (CanAttack() && _target != null && IsTargetInRange())
-            _directAttacker?.TryPerformAttack(_target, _attackData);
-
-        _scaleTween?.Kill();
-        _scaleTween = transform.DOScale(_baseScale, _chargeRecoverDuration).SetEase(Ease.OutQuad);
-    }
-
-    private bool CanAttack()
-    {
-        if (!IsHand())
-            return false;
-        if (_externalAttackLock || _isTemporarilyDisabled)
-            return false;
-        if (_isGroggy || _isCaptured || _isPierced || _isDestroyed)
-            return false;
-        if (_attackData == null || _directAttacker == null)
-            return false;
-
-        return true;
-    }
-
-    private bool IsTargetInRange()
-    {
-        float sqrDistance = (_target.position - transform.position).sqrMagnitude;
-        return sqrDistance <= _attackRange * _attackRange;
-    }
-
-    private void DisableHand(DamageData sourceDamage)
-    {
-        if (!IsHand() || _isTemporarilyDisabled)
+        if (!_battleActive)
             return;
 
-        _isTemporarilyDisabled = true;
-        _currentHealth = _maxHealth;
+        TryDealSweepContactDamage(other);
+    }
+
+    protected override void OnTriggerStay2D(Collider2D other)
+    {
+        if (!_battleActive)
+            return;
+
+        TryDealSweepContactDamage(other);
+    }
+
+    public override bool CanBeCapturedByPierce()
+    {
+        return false;
+    }
+
+    public override bool CanExecuteCaptureFinisher()
+    {
+        return false;
+    }
+
+    private void TryDealSweepContactDamage(Collider2D other)
+    {
+        if (!_contactDamageEnabled || _sweepContactDamage <= 0)
+            return;
+
+        if (Time.time < _lastContactDamageTime + _sweepContactDamageInterval)
+            return;
+
+        PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+        if (playerHealth == null)
+            playerHealth = other.GetComponentInParent<PlayerHealth>();
+
+        if (playerHealth == null)
+            return;
+
+        _lastContactDamageTime = Time.time;
+        playerHealth.TakeDamage(new DamageData
+        {
+            Damage = _sweepContactDamage,
+            GroggyDamage = 0f,
+            AttackerTeam = TeamType.Enemy,
+            HitPoint = other.ClosestPoint(transform.position),
+            KnockbackForce = Vector2.zero,
+            IsPiercing = false,
+            IsExecution = false,
+            AttackKind = WeaponAttackKind.None
+        });
+    }
+
+    private void DisableInternal(DamageData sourceDamage)
+    {
+        if (_disabledForBoss)
+            return;
+
+        _disabledForBoss = true;
+        _attackLocked = true;
+
+        StopIdleBob();
+        KillMotionTweens();
+        DOTween.Kill(this);
 
         StopGroggyRoutines();
-        CancelChargeVisual();
-        ApplyDisableShockwave(sourceDamage);
+        _currentHealth = _maxHealth;
+        _currentGroggyGauge = 0f;
+        _isCaptured = false;
+        _isPierced = false;
 
-        _scaleTween?.Kill();
-        _scaleTween = transform.DOScale(Vector3.Scale(_baseScale, _disabledScaleMultiplier), _disableTweenDuration).SetEase(Ease.OutQuad);
+        if (_visualRoot != null)
+            _visualRoot.gameObject.SetActive(false);
+
+        if (_hitCollider != null)
+            _hitCollider.enabled = false;
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
 
         _core?.NotifyHandDisabled(this);
-
-        if (_recoverRoutine != null)
-            StopCoroutine(_recoverRoutine);
-
-        _recoverRoutine = StartCoroutine(RecoverHandRoutine());
-    }
-
-    private IEnumerator RecoverHandRoutine()
-    {
-        yield return new WaitForSeconds(_disabledDuration);
-
-        if (_externalAttackLock)
-        {
-            _recoverRoutine = null;
-            yield break;
-        }
-
-        _isTemporarilyDisabled = false;
-        _currentHealth = _maxHealth;
-
-        _scaleTween?.Kill();
-        _scaleTween = transform.DOScale(_baseScale, _disableTweenDuration).SetEase(Ease.OutBack);
-
-        _core?.NotifyHandRecovered(this);
-        _recoverRoutine = null;
-    }
-
-    private void DestroyHead()
-    {
-        if (_isDestroyed)
-            return;
-
-        _isDestroyed = true;
-        _currentHealth = 0f;
-
-        StopGroggyRoutines();
-        CancelChargeVisual();
-
-        if (_collider != null)
-            _collider.enabled = false;
-
-        _core?.NotifyHeadDestroyed(this);
-
-        _scaleTween?.Kill();
-        _scaleTween = transform.DOScale(Vector3.zero, 0.25f)
-            .SetEase(Ease.InBack)
-            .OnComplete(() => gameObject.SetActive(false));
-    }
-
-    private void ApplyDisableShockwave(DamageData sourceDamage)
-    {
-        if (_disableShockwaveRadius <= 0f || _disableShockwaveTargetLayer.value == 0)
-            return;
-
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, _disableShockwaveRadius, _disableShockwaveTargetLayer);
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider2D hit = hits[i];
-            if (hit == null)
-                continue;
-
-            EnemyBase enemy = hit.GetComponent<EnemyBase>();
-            if (enemy == null)
-                enemy = hit.GetComponentInParent<EnemyBase>();
-
-            if (enemy == null || enemy == this || enemy.IsDead)
-                continue;
-
-            Vector2 dir = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
-            if (dir.sqrMagnitude <= 0.0001f)
-                dir = Vector2.right;
-
-            enemy.TakeDamage(new DamageData
-            {
-                Damage = 0f,
-                GroggyDamage = _disableShockwaveGroggyDamage,
-                AttackerTeam = TeamType.Player,
-                HitPoint = hit.ClosestPoint(transform.position),
-                KnockbackForce = dir * 2f,
-                IsPiercing = false,
-                IsExecution = false,
-                AttackKind = WeaponAttackKind.None
-            });
-        }
-
-        EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = ShakeIntensity.Medium });
-    }
-
-    private bool IsDisableTrigger(DamageData damageData)
-    {
-        return damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut ||
-               damageData.AttackKind == WeaponAttackKind.EmbeddedAttack;
     }
 
     private bool IsHand()
@@ -314,44 +476,142 @@ public sealed class BelialBossPart : EnemyBase
         return _role == BelialBossPartRole.LeftHand || _role == BelialBossPartRole.RightHand;
     }
 
-    private void CancelChargeVisual()
+    private void KillMotionTweens()
     {
-        _scaleTween?.Kill();
-        transform.localScale = _isTemporarilyDisabled
-            ? Vector3.Scale(_baseScale, _disabledScaleMultiplier)
-            : _baseScale;
+        _moveTween?.Kill();
+        _rotateTween?.Kill();
+        _moveTween = null;
+        _rotateTween = null;
     }
 
-    private void ResolveTarget()
+    private void CacheRendererBaseColors()
     {
-        if (_targetOverride != null)
-        {
-            _target = _targetOverride;
+        if (_renderers == null)
+            _renderers = new SpriteRenderer[0];
+
+        _baseRendererColors = new Color[_renderers.Length];
+        for (int i = 0; i < _renderers.Length; i++)
+            _baseRendererColors[i] = _renderers[i] != null ? _renderers[i].color : Color.white;
+    }
+
+    private void ApplyVisualStyle()
+    {
+        if (_renderers == null || _baseRendererColors == null)
             return;
-        }
 
-        if (PlayerController.ActivePlayer != null)
-            _target = PlayerController.ActivePlayer.transform;
+        int count = Mathf.Min(_renderers.Length, _baseRendererColors.Length);
+        for (int i = 0; i < count; i++)
+        {
+            SpriteRenderer sr = _renderers[i];
+            if (sr == null)
+                continue;
+
+            Color baseColor = _baseRendererColors[i];
+            Color c = new Color(
+                baseColor.r * _visualTint.r,
+                baseColor.g * _visualTint.g,
+                baseColor.b * _visualTint.b,
+                baseColor.a * _visualTint.a * _visualAlpha);
+            sr.color = c;
+        }
     }
 
-    private void HandlePlayerSpawned(PlayerSpawnedEvent evt)
+    private void PlayUnifiedHitFlash()
     {
-        if (evt.Player != null)
-            _target = evt.Player.transform;
+        if (_renderers == null || _renderers.Length == 0 || _disabledForBoss)
+            return;
+
+        if (_blinkRoutine != null)
+        {
+            StopCoroutine(_blinkRoutine);
+            _blinkRoutine = null;
+        }
+
+        if (_hitFlashRoutine != null)
+            StopCoroutine(_hitFlashRoutine);
+
+        _hitFlashRoutine = StartCoroutine(HitFlashRoutine());
     }
 
-    private void StopPartRoutines()
+    private IEnumerator HitFlashRoutine()
     {
-        if (_attackRoutine != null)
+        float duration = Mathf.Max(0.01f, _hitFlashDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
         {
-            StopCoroutine(_attackRoutine);
-            _attackRoutine = null;
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float blend = 1f - t;
+
+            int count = Mathf.Min(_renderers.Length, _baseRendererColors.Length);
+            for (int i = 0; i < count; i++)
+            {
+                SpriteRenderer sr = _renderers[i];
+                if (sr == null)
+                    continue;
+
+                Color baseColor = _baseRendererColors[i];
+                Color styled = new Color(
+                    baseColor.r * _visualTint.r,
+                    baseColor.g * _visualTint.g,
+                    baseColor.b * _visualTint.b,
+                    baseColor.a * _visualTint.a * _visualAlpha);
+
+                sr.color = Color.Lerp(styled, _hitFlashColor, blend);
+            }
+
+            yield return null;
         }
 
-        if (_recoverRoutine != null)
+        ApplyVisualStyle();
+        _hitFlashRoutine = null;
+    }
+
+    private static void RemoveGhostGameplayComponents(GameObject ghost)
+    {
+        Collider2D[] colliders = ghost.GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < colliders.Length; i++)
         {
-            StopCoroutine(_recoverRoutine);
-            _recoverRoutine = null;
+            if (colliders[i] != null)
+                Destroy(colliders[i]);
         }
+
+        Rigidbody2D[] rigidbodies = ghost.GetComponentsInChildren<Rigidbody2D>(true);
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            if (rigidbodies[i] != null)
+                Destroy(rigidbodies[i]);
+        }
+
+        BelialBossPart[] bossParts = ghost.GetComponentsInChildren<BelialBossPart>(true);
+        for (int i = 0; i < bossParts.Length; i++)
+        {
+            if (bossParts[i] != null)
+                Destroy(bossParts[i]);
+        }
+
+        EnemyBase[] enemyBases = ghost.GetComponentsInChildren<EnemyBase>(true);
+        for (int i = 0; i < enemyBases.Length; i++)
+        {
+            if (enemyBases[i] != null)
+                Destroy(enemyBases[i]);
+        }
+    }
+
+    protected override void OnDisable()
+    {
+        StopIdleBob();
+        KillMotionTweens();
+        DOTween.Kill(this);
+
+        if (_hitFlashRoutine != null)
+        {
+            StopCoroutine(_hitFlashRoutine);
+            _hitFlashRoutine = null;
+        }
+
+        base.OnDisable();
     }
 }
+

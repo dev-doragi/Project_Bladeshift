@@ -215,7 +215,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbb733ca0024d8f4abf61e4e4112caf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BelialBossPart
-  _enemyData: {fileID: 0}
+  _enemyData: {fileID: 11400000, guid: 9e334134f757450bbe419d168463d416, type: 2}
   _maxHealth: 50
   _contactDamage: 1
   _groggyLeanAngle: 10
@@ -226,21 +226,23 @@ MonoBehaviour:
   _fallingVelocityThreshold: -0.05
   _role: 0
   _core: {fileID: 8293420362964480772}
+  _visualRoot: {fileID: 422695539953847583}
+  _renderers:
+  - {fileID: 1515000241458755320}
+  - {fileID: 2284239916832853547}
+  _hitCollider: {fileID: 6072598990880151025}
+  _directAttacker: {fileID: 0}
   _attackData: {fileID: 0}
-  _targetOverride: {fileID: 0}
-  _attackRange: 12
-  _chargeDuration: 0.8
-  _chargeRecoverDuration: 0.12
-  _attackCooldown: 1.5
-  _chargeScaleMultiplier: {x: 1.18, y: 1.18, z: 1}
-  _disabledDuration: 6
-  _disableTweenDuration: 0.18
-  _disabledScaleMultiplier: {x: 0.82, y: 0.82, z: 1}
-  _disableShockwaveRadius: 4
-  _disableShockwaveGroggyDamage: 100
-  _disableShockwaveTargetLayer:
-    serializedVersion: 2
-    m_Bits: 0
+  _projectileMuzzle: {fileID: 0}
+  _bobAmplitude: 0.12
+  _bobDuration: 1.2
+  _sweepContactDamage: 1
+  _sweepContactDamageInterval: 0.25
+  _hitFlashColor: {r: 1, g: 0.9, b: 0.9, a: 1}
+  _hitFlashDuration: 0.08
+  _sweepGhostPrefab: {fileID: 0}
+  _sweepGhostColor: {r: 1, g: 1, b: 1, a: 0.35}
+  _sweepGhostEase: 6
 --- !u!114 &8223687762721074450
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -254,10 +256,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BelialEyeTracker
   _eyesRoot: {fileID: 1994563832746512680}
-  _player: {fileID: 0}
-  _maxLocalOffset: {x: 0.18, y: 0.08}
-  _deadZone: 0.15
-  _followSpeed: 8
+  _leftEye: {fileID: 2668550331387860007}
+  _rightEye: {fileID: 4339334802982821694}
+  _maxLocalOffsetX: 0.2
+  _maxLocalOffsetY: 0.1
+  _followTweenDuration: 0.12
+  _eyeAngle: 30
+  _eyeFlipDuration: 0.15
 --- !u!1 &1264957550577865405
 GameObject:
   m_ObjectHideFlags: 0
@@ -672,13 +677,33 @@ MonoBehaviour:
   _head: {fileID: 7545316923991141023}
   _leftHand: {fileID: 4598630731172990862}
   _rightHand: {fileID: 6866742490611121413}
-  _headMotionRoot: {fileID: 0}
-  _headDropDistance: 3
-  _headDropDuration: 0.35
-  _headRiseDuration: 0.25
-  _headVulnerableDuration: 5
-  _publishStageClearOnDeath: 0
-  _stageIndex: 0
+  _leftHandAnchors:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  _rightHandAnchors:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  _headRenderer: {fileID: 1515000241458755320}
+  _headGroggyColor: {r: 0.7734463, g: 1, b: 0, a: 1}
+  _headPreBattleColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+  _handPreBattleAlpha: 0
+  _hideEyesBeforeBattle: 1
+  _applyPreBattleVisualOnEnable: 1
+  _eyeTracker: {fileID: 8223687762721074450}
+  _bossGroggyDuration: 5
+  _patternStartDelay: 1
+  _patternInterval: 0.8
+  _handMoveDuration: 0.4
+  _chargeDuration: 0.7
+  _afterFireDelay: 0.2
+  _sweepDuration: 0.5
+  _sweepContactDamage: 1
+  _sweepContactDamageInterval: 0.25
+  _sweepTelegraphDuration: 0.35
+  _sweepTelegraphDelay: 0.12
+  _autoStartPatternOnEnable: 0
 --- !u!1 &3085324677361372491
 GameObject:
   m_ObjectHideFlags: 0
@@ -993,7 +1018,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbb733ca0024d8f4abf61e4e4112caf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BelialBossPart
-  _enemyData: {fileID: 0}
+  _enemyData: {fileID: 11400000, guid: dda3da07727a49cd8e80d278a23f48b6, type: 2}
   _maxHealth: 50
   _contactDamage: 1
   _groggyLeanAngle: 10
@@ -1004,21 +1029,25 @@ MonoBehaviour:
   _fallingVelocityThreshold: -0.05
   _role: 2
   _core: {fileID: 8293420362964480772}
-  _attackData: {fileID: 0}
-  _targetOverride: {fileID: 0}
-  _attackRange: 12
-  _chargeDuration: 0.8
-  _chargeRecoverDuration: 0.12
-  _attackCooldown: 1.5
-  _chargeScaleMultiplier: {x: 1.18, y: 1.18, z: 1}
-  _disabledDuration: 6
-  _disableTweenDuration: 0.18
-  _disabledScaleMultiplier: {x: 0.82, y: 0.82, z: 1}
-  _disableShockwaveRadius: 4
-  _disableShockwaveGroggyDamage: 100
-  _disableShockwaveTargetLayer:
-    serializedVersion: 2
-    m_Bits: 0
+  _visualRoot: {fileID: 6728104969952590854}
+  _renderers:
+  - {fileID: 3400586660970357326}
+  - {fileID: 7177010044607797198}
+  - {fileID: 5106998973416110978}
+  - {fileID: 3817658132860965890}
+  _hitCollider: {fileID: 3940273655313111507}
+  _directAttacker: {fileID: 24796915079959871}
+  _attackData: {fileID: 11400000, guid: ba7e3dec9ae0407eb5d12e12c6991000, type: 2}
+  _projectileMuzzle: {fileID: 3118707001133355394}
+  _bobAmplitude: 0.12
+  _bobDuration: 1.2
+  _sweepContactDamage: 1
+  _sweepContactDamageInterval: 0.25
+  _hitFlashColor: {r: 1, g: 0.9, b: 0.9, a: 1}
+  _hitFlashDuration: 0.08
+  _sweepGhostPrefab: {fileID: 6853595525485844504, guid: af5697e461aa94541aa5390acb5e2fd7, type: 3}
+  _sweepGhostColor: {r: 1, g: 0, b: 0, a: 0.35}
+  _sweepGhostEase: 6
 --- !u!114 &24796915079959871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1731,7 +1760,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbb733ca0024d8f4abf61e4e4112caf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BelialBossPart
-  _enemyData: {fileID: 0}
+  _enemyData: {fileID: 11400000, guid: dda3da07727a49cd8e80d278a23f48b6, type: 2}
   _maxHealth: 50
   _contactDamage: 1
   _groggyLeanAngle: 10
@@ -1742,21 +1771,25 @@ MonoBehaviour:
   _fallingVelocityThreshold: -0.05
   _role: 1
   _core: {fileID: 8293420362964480772}
-  _attackData: {fileID: 0}
-  _targetOverride: {fileID: 0}
-  _attackRange: 12
-  _chargeDuration: 0.8
-  _chargeRecoverDuration: 0.12
-  _attackCooldown: 1.5
-  _chargeScaleMultiplier: {x: 1.18, y: 1.18, z: 1}
-  _disabledDuration: 6
-  _disableTweenDuration: 0.18
-  _disabledScaleMultiplier: {x: 0.82, y: 0.82, z: 1}
-  _disableShockwaveRadius: 4
-  _disableShockwaveGroggyDamage: 100
-  _disableShockwaveTargetLayer:
-    serializedVersion: 2
-    m_Bits: 0
+  _visualRoot: {fileID: 7436170331041070578}
+  _renderers:
+  - {fileID: 8695260706650104680}
+  - {fileID: 6358020699788512646}
+  - {fileID: 5134776173003420132}
+  - {fileID: 3148227388624293485}
+  _hitCollider: {fileID: 1964570061054185559}
+  _directAttacker: {fileID: 1760443344190419271}
+  _attackData: {fileID: 11400000, guid: ba7e3dec9ae0407eb5d12e12c6991000, type: 2}
+  _projectileMuzzle: {fileID: 8040325917643902848}
+  _bobAmplitude: 0.12
+  _bobDuration: 1.2
+  _sweepContactDamage: 1
+  _sweepContactDamageInterval: 0.25
+  _hitFlashColor: {r: 1, g: 0.9, b: 0.9, a: 1}
+  _hitFlashDuration: 0.08
+  _sweepGhostPrefab: {fileID: 2461802406222206371, guid: d2cbfea4cf6ffc846afd73a5e410c09e, type: 3}
+  _sweepGhostColor: {r: 1, g: 0, b: 0, a: 0.35}
+  _sweepGhostEase: 6
 --- !u!114 &1760443344190419271
 MonoBehaviour:
   m_ObjectHideFlags: 0

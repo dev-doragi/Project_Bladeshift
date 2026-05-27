@@ -511,7 +511,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1273095119
-  m_SortingLayer: 3
+  m_SortingLayer: 2
   m_SortingOrder: 66
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -602,7 +602,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1273095119
-  m_SortingLayer: 3
+  m_SortingLayer: 2
   m_SortingOrder: 66
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -3922,7 +3922,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1273095119
-  m_SortingLayer: 3
+  m_SortingLayer: 2
   m_SortingOrder: 66
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -4286,7 +4286,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1273095119
-  m_SortingLayer: 3
+  m_SortingLayer: 2
   m_SortingOrder: 66
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -6633,6 +6633,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3112057920478771632, guid: 916123afff0eaec4caff932178703efb, type: 3}
+      propertyPath: _invincibleDuration
+      value: 1.5
+      objectReference: {fileID: 0}
     - target: {fileID: 5815787538757299612, guid: 916123afff0eaec4caff932178703efb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 241.01
@@ -6768,14 +6772,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1891988234117079037, guid: 588dd6434a9edbc4987cdb33003b79f4, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 249.97
-      objectReference: {fileID: 0}
-    - target: {fileID: 3162576441382656521, guid: 588dd6434a9edbc4987cdb33003b79f4, type: 3}
-      propertyPath: m_Icon
-      value: 
-      objectReference: {fileID: 7174288486110832750, guid: 0000000000000000d000000000000000, type: 0}
     - target: {fileID: 3887651416045293791, guid: 588dd6434a9edbc4987cdb33003b79f4, type: 3}
       propertyPath: m_Name
       value: BossStage

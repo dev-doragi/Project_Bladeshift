@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cc1521c1e36a47939e898bd5f714f2e3, type: 3}
-  m_Name: BossEnemyData
+  m_Name: BelialHandEnemyData
   m_EditorClassIdentifier: 
-  _enemyId: Boss
+  _enemyId: BelialHand
   _category: 3
-  _maxHealth: 500
+  _maxHealth: 180
   _weight: 10
   _knockbackTakenMultiplier: 1
   _canBeCaptured: 0
   _captureWeight: 0
-  _canBeExecuted: 0
+  _canBeExecuted: 1
   _usesGroggy: 1
   _groggyTriggerMode: 2
   _groggyThresholdRatio: 0.1
-  _maxGroggyGauge: 100
+  _maxGroggyGauge: 60
   _resetGroggyGaugeOnEnter: 1
   _resetGroggyGaugeOnExit: 1
-  _groggyInvulnerableDuration: 1
+  _groggyInvulnerableDuration: 0.5
   _groggyDuration: 3
   _usesGroggyRecovery: 0
   _groggyRecoveryTargetHealthRatio: 0.5

@@ -554,6 +554,8 @@ MonoBehaviour:
   _dashLocksGravity: 1
   _ignoreEnemyCollisionWhileDashing: 1
   _enemyLayerName: Enemy
+  _useInvincibleLayerWhileDashing: 1
+  _invincibleLayerName: Invincible
   _coyoteTime: 0.15
   _jumpBufferTime: 0.15
 --- !u!114 &8701013109909184830
@@ -588,7 +590,7 @@ MonoBehaviour:
   _maxHp: 3
   _currentHp: 3
   _deathResultDelay: 1.2
-  _invincibleDuration: 1
+  _invincibleDuration: 1.5
   _invincibleLayer: Invincible
   _invincibleBlinkMinAlpha: 0.35
   _invincibleBlinkSpeed: 18

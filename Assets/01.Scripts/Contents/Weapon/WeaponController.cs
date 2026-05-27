@@ -36,6 +36,7 @@ public class WeaponController : MonoBehaviour
     [SerializeField] private float _thrustDragThreshold = 2.0f;
     [SerializeField] private float _recallEnergyCost = 0f;
     [SerializeField] private float _fullRechargeDelayAfterReturn = 1.5f;
+    [SerializeField] private string _platformLayerName = "Platform";
 
     private Rigidbody2D _rb;
     private Collider2D _weaponCollider;
@@ -58,6 +59,8 @@ public class WeaponController : MonoBehaviour
     private Camera _mainCamera;
     private bool _isModeSwitchInProgress;
     private Coroutine _meleeModeRechargeRoutine;
+    private int _platformLayer = -1;
+    private int _weaponLayer = -1;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -139,6 +142,8 @@ public class WeaponController : MonoBehaviour
         _spinSlashModule = GetComponent<SpinSlashModule>();
         _thrustPierceModule = GetComponent<ThrustPierceModule>();
         _mainCamera = Camera.main;
+        _weaponLayer = gameObject.layer;
+        _platformLayer = LayerMask.NameToLayer(_platformLayerName);
         if (_mouseWorldProxyFollower == null)
             _mouseWorldProxyFollower = GetComponentInChildren<MouseWorldProxyFollower>(true);
     }
@@ -189,6 +194,7 @@ public class WeaponController : MonoBehaviour
         _stateMachine.ChangeState(WeaponState.Grounded);
         _modeController.ApplyCurrentMode();
         ApplyAimCursorModePolicy(_modeController.CurrentMode, resetCursorPosition: true);
+        ApplyWeaponPlatformCollisionPolicy(_modeController.CurrentMode);
         RefreshAimCursorVisibilityFromState();
     }
 
@@ -204,6 +210,7 @@ public class WeaponController : MonoBehaviour
         EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
         if (_modeController != null)
             _modeController.ModeChanged -= OnWeaponModeChanged;
+        ApplyWeaponPlatformCollisionPolicy(WeaponMode.Melee);
         _isModeSwitchInProgress = false;
         if (_meleeModeRechargeRoutine != null)
         {
@@ -248,6 +255,7 @@ public class WeaponController : MonoBehaviour
 
         bool shouldReset = previousMode != newMode;
         ApplyAimCursorModePolicy(newMode, shouldReset);
+        ApplyWeaponPlatformCollisionPolicy(newMode);
         RefreshAimCursorVisibilityFromState();
     }
 
@@ -323,6 +331,17 @@ public class WeaponController : MonoBehaviour
     private bool IsAimCursorSupportedWeaponState(WeaponState state)
     {
         return state == WeaponState.Grounded || state == WeaponState.Controlled;
+    }
+
+    private void ApplyWeaponPlatformCollisionPolicy(WeaponMode mode)
+    {
+        if (_weaponLayer < 0 || _weaponLayer > 31)
+            return;
+        if (_platformLayer < 0 || _platformLayer > 31)
+            return;
+
+        bool ignoreInRemoteMode = mode == WeaponMode.Remote;
+        Physics2D.IgnoreLayerCollision(_weaponLayer, _platformLayer, ignoreInRemoteMode);
     }
 
     private bool CanToggleWeaponMode()

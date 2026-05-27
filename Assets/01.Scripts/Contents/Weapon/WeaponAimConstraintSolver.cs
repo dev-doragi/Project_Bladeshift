@@ -86,14 +86,26 @@ public static class WeaponAimConstraintSolver
         if (distance <= 0.0001f)
             return true;
 
-        RaycastHit2D hit = Physics2D.Raycast(
+        RaycastHit2D[] hits = Physics2D.RaycastAll(
             origin,
             direction.normalized,
             distance,
             wallMask
         );
 
-        return hit.collider == null;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D col = hits[i].collider;
+            if (col == null)
+                continue;
+
+            if (IsIgnoredLineOfSightCollider(col))
+                continue;
+
+            return false;
+        }
+
+        return true;
     }
 
     private static Vector2 SolveBlockedFallback(
@@ -119,16 +131,44 @@ public static class WeaponAimConstraintSolver
         if (clampedDistance <= 0.0001f)
             return origin;
 
-        RaycastHit2D hit = Physics2D.Raycast(
+        RaycastHit2D[] hits = Physics2D.RaycastAll(
             origin,
             clampedDirection.normalized,
             clampedDistance,
             wallMask
         );
 
-        if (hit.collider == null)
+        RaycastHit2D? nearestBlockingHit = null;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D col = hits[i].collider;
+            if (col == null)
+                continue;
+
+            if (IsIgnoredLineOfSightCollider(col))
+                continue;
+
+            if (nearestBlockingHit == null || hits[i].distance < nearestBlockingHit.Value.distance)
+                nearestBlockingHit = hits[i];
+        }
+
+        if (nearestBlockingHit == null)
             return clamped;
 
-        return hit.point;
+        return nearestBlockingHit.Value.point;
+    }
+
+    private static bool IsIgnoredLineOfSightCollider(Collider2D col)
+    {
+        if (col == null)
+            return true;
+
+        if (col.isTrigger)
+            return true;
+
+        if (col.GetComponentInParent<PlatformEffector2D>() != null)
+            return true;
+
+        return false;
     }
 }

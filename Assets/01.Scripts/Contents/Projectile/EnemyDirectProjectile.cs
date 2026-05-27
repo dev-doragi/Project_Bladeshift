@@ -9,6 +9,7 @@ public class EnemyDirectProjectile : MonoBehaviour
 
     [Header("Collision")]
     [SerializeField] private LayerMask _obstacleLayer;
+    [SerializeField] private string _playerInvincibleLayerName = "Invincible";
 
     private Vector3 _startPosition;
     private Vector3 _targetPosition;
@@ -21,6 +22,7 @@ public class EnemyDirectProjectile : MonoBehaviour
     private bool _isInitialized;
     private bool _isDespawning;
     private Coroutine _lifeTimeRoutine;
+    private int _playerInvincibleLayer = -1;
 
     public void Initialize(
         EnemyProjectileAttackData attackData,
@@ -56,6 +58,7 @@ public class EnemyDirectProjectile : MonoBehaviour
 
     private void OnEnable()
     {
+        _playerInvincibleLayer = LayerMask.NameToLayer(_playerInvincibleLayerName);
         EventBus.Instance.Subscribe<StageClearedEvent>(HandleStageCleared);
         EventBus.Instance.Subscribe<StageFailedEvent>(HandleStageFailed);
         EventBus.Instance.Subscribe<SceneLoadedEvent>(HandleSceneLoaded);
@@ -89,6 +92,9 @@ public class EnemyDirectProjectile : MonoBehaviour
         if (_owner != null && other.transform.IsChildOf(_owner.transform))
             return;
 
+        if (_playerInvincibleLayer >= 0 && other.gameObject.layer == _playerInvincibleLayer)
+            return;
+
         if (TryDamageTarget(other))
         {
             Despawn();
@@ -109,6 +115,13 @@ public class EnemyDirectProjectile : MonoBehaviour
             return false;
 
         if (damageable.Team != TeamType.Player || damageable.IsDead)
+            return false;
+
+        PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+        if (playerHealth == null)
+            playerHealth = other.GetComponentInParent<PlayerHealth>();
+
+        if (playerHealth != null && playerHealth.IsInvincible)
             return false;
 
         Vector2 hitPoint = other.ClosestPoint(transform.position);

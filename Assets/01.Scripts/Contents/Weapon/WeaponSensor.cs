@@ -103,8 +103,20 @@ public class WeaponSensor : MonoBehaviour
         float checkDistance = Mathf.Max(0f, distance - Mathf.Max(0f, _lineOfSightMargin));
         if (checkDistance <= 0f) return true;
 
-        RaycastHit2D hit = Physics2D.Raycast(start, direction.normalized, checkDistance, wallMask);
-        return hit.collider == null;
+        RaycastHit2D[] hits = Physics2D.RaycastAll(start, direction.normalized, checkDistance, wallMask);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D col = hits[i].collider;
+            if (col == null)
+                continue;
+
+            if (IsIgnoredLineOfSightCollider(col))
+                continue;
+
+            return false;
+        }
+
+        return true;
     }
 
     public Vector2 GetReachableAimTargetPosition(LayerMask wallMask)
@@ -190,5 +202,19 @@ public class WeaponSensor : MonoBehaviour
     public bool ShouldReleaseControl(Vector3 weaponPosition, Vector2 mousePos, LayerMask wallMask)
     {
         return ShouldReleaseRemoteControl(weaponPosition, mousePos, wallMask);
+    }
+
+    private static bool IsIgnoredLineOfSightCollider(Collider2D col)
+    {
+        if (col == null)
+            return true;
+
+        if (col.isTrigger)
+            return true;
+
+        if (col.GetComponentInParent<PlatformEffector2D>() != null)
+            return true;
+
+        return false;
     }
 }

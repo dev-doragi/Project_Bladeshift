@@ -21,6 +21,8 @@ public class PlatformerMotor2D : MonoBehaviour
     [SerializeField] private bool _dashLocksGravity = true;
     [SerializeField] private bool _ignoreEnemyCollisionWhileDashing = true;
     [SerializeField] private string _enemyLayerName = "Enemy";
+    [SerializeField] private bool _useInvincibleLayerWhileDashing = true;
+    [SerializeField] private string _invincibleLayerName = "Invincible";
 
     [Header("Forgiveness")]
     [SerializeField] private float _coyoteTime = 0.15f;
@@ -48,6 +50,9 @@ public class PlatformerMotor2D : MonoBehaviour
     private int _enemyLayer = -1;
     private int _dashCollisionPlayerLayer = -1;
     private bool _isIgnoringEnemyCollision;
+    private int _dashInvincibleLayer = -1;
+    private int _dashOriginalLayer = -1;
+    private bool _isDashLayerOverridden;
 
     public bool IsDashing => _isDashing;
     public bool IsJumping => !_isDashing && _sensor != null && !_sensor.IsGrounded;
@@ -60,6 +65,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _sensor = GetComponent<GroundSensor2D>();
         _defaultGravityScale = _rb.gravityScale;
         _enemyLayer = LayerMask.NameToLayer(_enemyLayerName);
+        _dashInvincibleLayer = LayerMask.NameToLayer(_invincibleLayerName);
     }
 
     private void Update()
@@ -157,6 +163,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _isJumpHeld = false;
 
         SetEnemyCollisionIgnoredForDash(true);
+        SetDashInvincibleLayer(true);
 
         if (_dashLocksGravity)
             _rb.gravityScale = 0f;
@@ -165,6 +172,7 @@ public class PlatformerMotor2D : MonoBehaviour
     private void OnDisable()
     {
         SetEnemyCollisionIgnoredForDash(false);
+        SetDashInvincibleLayer(false);
 
         if (_rb != null)
             _rb.gravityScale = _defaultGravityScale;
@@ -183,6 +191,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _velocity = Vector2.zero;
         _rb.gravityScale = _defaultGravityScale;
         SetEnemyCollisionIgnoredForDash(false);
+        SetDashInvincibleLayer(false);
     }
 
     private void HandleHorizontalMovement()
@@ -240,5 +249,37 @@ public class PlatformerMotor2D : MonoBehaviour
 
         _dashCollisionPlayerLayer = -1;
         _isIgnoringEnemyCollision = false;
+    }
+
+    private void SetDashInvincibleLayer(bool active)
+    {
+        if (!_useInvincibleLayerWhileDashing)
+            return;
+
+        if (_dashInvincibleLayer < 0 || _dashInvincibleLayer > 31)
+            return;
+
+        if (active)
+        {
+            if (_isDashLayerOverridden)
+                return;
+
+            _dashOriginalLayer = gameObject.layer;
+            if (_dashOriginalLayer == _dashInvincibleLayer)
+                return;
+
+            gameObject.layer = _dashInvincibleLayer;
+            _isDashLayerOverridden = true;
+            return;
+        }
+
+        if (!_isDashLayerOverridden)
+            return;
+
+        if (_dashOriginalLayer >= 0 && _dashOriginalLayer <= 31)
+            gameObject.layer = _dashOriginalLayer;
+
+        _dashOriginalLayer = -1;
+        _isDashLayerOverridden = false;
     }
 }
