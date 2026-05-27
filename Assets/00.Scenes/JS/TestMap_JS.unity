@@ -3745,6 +3745,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80f4745e9cc441e39b27f0ed60c4314b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponModeController
+--- !u!114 &1239430077 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+  m_PrefabInstance: {fileID: 506990839}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e09ffd60221d0014b9dc4ce2bd46223b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponController
 --- !u!1 &1260298606
 GameObject:
   m_ObjectHideFlags: 0
@@ -5319,7 +5330,7 @@ MonoBehaviour:
   _cinemachineCamera: {fileID: 1657171136}
   _playerTransform: {fileID: 1089678679}
   _weaponTransform: {fileID: 1239430049}
-  _weaponController: {fileID: 0}
+  _weaponController: {fileID: 1239430077}
   _minDistance: 5
   _maxDistance: 15
   _remoteControlZoomedInSize: 9.5
@@ -5974,6 +5985,7 @@ MonoBehaviour:
   _recoverDeadZoneRadius: 0
   _smoothDeadZoneBlend: 0
   _smoothProxyMotion: 1
+  _smoothMouseProxyMotion: 0
   _proxySmoothTime: 0.4
   _proxyMaxSpeed: 100
   _ignorePointerOutsideScreen: 1

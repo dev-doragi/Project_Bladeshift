@@ -112,6 +112,8 @@ public class PlayerController : MonoBehaviour
         if (InputReader.Instance.IsInputBlocked)
             return;
 
+        _weaponAimCursor?.Tick();
+
         if (_weaponModeController != null && _weaponModeController.CurrentMode == WeaponMode.Melee)
         {
             UpdateMeleeAimDirectionFromLook();
@@ -144,7 +146,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 ResolveAimWorldPosition(Camera cam)
     {
         if (_weaponAimCursor != null && _weaponAimCursor.IsInitialized)
-            return _weaponAimCursor.CurrentWorldPosition;
+            return _weaponAimCursor.AimWorldPosition;
 
         if (_weaponSensor != null)
             return _weaponSensor.GetMouseWorldPosition();

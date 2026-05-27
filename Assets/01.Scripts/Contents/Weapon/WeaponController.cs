@@ -202,6 +202,7 @@ public class WeaponController : MonoBehaviour
 
     private void Update()
     {
+        _aimCursor?.Tick();
         RefreshAimCursorVisibilityFromState();
     }
 

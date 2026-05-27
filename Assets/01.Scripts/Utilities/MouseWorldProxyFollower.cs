@@ -5,14 +5,22 @@ public class MouseWorldProxyFollower : MonoBehaviour
 {
     [SerializeField] private Camera _targetCamera;
     [SerializeField] private Transform _playerTransform;
+    [Header("Gamepad Source")]
     [SerializeField] private WeaponAimCursor _aimCursor;
+
+    [Header("Proxy Shape")]
     [SerializeField] private bool _usePlayerControlRadius = true;
     [SerializeField] private float _cameraInfluenceRadius = 20f;
     [SerializeField] private float _recoverDeadZoneRadius = 5f;
     [SerializeField] private bool _smoothDeadZoneBlend = true;
+
+    [Header("Motion")]
     [SerializeField] private bool _smoothProxyMotion = true;
+    [SerializeField] private bool _smoothMouseProxyMotion = false;
     [SerializeField] private float _proxySmoothTime = 0.08f;
     [SerializeField] private float _proxyMaxSpeed = 100f;
+
+    [Header("Input")]
     [SerializeField] private bool _ignorePointerOutsideScreen = true;
 
     private PlayerController _playerController;
@@ -33,7 +41,6 @@ public class MouseWorldProxyFollower : MonoBehaviour
     public void ResetByCurrentInputMode()
     {
         ResolvePlayer();
-        ResolveAimCursor();
 
         if (_playerTransform == null)
             return;
@@ -42,6 +49,17 @@ public class MouseWorldProxyFollower : MonoBehaviour
         bool isGamepadMode = inputReader != null && inputReader.IsGamepadControlSchemeActive();
         if (isGamepadMode)
         {
+            ResolveAimCursor();
+            if (_aimCursor != null && _aimCursor.IsInitialized)
+            {
+                _aimCursor.Tick();
+                Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
+                aimWorld.z = transform.position.z;
+                transform.position = GetProxyPosition(aimWorld);
+                _proxyVelocity = Vector3.zero;
+                return;
+            }
+
             SnapToPlayerPosition();
             return;
         }
@@ -53,31 +71,23 @@ public class MouseWorldProxyFollower : MonoBehaviour
             return;
         }
 
-        if (_aimCursor != null && _aimCursor.IsInitialized)
-        {
-            Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
-            aimWorld.z = transform.position.z;
-            transform.position = GetProxyPosition(aimWorld);
-            _proxyVelocity = Vector3.zero;
-            return;
-        }
-
         if (inputReader == null)
         {
             SnapToPlayerPosition();
             return;
         }
 
-        Vector2 screenPosition = inputReader.GetMousePosition();
-        if (_ignorePointerOutsideScreen && IsOutsideScreen(screenPosition))
+        if (!PointerWorldPositionUtility.TryGetMouseWorldPosition(
+                cam,
+                inputReader,
+                _ignorePointerOutsideScreen,
+                out Vector2 mouseWorld))
         {
             SnapToPlayerPosition();
             return;
         }
 
-        float depth = Mathf.Abs(transform.position.z - cam.transform.position.z);
-        Vector3 worldPosition = cam.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, depth));
-        worldPosition.z = transform.position.z;
+        Vector3 worldPosition = new Vector3(mouseWorld.x, mouseWorld.y, transform.position.z);
         transform.position = GetProxyPosition(worldPosition);
         _proxyVelocity = Vector3.zero;
     }
@@ -88,29 +98,38 @@ public class MouseWorldProxyFollower : MonoBehaviour
             _targetCamera = Camera.main;
 
         ResolvePlayer();
-        ResolveAimCursor();
     }
 
     private void Update()
     {
-        if (InputReader.Instance == null)
+        InputReader inputReader = InputReader.Instance;
+        if (inputReader == null)
             return;
 
         ResolvePlayer();
-        ResolveAimCursor();
+        bool isGamepadMode = inputReader.IsGamepadControlSchemeActive();
 
-        if (_aimCursor != null && _aimCursor.IsInitialized)
+        if (isGamepadMode)
         {
+            ResolveAimCursor();
+            if (_aimCursor == null || !_aimCursor.IsInitialized)
+            {
+                if (_playerTransform != null)
+                    MoveProxy(GetProxyPosition(_playerTransform.position), shouldSmooth: _smoothProxyMotion);
+                return;
+            }
+
+            _aimCursor.Tick();
             Vector3 aimWorld = _aimCursor.CurrentWorldPosition;
             aimWorld.z = transform.position.z;
 
             if (_playerTransform == null)
             {
-                MoveProxy(aimWorld);
+                MoveProxy(aimWorld, shouldSmooth: _smoothProxyMotion);
                 return;
             }
 
-            MoveProxy(GetProxyPosition(aimWorld));
+            MoveProxy(GetProxyPosition(aimWorld), shouldSmooth: _smoothProxyMotion);
             return;
         }
 
@@ -118,21 +137,24 @@ public class MouseWorldProxyFollower : MonoBehaviour
         if (cam == null)
             return;
 
-        Vector2 screenPosition = InputReader.Instance.GetMousePosition();
-        if (_ignorePointerOutsideScreen && IsOutsideScreen(screenPosition))
-            return;
-
-        float depth = Mathf.Abs(transform.position.z - cam.transform.position.z);
-        Vector3 worldPosition = cam.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, depth));
-        worldPosition.z = transform.position.z;
-
-        if (_playerTransform == null)
+        if (!PointerWorldPositionUtility.TryGetMouseWorldPosition(
+                cam,
+                inputReader,
+                _ignorePointerOutsideScreen,
+                out Vector2 mouseWorld))
         {
-            MoveProxy(worldPosition);
             return;
         }
 
-        MoveProxy(GetProxyPosition(worldPosition));
+        Vector3 worldPosition = new Vector3(mouseWorld.x, mouseWorld.y, transform.position.z);
+
+        if (_playerTransform == null)
+        {
+            MoveProxy(worldPosition, shouldSmooth: _smoothProxyMotion && _smoothMouseProxyMotion);
+            return;
+        }
+
+        MoveProxy(GetProxyPosition(worldPosition), shouldSmooth: _smoothProxyMotion && _smoothMouseProxyMotion);
     }
 
     private Vector3 GetProxyPosition(Vector3 mouseWorldPosition)
@@ -164,9 +186,9 @@ public class MouseWorldProxyFollower : MonoBehaviour
         return Vector3.Lerp(playerPosition, clampedMousePosition, blend);
     }
 
-    private void MoveProxy(Vector3 targetPosition)
+    private void MoveProxy(Vector3 targetPosition, bool shouldSmooth)
     {
-        if (!_smoothProxyMotion || _proxySmoothTime <= 0f)
+        if (!shouldSmooth || _proxySmoothTime <= 0f)
         {
             transform.position = targetPosition;
             _proxyVelocity = Vector3.zero;
@@ -207,13 +229,5 @@ public class MouseWorldProxyFollower : MonoBehaviour
     {
         if (_aimCursor == null)
             _aimCursor = FindObjectOfType<WeaponAimCursor>();
-    }
-
-    private static bool IsOutsideScreen(Vector2 screenPosition)
-    {
-        return screenPosition.x < 0f ||
-               screenPosition.y < 0f ||
-               screenPosition.x > Screen.width ||
-               screenPosition.y > Screen.height;
     }
 }

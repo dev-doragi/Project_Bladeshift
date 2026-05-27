@@ -313,8 +313,16 @@ public class InputReader : Singleton<InputReader>
         if (camera == null)
             return fallbackWorldPosition;
 
-        Vector2 mouseScreen = GetMousePosition();
-        return camera.ScreenToWorldPoint(mouseScreen);
+        if (!PointerWorldPositionUtility.TryGetMouseWorldPosition(
+                camera,
+                this,
+                ignorePointerOutsideScreen: true,
+                out Vector2 worldPosition))
+        {
+            return fallbackWorldPosition;
+        }
+
+        return worldPosition;
     }
 
     public bool IsLookInputFromGamepad()

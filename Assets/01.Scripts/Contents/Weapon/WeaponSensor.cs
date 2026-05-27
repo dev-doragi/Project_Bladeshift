@@ -44,6 +44,7 @@ public class WeaponSensor : MonoBehaviour
 
         if (_aimCursor != null && _aimCursor.IsInitialized)
         {
+            _aimCursor.Tick();
             _lastValidMousePos = _aimCursor.CurrentWorldPosition;
             return _lastValidMousePos;
         }
@@ -52,11 +53,15 @@ public class WeaponSensor : MonoBehaviour
         if (_mainCamera == null || inputReader == null)
             return _lastValidMousePos;
 
-        Vector2 screenPos = inputReader.GetMousePosition();
-        if (screenPos.x < 0f || screenPos.y < 0f || screenPos.x > Screen.width || screenPos.y > Screen.height)
+        if (!PointerWorldPositionUtility.TryGetMouseWorldPosition(
+                _mainCamera,
+                inputReader,
+                ignorePointerOutsideScreen: true,
+                out Vector2 worldPos))
+        {
             return _lastValidMousePos;
+        }
 
-        Vector2 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
         _lastValidMousePos = worldPos;
         return worldPos;
     }
@@ -94,6 +99,14 @@ public class WeaponSensor : MonoBehaviour
     {
         if (_playerTransform == null)
             return GetMouseWorldPosition();
+
+        if (_aimCursor != null && _aimCursor.IsInitialized)
+        {
+            _aimCursor.Tick();
+            _lastReachableTargetPosition = _aimCursor.AimWorldPosition;
+            _hasLastReachableTargetPosition = true;
+            return _lastReachableTargetPosition;
+        }
 
         Vector2 solvedPosition = WeaponAimConstraintSolver.SolveReachablePosition(
             _playerTransform.position,
