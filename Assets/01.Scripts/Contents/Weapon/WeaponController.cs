@@ -334,7 +334,6 @@ public class WeaponController : MonoBehaviour
         if (_modeController == null) return false;
         if (_isModeSwitchInProgress) return false;
         if (IsActionInputBlocked) return false;
-        if (IsDepletionSequenceActive) return false;
         if (_playerTransform == null) return false;
 
         if (_spinSlashModule != null && _spinSlashModule.IsSlashing) return false;
@@ -414,12 +413,17 @@ public class WeaponController : MonoBehaviour
         if (_linkEnergy == null || _linkEnergy.IsFull)
             yield break;
 
+        if (_modeController == null || _modeController.CurrentMode != WeaponMode.Melee)
+            yield break;
+
         BeginMeleeModeRecharge();
     }
 
     private void BeginMeleeModeRecharge()
     {
         if (_linkEnergy == null)
+            return;
+        if (_modeController == null || _modeController.CurrentMode != WeaponMode.Melee)
             return;
 
         if (_meleeModeRechargeRoutine != null)
@@ -433,8 +437,21 @@ public class WeaponController : MonoBehaviour
 
     private IEnumerator MeleeModeRechargeRoutine()
     {
+        if (_modeController == null || _modeController.CurrentMode != WeaponMode.Melee)
+        {
+            _meleeModeRechargeRoutine = null;
+            yield break;
+        }
+
         float rechargeDuration = Mathf.Max(0.01f, _fullRechargeDelayAfterReturn);
         yield return StartCoroutine(_linkEnergy.RechargeToFullAndUnlockOverDuration(rechargeDuration));
+
+        if (_modeController == null || _modeController.CurrentMode != WeaponMode.Melee)
+        {
+            _meleeModeRechargeRoutine = null;
+            yield break;
+        }
+
         _meleeModeRechargeRoutine = null;
     }
 
