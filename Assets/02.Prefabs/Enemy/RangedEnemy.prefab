@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 7000000000000000004}
   - component: {fileID: 7000000000000000005}
   - component: {fileID: 7000000000000000006}
+  - component: {fileID: 7000000000000000012}
   m_Layer: 9
   m_Name: RangedEnemy
   m_TagString: Untagged
@@ -53,7 +54,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0
-  m_GravityScale: 3
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -129,6 +130,25 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
+--- !u!114 &7000000000000000012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7000000000000000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e6d22944f514560adda5030bc93804a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RangedEnemyFloatController
+  _maxKnockbackSpeed: 4
+  _airLinearDamping: 3
+  _deadGravityScale: 3
+  _deadLinearDamping: 1.5
 --- !u!114 &7000000000000000005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,7 +254,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1273095119
-  m_SortingLayer: 1
+  m_SortingLayer: 2
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}

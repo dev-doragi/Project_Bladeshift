@@ -41,7 +41,7 @@ public class EnemyRangedAttackController : MonoBehaviour
 
     private void Update()
     {
-        if (_enemyBase == null || _enemyBase.IsDead)
+        if (_enemyBase == null || _enemyBase.IsDead || _enemyBase.IsCaptured)
             return;
 
         if (_attackData == null)

@@ -247,6 +247,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!1 &145663571
 GameObject:
   m_ObjectHideFlags: 0
@@ -1231,6 +1234,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!1 &498553730
 GameObject:
   m_ObjectHideFlags: 0
@@ -2939,6 +2945,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!1 &956324119
 GameObject:
   m_ObjectHideFlags: 0
@@ -4943,6 +4952,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1154250734}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
+--- !u!1001 &1454956473
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 7000000000000000000, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_Name
+      value: RangedEnemy
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 16.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.81
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7000000000000000001, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a8e910e284e043ca9193d26bd8d33996, type: 3}
 --- !u!1 &1513952449 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
@@ -4966,6 +5032,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!1 &1534827418 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
@@ -4989,6 +5058,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!1 &1572041279
 GameObject:
   m_ObjectHideFlags: 0
@@ -5679,6 +5751,9 @@ MonoBehaviour:
   _groggyLeanAngle: 10
   _groggyPoseDuration: 0.18
   _groggyRecoilForce: 3
+  _groundLinearDamping: 10
+  _fallingLinearDamping: 0
+  _fallingVelocityThreshold: -0.05
 --- !u!4 &1757693655 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5217830909983226229, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
@@ -7373,3 +7448,4 @@ SceneRoots:
   - {fileID: 1710806756}
   - {fileID: 2056348589}
   - {fileID: 1000156278}
+  - {fileID: 1454956473}

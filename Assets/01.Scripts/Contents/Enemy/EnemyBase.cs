@@ -15,6 +15,11 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     [SerializeField] private float _groggyPoseDuration = 0.18f;
     [SerializeField] private float _groggyRecoilForce = 3f;
 
+    [Header("Movement Damping")]
+    [SerializeField, Min(0f)] private float _groundLinearDamping = 10f;
+    [SerializeField, Min(0f)] private float _fallingLinearDamping = 0f;
+    [SerializeField] private float _fallingVelocityThreshold = -0.05f;
+
     protected float _currentHealth;
 
     protected Rigidbody2D _rb;
@@ -78,8 +83,23 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         {
             _rb.freezeRotation = true;
             _rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
-            _rb.linearDamping = 10f;
+            _rb.linearDamping = _groundLinearDamping;
         }
+    }
+
+    protected virtual void FixedUpdate()
+    {
+        UpdateLinearDamping();
+    }
+
+    private void UpdateLinearDamping()
+    {
+        if (_rb == null || IsDead)
+            return;
+
+        _rb.linearDamping = _rb.linearVelocity.y < _fallingVelocityThreshold
+            ? _fallingLinearDamping
+            : _groundLinearDamping;
     }
 
     public virtual void TakeDamage(DamageData damageData)
@@ -96,8 +116,9 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
         if (_rb != null && damageData.KnockbackForce.sqrMagnitude > 0.0001f)
         {
+            Vector2 adjustedKnockback = damageData.KnockbackForce * GetKnockbackTakenMultiplier();
             _rb.linearVelocity = Vector2.zero;
-            _rb.AddForce(damageData.KnockbackForce, ForceMode2D.Impulse);
+            _rb.AddForce(adjustedKnockback, ForceMode2D.Impulse);
         }
 
         if (EventBus.Instance != null)
@@ -257,6 +278,11 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         return damageData.AttackKind == WeaponAttackKind.Execution ||
                damageData.AttackKind == WeaponAttackKind.EmbeddedAttack ||
                damageData.AttackKind == WeaponAttackKind.EmbeddedTearOut;
+    }
+
+    protected virtual float GetKnockbackTakenMultiplier()
+    {
+        return _enemyData != null ? _enemyData.KnockbackTakenMultiplier : 1f;
     }
 
     protected virtual void EnterGroggy(DamageData damageData)

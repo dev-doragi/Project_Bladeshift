@@ -16,6 +16,7 @@ MonoBehaviour:
   _category: 2
   _maxHealth: 350
   _weight: 3
+  _knockbackTakenMultiplier: 1
   _canBeCaptured: 0
   _captureWeight: 0
   _canBeExecuted: 0

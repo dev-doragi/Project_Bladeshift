@@ -10,6 +10,7 @@ public class EnemyData : ScriptableObject
     [Header("Stats")]
     [SerializeField] private float _maxHealth = 50f;
     [SerializeField] private float _weight = 1f;
+    [SerializeField, Min(0f)] private float _knockbackTakenMultiplier = 1f;
 
     [Header("Capture")]
     [SerializeField] private bool _canBeCaptured = true;
@@ -46,6 +47,7 @@ public class EnemyData : ScriptableObject
     public EnemyCategory Category => _category;
     public float MaxHealth => _maxHealth;
     public float Weight => _weight;
+    public float KnockbackTakenMultiplier => _knockbackTakenMultiplier;
     public bool CanBeCaptured => _canBeCaptured;
     public float CaptureWeight => _captureWeight;
     public bool CanBeExecuted => _canBeExecuted;
@@ -106,6 +108,7 @@ public class EnemyData : ScriptableObject
     {
         _maxHealth = Mathf.Max(1f, _maxHealth);
         _weight = Mathf.Max(0f, _weight);
+        _knockbackTakenMultiplier = Mathf.Max(0f, _knockbackTakenMultiplier);
         _captureWeight = Mathf.Max(0f, _captureWeight);
         _maxGroggyGauge = Mathf.Max(1f, _maxGroggyGauge);
         _groggyInvulnerableDuration = Mathf.Clamp(_groggyInvulnerableDuration, 0.5f, 1f);

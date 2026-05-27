@@ -12,6 +12,7 @@ public class EnemyDirectProjectile : MonoBehaviour
 
     private Vector3 _startPosition;
     private Vector3 _targetPosition;
+    private Vector3 _moveDirection;
     private float _speed;
     private float _damage;
     private float _lifeTime;
@@ -36,6 +37,10 @@ public class EnemyDirectProjectile : MonoBehaviour
 
         _startPosition = startPosition;
         _targetPosition = targetPosition;
+        _moveDirection = (_targetPosition - _startPosition).normalized;
+        if (_moveDirection.sqrMagnitude <= 0.0001f)
+            _moveDirection = transform.right;
+
         _speed = attackData.ProjectileSpeed;
         _damage = attackData.Damage;
         _lifeTime = attackData.LifeTime;
@@ -73,13 +78,7 @@ public class EnemyDirectProjectile : MonoBehaviour
         if (!_isInitialized)
             return;
 
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            _targetPosition,
-            _speed * Time.deltaTime);
-
-        if (Vector3.Distance(transform.position, _targetPosition) <= 0.01f)
-            Despawn();
+        transform.position += _moveDirection * (_speed * Time.deltaTime);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -159,11 +158,10 @@ public class EnemyDirectProjectile : MonoBehaviour
         if (!_rotateToDirection)
             return;
 
-        Vector3 direction = (_targetPosition - _startPosition).normalized;
-        if (direction.sqrMagnitude <= 0.0001f)
+        if (_moveDirection.sqrMagnitude <= 0.0001f)
             return;
 
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        float angle = Mathf.Atan2(_moveDirection.y, _moveDirection.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
     }
 
