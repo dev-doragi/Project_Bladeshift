@@ -35,7 +35,7 @@ public class SpinSlashModule : WeaponActionModule
         Controller.Combat.TryTickSpinDamage(Controller.transform.position, Controller.transform.eulerAngles.z);
         Controller.Combat.DefendProjectiles(Controller.transform.position);
         Controller.Movement.HandleHoverMovement(
-            Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
+            Controller.Sensor.GetReachableAimTargetPosition(Controller.WallAndEnvironmentLayer),
             true,
             Controller.WallAndEnvironmentLayer);
         Controller.Movement.ApplySpinRotation(-Controller.Combat.SpinSpeed);
@@ -56,3 +56,4 @@ public class SpinSlashModule : WeaponActionModule
             Controller.ChangeState(WeaponState.Controlled);
     }
 }
+

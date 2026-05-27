@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using System.Reflection;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 [RequireComponent(typeof(WeaponStateMachine), typeof(WeaponModeController), typeof(WeaponActionRouter))]
@@ -57,7 +56,6 @@ public class WeaponController : MonoBehaviour
     private PlayerController _playerController;
     [SerializeField] private MouseWorldProxyFollower _mouseWorldProxyFollower;
     private Camera _mainCamera;
-    private MethodInfo _handleLinkEnergyDepletedMethod;
     private bool _isModeSwitchInProgress;
     private Coroutine _meleeModeRechargeRoutine;
 
@@ -140,8 +138,6 @@ public class WeaponController : MonoBehaviour
         _meleeHoverFollow = GetComponent<WeaponMeleeHoverFollow>();
         _spinSlashModule = GetComponent<SpinSlashModule>();
         _thrustPierceModule = GetComponent<ThrustPierceModule>();
-        if (_thrustPierceModule != null)
-            _handleLinkEnergyDepletedMethod = _thrustPierceModule.GetType().GetMethod("HandleLinkEnergyDepleted", BindingFlags.Instance | BindingFlags.NonPublic);
         _mainCamera = Camera.main;
         if (_mouseWorldProxyFollower == null)
             _mouseWorldProxyFollower = GetComponentInChildren<MouseWorldProxyFollower>(true);
@@ -489,7 +485,7 @@ public class WeaponController : MonoBehaviour
     public void TryEnterExistingRechargePathFromOffline()
     {
         if (_linkEnergy == null || !_linkEnergy.IsOffline) return;
-        if (_thrustPierceModule == null || _handleLinkEnergyDepletedMethod == null) return;
+        if (_thrustPierceModule == null) return;
 
         // Melee mode should recharge energy only, without forcing dock-return flow.
         if (_modeController != null && _modeController.CurrentMode == WeaponMode.Melee)
@@ -498,7 +494,7 @@ public class WeaponController : MonoBehaviour
             return;
         }
 
-        _handleLinkEnergyDepletedMethod.Invoke(_thrustPierceModule, null);
+        _thrustPierceModule.HandleLinkEnergyDepleted();
     }
 
     public void SetAimCursorVisible(bool isVisible)

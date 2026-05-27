@@ -62,17 +62,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (_isAiming || _isAutoReturning || _isDockWaiting) return;
         if (Controller.CurrentState != WeaponState.Controlled) return;
 
-        WeaponActionInputContext inputContext = GetActiveInputContext(WeaponActionInputType.Secondary)
-            ?? new WeaponActionInputContext
-            {
-                ActionType = WeaponActionInputType.Secondary,
-                Device = InputReader.Instance != null && InputReader.Instance.IsSecondaryAttackStartedFromGamepad()
-                    ? WeaponInputDevice.Gamepad
-                    : WeaponInputDevice.MouseKeyboard,
-                StartedFrame = Time.frameCount,
-                StartedTime = Time.unscaledTime
-            };
-        bool useGamepadAim = inputContext.IsGamepad;
+        bool useGamepadAim = IsActionFromGamepad(WeaponActionInputType.Secondary);
 
         _aimLockPosition = Controller.transform.position;
         _aimMouseStartPosition = useGamepadAim
@@ -83,7 +73,7 @@ public class ThrustPierceModule : WeaponActionModule
         _aimCanceledByEnergyShortage = false;
         _isGamepadHoldAim = useGamepadAim;
         _gamepadAimDragDistance = 0f;
-        _lastAimDirection = ResolveFallbackAimDirection();
+        _lastAimDirection = WeaponAimResolver.ResolveFallbackAimDirection(Controller);
         _gamepadAimDirection = _lastAimDirection;
         _hasGamepadAimDirection = useGamepadAim && _gamepadAimDirection.sqrMagnitude > 0.0001f;
         Controller.Movement.StopFollow();
@@ -185,7 +175,7 @@ public class ThrustPierceModule : WeaponActionModule
         if (_isAutoReturning || _isDockWaiting) return;
         if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall) return;
 
-        Vector2 mouseWorldPos = Controller.Sensor.GetMouseWorldPosition();
+        Vector2 mouseWorldPos = Controller.Sensor.GetAimWorldPosition();
         bool isEnemyPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy;
         bool isEmbeddedPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEmbeddedEnemy;
         bool hasEnemyCapture = Controller.Capture != null && Controller.Capture.HasCapturedEnemy;
@@ -196,19 +186,19 @@ public class ThrustPierceModule : WeaponActionModule
         if (!_isAiming && canHover)
         {
             Controller.Movement.HandleHoverMovement(
-                Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer),
+                Controller.Sensor.GetReachableAimTargetPosition(Controller.WallAndEnvironmentLayer),
                 Controller.CurrentState == WeaponState.Slashing,
                 Controller.WallAndEnvironmentLayer);
         }
 
         if (Controller.CurrentState == WeaponState.Grounded)
         {
-            if (Controller.Sensor.ShouldAcquireControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
+            if (Controller.Sensor.ShouldAcquireRemoteControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
                 Controller.ChangeState(WeaponState.Controlled);
         }
         else if (Controller.CurrentState == WeaponState.Controlled && !_isAiming)
         {
-            if (Controller.Sensor.ShouldReleaseControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
+            if (Controller.Sensor.ShouldReleaseRemoteControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
                 Controller.ChangeState(WeaponState.Grounded);
         }
     }
@@ -284,7 +274,7 @@ public class ThrustPierceModule : WeaponActionModule
         out bool canFire,
         out bool isGamepadAim)
     {
-        direction = ResolveFallbackAimDirection();
+        direction = WeaponAimResolver.ResolveFallbackAimDirection(Controller);
         float maxDistance = ResolveGamepadAimMaxDistance();
         visualTarget = _aimLockPosition + direction * maxDistance;
         canFire = false;
@@ -293,28 +283,28 @@ public class ThrustPierceModule : WeaponActionModule
         if (Controller == null)
             return false;
 
-        InputReader input = InputReader.Instance;
         bool useGamepadAim = _isGamepadHoldAim;
         if (useGamepadAim)
-            return TryResolveGamepadAim(input, maxDistance, out direction, out visualTarget, out canFire, out isGamepadAim);
+            return TryResolveGamepadAim(maxDistance, out direction, out visualTarget, out canFire, out isGamepadAim);
 
         Vector2 mouseWorld = Controller.Sensor.GetRawPointerWorldPosition();
-        Vector2 delta = mouseWorld - _aimLockPosition;
-        float dragDistance = Vector2.Distance(_aimMouseStartPosition, mouseWorld);
-        visualTarget = mouseWorld;
-        canFire = dragDistance >= Controller.ThrustDragThreshold;
         isGamepadAim = false;
-
-        if (delta.sqrMagnitude <= 0.0001f)
+        if (!WeaponAimResolver.TryResolveMouseThrustAim(
+                _aimLockPosition,
+                _aimMouseStartPosition,
+                mouseWorld,
+                Controller.ThrustDragThreshold,
+                out direction,
+                out visualTarget,
+                out canFire))
+        {
             return false;
-
-        direction = delta.normalized;
+        }
         _lastAimDirection = direction;
         return true;
     }
 
     private bool TryResolveGamepadAim(
-        InputReader input,
         float maxDistance,
         out Vector2 direction,
         out Vector2 visualTarget,
@@ -324,32 +314,22 @@ public class ThrustPierceModule : WeaponActionModule
         _isGamepadHoldAim = true;
         isGamepadAim = true;
 
-        direction = _hasGamepadAimDirection
-            ? _gamepadAimDirection
-            : ResolveFallbackAimDirection();
+        Vector2 fallbackDirection = WeaponAimResolver.ResolveFallbackAimDirection(Controller);
+        WeaponAimResolver.TryResolveGamepadThrustAim(
+            fallbackDirection,
+            _gamepadAimDeadzone,
+            maxDistance,
+            Controller.ThrustDragThreshold,
+            ref _hasGamepadAimDirection,
+            ref _gamepadAimDirection,
+            out direction,
+            out Vector2 relativeVisualTarget,
+            out canFire,
+            out _gamepadAimDragDistance);
 
-        float stickPower = 0f;
-        if (input != null)
-        {
-            Vector2 look = input.GetLookInput();
-            float deadzone = Mathf.Clamp01(_gamepadAimDeadzone);
-            float magnitude = Mathf.Clamp01(look.magnitude);
-
-            if (magnitude >= deadzone && look.sqrMagnitude > 0.0001f)
-            {
-                direction = look.normalized;
-                _gamepadAimDirection = direction;
-                _hasGamepadAimDirection = true;
-                _lastAimDirection = direction;
-                stickPower = Mathf.InverseLerp(deadzone, 1f, magnitude);
-            }
-        }
-
-        _gamepadAimDragDistance = maxDistance * stickPower;
-        canFire = _gamepadAimDragDistance >= Controller.ThrustDragThreshold;
-
-        float visualDistance = Mathf.Max(_gamepadAimDragDistance, 0.01f);
-        visualTarget = _aimLockPosition + direction * visualDistance;
+        visualTarget = _aimLockPosition + relativeVisualTarget;
+        if (_hasGamepadAimDirection)
+            _lastAimDirection = _gamepadAimDirection;
         return true;
     }
 
@@ -363,18 +343,7 @@ public class ThrustPierceModule : WeaponActionModule
         return Mathf.Max(0.01f, maxDistance);
     }
 
-    private Vector2 ResolveFallbackAimDirection()
-    {
-        if (Controller != null && Controller.PlayerAimDirection.sqrMagnitude > 0.0001f)
-            return Controller.PlayerAimDirection.normalized;
-
-        if (Controller != null && Controller.transform.right.sqrMagnitude > 0.0001f)
-            return ((Vector2)Controller.transform.right).normalized;
-
-        return Vector2.right;
-    }
-
-    private void HandleLinkEnergyDepleted()
+    public void HandleLinkEnergyDepleted()
     {
         EndAiming();
         Vector2 deathKnockback = Controller.PlayerTransform != null
@@ -447,7 +416,7 @@ public class ThrustPierceModule : WeaponActionModule
         EventBus.Instance?.Publish(new HitStopEvent { Duration = _finisherHitStopDuration });
         EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _finisherShakeIntensity });
 
-        Vector2 pivot = sensor.GetMouseWorldPosition();
+        Vector2 pivot = sensor.GetAimWorldPosition();
         float radius = Vector2.Distance(pivot, Controller.transform.position);
         radius = Mathf.Max(radius, combat.SlashRadius * Mathf.Max(0.1f, _finisherRadiusMultiplier));
 
@@ -478,6 +447,8 @@ public class ThrustPierceModule : WeaponActionModule
             () =>
             {
                 _isFinisherRunning = false;
+                if (_lastPinShotWasGamepad)
+                    Controller.AimCursor?.ResetGamepadCursorNearPlayer(_lastAimDirection);
                 Controller.ChangeState(WeaponState.Controlled);
             });
 
@@ -542,11 +513,9 @@ public class ThrustPierceModule : WeaponActionModule
                     Controller.Capture.BindEnemy(targetTransform);
                     AddCaptureWeight(enemy);
                     Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
+
                     if (isGamepadAim)
-                    {
-                        StartGamepadCapturedEnemyReturn();
-                        return true;
-                    }
+                        SnapGamepadCapturedAimCursor();
 
                     return false;
                 }
@@ -558,6 +527,11 @@ public class ThrustPierceModule : WeaponActionModule
                 EventBus.Instance?.Publish(new CameraShakeEvent { Intensity = _pinWallHitShakeIntensity });
                 if (Controller.Capture.HasCapturedEnemy)
                 {
+                    if (isGamepadAim)
+                    {
+                        StartGamepadCapturePullReturnToPinned();
+                        return;
+                    }
                     Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     Controller.ChangeState(WeaponState.Pinned);
                     return;
@@ -571,6 +545,11 @@ public class ThrustPierceModule : WeaponActionModule
             {
                 if (Controller.Capture.HasCapturedEnemy)
                 {
+                    if (isGamepadAim)
+                    {
+                        StartGamepadCapturePullReturnToPinned();
+                        return;
+                    }
                     Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                     Controller.ChangeState(WeaponState.Pinned);
                     return;
@@ -605,33 +584,15 @@ public class ThrustPierceModule : WeaponActionModule
             });
     }
 
-    private void StartGamepadCapturedEnemyReturn()
+    private void SnapGamepadCapturedAimCursor()
     {
         if (Controller == null)
             return;
 
-        if (Controller.PlayerTransform == null || Controller.Movement == null)
-        {
-            Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
-            Controller.ChangeState(WeaponState.Pinned);
-            return;
-        }
-
-        Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
         _snapCursorOnCurrentReturnFlow = true;
-        Controller.AimCursor?.ResetToPlayerAimOffset(_lastAimDirection);
-        Controller.ChangeState(WeaponState.Returning);
 
-        Controller.Movement.ExecuteReturn(
-            GetGamepadCapturedReturnTargetPosition,
-            Controller.ControlRadius,
-            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
-            _ =>
-            {
-                Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
-                _snapCursorOnCurrentReturnFlow = false;
-                Controller.ChangeState(WeaponState.Pinned);
-            });
+        if (Controller.AimCursor != null)
+            Controller.AimCursor.ResetGamepadCursorNearPlayer(_lastAimDirection);
     }
 
     private Vector2 GetReturnToPlayerTargetPosition()
@@ -653,7 +614,7 @@ public class ThrustPierceModule : WeaponActionModule
                 return Controller.AimCursor.AimWorldPosition;
 
             if (Controller != null && Controller.Sensor != null)
-                return Controller.Sensor.GetClampedTargetPosition(Controller.WallAndEnvironmentLayer);
+                return Controller.Sensor.GetReachableAimTargetPosition(Controller.WallAndEnvironmentLayer);
         }
 
         return GetReturnToPlayerTargetPosition();
@@ -668,7 +629,7 @@ public class ThrustPierceModule : WeaponActionModule
         {
             Vector2 direction = _lastAimDirection.sqrMagnitude > 0.0001f
                 ? _lastAimDirection.normalized
-                : ResolveFallbackAimDirection();
+                : WeaponAimResolver.ResolveFallbackAimDirection(Controller);
             float distance = Mathf.Max(0.5f, Controller.ControlRadius * 0.45f);
             return (Vector2)Controller.PlayerTransform.position + direction * distance;
         }
@@ -681,10 +642,15 @@ public class ThrustPierceModule : WeaponActionModule
     private void StartRangeExceededReturnToDock()
     {
         Controller.StateMachine?.ClearPinSource();
-        Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
         _snapCursorOnCurrentReturnFlow = _lastPinShotWasGamepad;
         if (_lastPinShotWasGamepad)
-            Controller.AimCursor?.SnapToPlayerPosition();
+        {
+            Controller.AimCursor?.ResetGamepadCursorNearPlayer(_lastAimDirection);
+            StartGamepadRangeExceededPullReturnToControl();
+            return;
+        }
+
+        Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
         Controller.ChangeState(WeaponState.Returning);
         Controller.Movement.ExecuteReturn(
             GetContextualRangeExceededTargetPosition,
@@ -716,6 +682,38 @@ public class ThrustPierceModule : WeaponActionModule
                 _isAutoReturning = false;
                 DockAndWait();
             });
+    }
+
+    private void StartGamepadCapturePullReturnToPinned()
+    {
+        if (Controller == null || Controller.Movement == null)
+            return;
+
+        Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
+        Controller.AimCursor?.ResetGamepadCursorNearPlayer(_lastAimDirection);
+        Controller.ChangeState(WeaponState.Returning);
+        Controller.Movement.ExecuteCapturePullReturn(
+            GetGamepadCapturedReturnTargetPosition,
+            Controller.ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
+            _ =>
+            {
+                Controller.StateMachine?.SetPinSource(WeaponPinSource.EnemyCapture);
+                Controller.ChangeState(WeaponState.Pinned);
+            });
+    }
+
+    private void StartGamepadRangeExceededPullReturnToControl()
+    {
+        if (Controller == null || Controller.Movement == null)
+            return;
+
+        Controller.ChangeState(WeaponState.Returning);
+        Controller.Movement.ExecuteCapturePullReturn(
+            GetGamepadCapturedReturnTargetPosition,
+            Controller.ControlRadius,
+            (currentPos, targetPos) => Vector2.Distance(currentPos, targetPos) <= _dockArrivalDistance,
+            _ => Controller.ChangeState(WeaponState.Controlled));
     }
 
     private Vector2 GetDockTargetPosition()
@@ -774,10 +772,7 @@ public class ThrustPierceModule : WeaponActionModule
                 AddCaptureWeight(enemy);
                 Controller.StateMachine.SetPinSource(WeaponPinSource.EnemyCapture);
                 if (isGamepadAim)
-                {
-                    StartGamepadCapturedEnemyReturn();
-                    return true;
-                }
+                    SnapGamepadCapturedAimCursor();
 
                 return false;
 
@@ -836,3 +831,4 @@ public class ThrustPierceModule : WeaponActionModule
         _currentCaptureWeight += Mathf.Max(1f, enemy.CaptureWeight);
     }
 }
+

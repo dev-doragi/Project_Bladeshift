@@ -39,7 +39,7 @@ public class WeaponSensor : MonoBehaviour
         Initialize(playerTransform, mainCamera, controlRadius);
     }
 
-    public Vector2 GetMouseWorldPosition()
+    public Vector2 GetAimWorldPosition()
     {
         if (_playerTransform == null)
             return _lastValidMousePos;
@@ -52,6 +52,11 @@ public class WeaponSensor : MonoBehaviour
 
         _lastValidMousePos = GetRawPointerWorldPosition();
         return _lastValidMousePos;
+    }
+
+    public Vector2 GetMouseWorldPosition()
+    {
+        return GetAimWorldPosition();
     }
 
     public Vector2 GetRawPointerWorldPosition()
@@ -102,10 +107,10 @@ public class WeaponSensor : MonoBehaviour
         return hit.collider == null;
     }
 
-    public Vector2 GetClampedTargetPosition(LayerMask wallMask)
+    public Vector2 GetReachableAimTargetPosition(LayerMask wallMask)
     {
         if (_playerTransform == null)
-            return GetMouseWorldPosition();
+            return GetAimWorldPosition();
 
         if (_aimCursor != null && _aimCursor.IsInitialized)
         {
@@ -116,7 +121,7 @@ public class WeaponSensor : MonoBehaviour
 
         Vector2 solvedPosition = WeaponAimConstraintSolver.SolveReachablePosition(
             _playerTransform.position,
-            GetMouseWorldPosition(),
+            GetAimWorldPosition(),
             _controlRadius,
             wallMask,
             ref _lastReachableTargetPosition,
@@ -125,6 +130,11 @@ public class WeaponSensor : MonoBehaviour
 
         _hasLastReachableTargetPosition = true;
         return solvedPosition;
+    }
+
+    public Vector2 GetClampedTargetPosition(LayerMask wallMask)
+    {
+        return GetReachableAimTargetPosition(wallMask);
     }
 
     public void ResetAimConstraintCache()
@@ -157,9 +167,9 @@ public class WeaponSensor : MonoBehaviour
         return Vector2.Distance(weaponPosition, mousePos) <= _mouseCaptureMaintainRadius;
     }
 
-    public bool ShouldAcquireControl(Vector3 weaponPosition, Vector2 mousePos, LayerMask wallMask)
+    public bool ShouldAcquireRemoteControl(Vector3 weaponPosition, Vector2 aimWorldPos, LayerMask wallMask)
     {
-        return IsPlayerInRange(weaponPosition) && IsMouseInRange(mousePos, false) && HasLineOfSight(weaponPosition, wallMask);
+        return IsPlayerInRange(weaponPosition) && IsMouseInRange(aimWorldPos, false) && HasLineOfSight(weaponPosition, wallMask);
     }
 
     public Transform GetPlayerTransform()
@@ -167,8 +177,18 @@ public class WeaponSensor : MonoBehaviour
         return _playerTransform;
     }
 
+    public bool ShouldReleaseRemoteControl(Vector3 weaponPosition, Vector2 aimWorldPos, LayerMask wallMask)
+    {
+        return !IsPlayerInRange(weaponPosition) || !IsMouseInRange(aimWorldPos, true) || !HasLineOfSight(weaponPosition, wallMask);
+    }
+
+    public bool ShouldAcquireControl(Vector3 weaponPosition, Vector2 mousePos, LayerMask wallMask)
+    {
+        return ShouldAcquireRemoteControl(weaponPosition, mousePos, wallMask);
+    }
+
     public bool ShouldReleaseControl(Vector3 weaponPosition, Vector2 mousePos, LayerMask wallMask)
     {
-        return !IsPlayerInRange(weaponPosition) || !IsMouseInRange(mousePos, true) || !HasLineOfSight(weaponPosition, wallMask);
+        return ShouldReleaseRemoteControl(weaponPosition, mousePos, wallMask);
     }
 }

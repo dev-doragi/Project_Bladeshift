@@ -373,36 +373,15 @@ public class MeleeAttackModule : WeaponActionModule
 
     private float ResolveFacingSign()
     {
-        if (Controller == null || Controller.PlayerTransform == null)
-            return 1f;
+        Vector2 rawPointer = Controller != null && Controller.Sensor != null
+            ? Controller.Sensor.GetRawPointerWorldPosition()
+            : Vector2.zero;
 
-        PlayerController playerController = Controller.PlayerTransform.GetComponent<PlayerController>();
-        if (playerController == null)
-            return 1f;
-
-        WeaponActionInputContext? inputContext = GetActiveInputContext(WeaponActionInputType.Primary);
-        if (inputContext.HasValue && inputContext.Value.IsGamepad)
-        {
-            InputReader input = InputReader.Instance;
-            if (input != null)
-            {
-                float lookX = input.GetLookInput().x;
-                if (Mathf.Abs(lookX) >= Mathf.Clamp01(_gamepadSlashXDeadzone))
-                    return lookX >= 0f ? 1f : -1f;
-            }
-
-            return playerController.FacingSign >= 0 ? 1f : -1f;
-        }
-
-        if (Controller.Sensor != null)
-        {
-            Vector2 mouseWorld = Controller.Sensor.GetRawPointerWorldPosition();
-            float deltaX = mouseWorld.x - Controller.PlayerTransform.position.x;
-            if (Mathf.Abs(deltaX) > 0.0001f)
-                return deltaX >= 0f ? 1f : -1f;
-        }
-
-        return playerController.FacingSign >= 0 ? 1f : -1f;
+        return WeaponAimResolver.ResolveMeleeFacingSign(
+            Controller,
+            IsActionFromGamepad(WeaponActionInputType.Primary),
+            _gamepadSlashXDeadzone,
+            rawPointer);
     }
 
     private bool CanUseMelee()
