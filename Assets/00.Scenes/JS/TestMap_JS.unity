@@ -1210,6 +1210,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 950292146}
+    - targetCorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 950292150}
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
 --- !u!1 &378580705 stripped
 GameObject:
@@ -2948,6 +2951,29 @@ MonoBehaviour:
   _groundLinearDamping: 10
   _fallingLinearDamping: 0
   _fallingVelocityThreshold: -0.05
+--- !u!114 &950292150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 950292141}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a6be5a50e91e7a4fba36dfe9948a10e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyController
+  _movementData: {fileID: 11400000, guid: 6ccb56911a3947e6a6348b384ba8ec54, type: 2}
+  _legacyMoveSpeed: 7.5
+  _legacyDetectRange: 15
+  _legacyStopDistance: 0.1
+  _legacyKeepChasingAfterDetection: 1
+  _legacyLineOfSightBlockerLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  _targetOverride: {fileID: 0}
+  _rigidbody: {fileID: 0}
+  _enemyBase: {fileID: 0}
 --- !u!1 &956324119
 GameObject:
   m_ObjectHideFlags: 0
@@ -5035,6 +5061,29 @@ MonoBehaviour:
   _groundLinearDamping: 10
   _fallingLinearDamping: 0
   _fallingVelocityThreshold: -0.05
+--- !u!114 &1513952454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1513952449}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a6be5a50e91e7a4fba36dfe9948a10e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyController
+  _movementData: {fileID: 11400000, guid: d92ecd2a622b429f8894eb7b9444cd16, type: 2}
+  _legacyMoveSpeed: 7.5
+  _legacyDetectRange: 15
+  _legacyStopDistance: 0.1
+  _legacyKeepChasingAfterDetection: 1
+  _legacyLineOfSightBlockerLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  _targetOverride: {fileID: 0}
+  _rigidbody: {fileID: 0}
+  _enemyBase: {fileID: 0}
 --- !u!1 &1534827418 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
@@ -7406,6 +7455,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1513952450}
+    - targetCorrespondingSourceObject: {fileID: 6261169099522976904, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1513952454}
   m_SourcePrefab: {fileID: 100100000, guid: 21237e89ee440254eacb6308f4612f0c, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

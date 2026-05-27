@@ -15,6 +15,8 @@ public class PlayerController : MonoBehaviour
 
     private Camera _mainCamera;
 
+    public static PlayerController ActivePlayer { get; private set; }
+
     public float ControlRadius => _controlRadius;
     public int FacingSign { get; private set; } = 1;
     public Vector2 MoveInput { get; private set; }
@@ -33,6 +35,8 @@ public class PlayerController : MonoBehaviour
 
     private void OnEnable()
     {
+        ActivePlayer = this;
+
         if (EventBus.Instance != null)
         {
             EventBus.Instance.Subscribe<MoveInputEvent>(OnMoveInput);
@@ -43,6 +47,9 @@ public class PlayerController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (ActivePlayer == this)
+            ActivePlayer = null;
+
         if (EventBus.Instance != null)
         {
             EventBus.Instance.Unsubscribe<MoveInputEvent>(OnMoveInput);

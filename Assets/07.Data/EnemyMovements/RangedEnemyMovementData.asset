@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6716120934af4ddba1f557bebec4e3f9, type: 3}
+  m_Name: RangedEnemyMovementData
+  m_EditorClassIdentifier: 
+  _moveSpeed: 2
+  _detectRange: 8
+  _stopDistance: 5
+  _keepChasingAfterDetection: 1
+  _requiresLineOfSight: 1
+  _lineOfSightBlockerLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  _maintainDistanceRange: {x: 4, y: 6}
+  _repositionSpeedRange: {x: 6, y: 9}
+  _arriveDistance: 0.25
+  _positionSampleAttempts: 12
+  _obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  _clearanceRadius: 0.45
+  _wallAvoidanceDistance: 0.7
+  _floorAvoidanceDistance: 1.2
+  _ceilingAvoidanceDistance: 0.35

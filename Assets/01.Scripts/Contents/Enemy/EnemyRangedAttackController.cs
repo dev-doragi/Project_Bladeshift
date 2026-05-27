@@ -36,7 +36,13 @@ public class EnemyRangedAttackController : MonoBehaviour
     private void Start()
     {
         if (_targetOverride != null)
+        {
             _target = _targetOverride;
+            return;
+        }
+
+        if (PlayerController.ActivePlayer != null)
+            _target = PlayerController.ActivePlayer.transform;
     }
 
     private void Update()
