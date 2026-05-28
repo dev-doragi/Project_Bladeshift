@@ -16,6 +16,7 @@ public class Bootstrapper : MonoBehaviour
     [SerializeField] private InputReader _inputReaderPrefab;
     [SerializeField] private PauseManager _pauseManagerPrefab;
     [SerializeField] private GameFlowManager _gameFlowManagerPrefab;
+    [SerializeField] private RespawnManager _respawnManagerPrefab;
 
     [Header("Optional Managers")]
     [SerializeField] private SoundManager _soundManagerPrefab;
@@ -35,6 +36,7 @@ public class Bootstrapper : MonoBehaviour
         EnsureInstance(_gameFlowManagerPrefab);
 
         EnsureInstance(_soundManagerPrefab);
+        EnsureInstance(_respawnManagerPrefab);
         EnsureInstance(_cameraManagerPrefab);
         EnsureInstance(_uiManagerPrefab);
         EnsureInstance(_poolManagerPrefab);
@@ -57,6 +59,7 @@ public class Bootstrapper : MonoBehaviour
         success &= BootstrapRequired(GameFlowManager.Instance, nameof(GameFlowManager));
 
         success &= BootstrapOptional(SoundManager.Instance, nameof(SoundManager));
+        success &= BootstrapOptional(RespawnManager.Instance, nameof(RespawnManager));
         success &= BootstrapOptional(CameraManager.Instance, nameof(CameraManager));
         success &= BootstrapOptional(UIManager.Instance, nameof(UIManager));
         success &= BootstrapOptional(PoolManager.Instance, nameof(PoolManager));
@@ -108,6 +111,7 @@ public class Bootstrapper : MonoBehaviour
         ValidateRequiredPrefab(_inputReaderPrefab, nameof(_inputReaderPrefab));
         ValidateRequiredPrefab(_pauseManagerPrefab, nameof(_pauseManagerPrefab));
         ValidateRequiredPrefab(_gameFlowManagerPrefab, nameof(_gameFlowManagerPrefab));
+        ValidateRequiredPrefab(_respawnManagerPrefab, nameof(_respawnManagerPrefab));
     }
 
     private void ValidateRequiredPrefab(Object prefab, string fieldName)

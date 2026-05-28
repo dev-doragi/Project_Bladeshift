@@ -16,8 +16,10 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [Header("Death")]
     [SerializeField] private float _deathResultDelay = 1.2f;
     private Coroutine _deathRoutine;
+
     [Header("Invincibility")]
     [SerializeField] private float _invincibleDuration = 1.0f;
+    [SerializeField] private float _respawnInvincibleDuration = 0.8f;
     [SerializeField] private string _invincibleLayer = "Invincible";
     [SerializeField, Range(0f, 1f)] private float _invincibleBlinkMinAlpha = 0.35f;
     [SerializeField, Min(0.1f)] private float _invincibleBlinkSpeed = 18f;
@@ -79,7 +81,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             return;
         }
 
-        StartInvincible();
+        StartInvincible(_invincibleDuration);
     }
 
     public void Heal(int amount)
@@ -101,6 +103,11 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void ResetHp()
     {
+        ReviveForRespawn(false);
+    }
+
+    public void ReviveForRespawn(bool applyRespawnInvincibility = true)
+    {
         if (_deathRoutine != null)
         {
             StopCoroutine(_deathRoutine);
@@ -112,6 +119,11 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         _currentHp = _maxHp;
 
         PublishHpChanged();
+
+        if (applyRespawnInvincibility)
+        {
+            StartInvincible(_respawnInvincibleDuration);
+        }
     }
 
     public void Die()
@@ -134,7 +146,14 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     {
         yield return new WaitForSeconds(_deathResultDelay);
 
-        EventBus.Instance.Publish(new StageFailedEvent { StageIndex = 0 });
+        if (RespawnManager.Instance != null)
+        {
+            RespawnManager.Instance.RestartCurrentSceneFromRespawnPoint();
+        }
+        else
+        {
+            Debug.LogWarning("[PlayerHealth] RespawnManager instance not found. Respawn skipped.", this);
+        }
 
         _deathRoutine = null;
     }
@@ -148,10 +167,10 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         });
     }
 
-    private void StartInvincible()
+    private void StartInvincible(float duration)
     {
         StopInvincible();
-        _invincibleRoutine = StartCoroutine(InvincibleRoutine());
+        _invincibleRoutine = StartCoroutine(InvincibleRoutine(Mathf.Max(0f, duration)));
     }
 
     private void StopInvincible()
@@ -167,7 +186,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         }
     }
 
-    private IEnumerator InvincibleRoutine()
+    private IEnumerator InvincibleRoutine(float duration)
     {
         _isInvincible = true;
 
@@ -175,7 +194,6 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         if (invincibleLayer >= 0)
             gameObject.layer = invincibleLayer;
 
-        float duration = Mathf.Max(0f, _invincibleDuration);
         float elapsed = 0f;
         while (elapsed < duration)
         {

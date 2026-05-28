@@ -239,6 +239,16 @@ public class CameraManager : Singleton<CameraManager>
     }
 
 
+
+    public void SnapToTargetForRespawn(Transform target)
+    {
+        if (_mainCamera == null || target == null)
+            return;
+
+        Vector3 targetPosition = target.position;
+        targetPosition.z = transform.position.z;
+        transform.position = ClampCameraPosition(targetPosition, _mainCamera.orthographicSize);
+    }
     private void OnCameraShake(CameraShakeEvent evt)
     {
         if (_impulseSource == null) return;
@@ -260,3 +270,4 @@ public class CameraManager : Singleton<CameraManager>
     public void ShakeStrong() => _impulseSource?.GenerateImpulse(1.0f);
 
 }
+

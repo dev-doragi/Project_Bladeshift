@@ -531,9 +531,48 @@ public class WeaponController : MonoBehaviour
         _aimCursor?.SetCursorVisible(isVisible);
     }
 
+
+    public void ForceDockForRespawn()
+    {
+        _isModeSwitchInProgress = false;
+
+        if (_meleeModeRechargeRoutine != null)
+        {
+            StopCoroutine(_meleeModeRechargeRoutine);
+            _meleeModeRechargeRoutine = null;
+        }
+
+        _movement?.StopActiveMovement();
+        _movement?.StopFollow();
+
+        if (_capture != null && _capture.HasCapturedTarget)
+            _capture.ForceReleaseCapturedTarget();
+
+        _stateMachine?.ClearPinSource();
+        _modeController?.SetMode(WeaponMode.Melee);
+        _meleeHoverFollow?.EnableFollow();
+
+        Vector2 dockPosition = GetModeSwitchReturnTargetPosition();
+        if (_rb != null)
+        {
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+            _rb.position = dockPosition;
+        }
+
+        transform.position = dockPosition;
+        ChangeState(WeaponState.Grounded);
+
+        _linkEnergy?.RestoreFullAndUnlock();
+
+        ApplyAimCursorModePolicy(_modeController != null ? _modeController.CurrentMode : WeaponMode.Melee, resetCursorPosition: true);
+        RefreshAimCursorVisibilityFromState();
+    }
     private void OnDrawGizmos()
     {
         if (_view == null) _view = GetComponent<WeaponView>();
         _view?.DrawGizmos();
     }
 }
+
+
