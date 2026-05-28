@@ -553,6 +553,7 @@ public sealed class BelialBossPart : EnemyBase
     private IEnumerator FinisherGraceRoutine()
     {
         ChangeState(BelialBossPartState.FinisherGrace);
+
         float delay = Mathf.Max(0f, _embeddedFinisherGraceDuration);
         if (delay > 0f)
             yield return new WaitForSeconds(delay);
@@ -565,7 +566,23 @@ public sealed class BelialBossPart : EnemyBase
             _currentState == BelialBossPartState.Dead)
             yield break;
 
-        ChangeState(BelialBossPartState.Idle);
+        KillMotionTweens();
+        StopIdleBob();
+
+        _contactDamageEnabled = false;
+        _attackLocked = false;
+        _isCaptured = false;
+        _isPierced = false;
+        _currentGroggyGauge = 0f;
+
+        if (_cachedPose)
+        {
+            transform.localPosition = _initialLocalPosition;
+            transform.localRotation = _initialLocalRotation;
+            transform.localScale = _initialLocalScale;
+        }
+
+        ChangeState(_battleActive ? BelialBossPartState.Idle : BelialBossPartState.PreBattle);
     }
 
     private void BeginFinisherDisable(DamageData sourceDamage)
