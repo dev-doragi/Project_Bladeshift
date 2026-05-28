@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
 
@@ -273,7 +273,7 @@ public sealed class BelialBossCore : MonoBehaviour
         if (_rightHand != null && !_rightHand.IsDead)
             _rightHand.ExecuteDeath(Vector2.zero);
 
-        EventBus.Instance?.Publish(new StageClearedEvent
+        EventBus.Instance?.Publish(new BossHeadDefeatedEvent
         {
             StageIndex = 0,
             IsFinalStage = true
@@ -645,3 +645,5 @@ public sealed class BelialBossCore : MonoBehaviour
         onDone?.Invoke();
     }
 }
+
+

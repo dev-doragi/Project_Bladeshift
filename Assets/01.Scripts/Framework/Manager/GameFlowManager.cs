@@ -2,9 +2,6 @@ using UnityEngine;
 using System.Collections;
 
 [DefaultExecutionOrder(-150)]
-/// <summary>
-/// ì¸ê²Œì„ ì„¸ë¶€ ìƒíƒœ íë¦„(Prepare/Wave/Result)ì„ ì´ë²¤íŠ¸ ê¸°ë°˜ìœ¼ë¡œ ê´€ë¦¬í•©ë‹ˆë‹¤.
-/// </summary>
 public class GameFlowManager : Singleton<GameFlowManager>
 {
     [Header("Wave Wait Settings")]
@@ -12,6 +9,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
 
     private Coroutine _waveWaitCoroutine;
     private Coroutine _transitionCoroutine;
+    private Coroutine _gameClearSequenceCoroutine;
 
     public InGameState CurrentInGameState { get; private set; } = InGameState.None;
     public float CurrentWaveWaitRemainingTime { get; private set; } = 0f;
@@ -31,6 +29,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
             EventBus.Instance.Subscribe<StageLoadedEvent>(OnStageLoaded);
             EventBus.Instance.Subscribe<WaveStartedEvent>(OnWaveStarted);
             EventBus.Instance.Subscribe<WaveEndedEvent>(OnWaveEnded);
+            EventBus.Instance.Subscribe<BossHeadDefeatedEvent>(OnBossHeadDefeated);
         }
     }
 
@@ -44,6 +43,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
             EventBus.Instance.Unsubscribe<StageLoadedEvent>(OnStageLoaded);
             EventBus.Instance.Unsubscribe<WaveStartedEvent>(OnWaveStarted);
             EventBus.Instance.Unsubscribe<WaveEndedEvent>(OnWaveEnded);
+            EventBus.Instance.Unsubscribe<BossHeadDefeatedEvent>(OnBossHeadDefeated);
         }
     }
 
@@ -54,6 +54,18 @@ public class GameFlowManager : Singleton<GameFlowManager>
             StopAllFlowCoroutines(resetTimeScale: false);
             ChangeFlowState(InGameState.None);
         }
+    }
+
+    private void OnBossHeadDefeated(BossHeadDefeatedEvent evt)
+    {
+        if (_gameClearSequenceCoroutine != null)
+        {
+            return;
+        }
+
+        StopWaveWaitRoutine(publishInterruptedEvent: false);
+        StopTransitionRoutine(resetTimeScale: false);
+        _gameClearSequenceCoroutine = StartCoroutine(GameClearSequenceRoutine(evt));
     }
 
     private void OnStageLoaded(StageLoadedEvent evt)
@@ -107,19 +119,19 @@ public class GameFlowManager : Singleton<GameFlowManager>
     {
         if (!IsWaitingForNextWave)
         {
-            Debug.LogWarning("[GameFlowManager] í˜„ì¬ ì¦‰ì‹œ ì‹œì‘í•  ì›¨ì´ë¸Œ ëŒ€ê¸° ìƒíƒœê°€ ì•„ë‹™ë‹ˆë‹¤.");
+            Debug.LogWarning("[GameFlowManager] ÇöÀç Áï½Ã ½ÃÀÛÇÒ ¿şÀÌºê ´ë±â »óÅÂ°¡ ¾Æ´Õ´Ï´Ù.");
             return;
         }
 
         if (GameManager.Instance == null)
         {
-            Debug.LogError("[GameFlowManager] GameManagerê°€ ì—†ì–´ ì¦‰ì‹œ ì‹œì‘ ìš”ì²­ì„ ì²˜ë¦¬í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+            Debug.LogError("[GameFlowManager] GameManager°¡ ¾ø¾î Áï½Ã ½ÃÀÛ ¿äÃ»À» Ã³¸®ÇÒ ¼ö ¾ø½À´Ï´Ù.");
             return;
         }
 
         if (GameManager.Instance.CurrentState != GameState.Playing)
         {
-            Debug.LogWarning("[GameFlowManager] ê²Œì„ì´ Playing ìƒíƒœê°€ ì•„ë‹ˆì–´ì„œ ì¦‰ì‹œ ì‹œì‘ ìš”ì²­ì„ ë¬´ì‹œí•©ë‹ˆë‹¤.");
+            Debug.LogWarning("[GameFlowManager] °ÔÀÓÀÌ Playing »óÅÂ°¡ ¾Æ´Ï¾î¼­ Áï½Ã ½ÃÀÛ ¿äÃ»À» ¹«½ÃÇÕ´Ï´Ù.");
             return;
         }
 
@@ -159,7 +171,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
 
             if (GameManager.Instance == null)
             {
-                Debug.LogError("[GameFlowManager] GameManagerê°€ ì—†ì–´ ì›¨ì´ë¸Œ ëŒ€ê¸°ë¥¼ ì¤‘ë‹¨í•©ë‹ˆë‹¤.");
+                Debug.LogError("[GameFlowManager] GameManager°¡ ¾ø¾î ¿şÀÌºê ´ë±â¸¦ Áß´ÜÇÕ´Ï´Ù.");
                 StopWaveWaitRoutine(publishInterruptedEvent: false);
                 yield break;
             }
@@ -226,12 +238,23 @@ public class GameFlowManager : Singleton<GameFlowManager>
             _transitionCoroutine = null;
         }
 
-        if (resetTimeScale)
+        if (resetTimeScale && TimeManager.IsExisted)
         {
-            if (TimeManager.IsExisted)
-            {
-                TimeManager.Instance.ResetTime();
-            }
+            TimeManager.Instance.ResetTime();
+        }
+    }
+
+    private void StopGameClearSequenceRoutine(bool resetTimeScale)
+    {
+        if (_gameClearSequenceCoroutine != null)
+        {
+            StopCoroutine(_gameClearSequenceCoroutine);
+            _gameClearSequenceCoroutine = null;
+        }
+
+        if (resetTimeScale && TimeManager.IsExisted)
+        {
+            TimeManager.Instance.ResetTime();
         }
     }
 
@@ -239,6 +262,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
     {
         StopWaveWaitRoutine(publishInterruptedEvent: false);
         StopTransitionRoutine(resetTimeScale);
+        StopGameClearSequenceRoutine(resetTimeScale);
     }
 
     private void ChangeFlowState(InGameState newState)
@@ -252,7 +276,7 @@ public class GameFlowManager : Singleton<GameFlowManager>
         {
             if (GameManager.Instance == null)
             {
-                Debug.LogError("[GameFlowManager] GameManagerê°€ ì—†ì–´ ì¸ê²Œì„ ìƒíƒœë¥¼ ë³€ê²½í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+                Debug.LogError("[GameFlowManager] GameManager°¡ ¾ø¾î ÀÎ°ÔÀÓ »óÅÂ¸¦ º¯°æÇÒ ¼ö ¾ø½À´Ï´Ù.");
                 return;
             }
 
@@ -267,35 +291,51 @@ public class GameFlowManager : Singleton<GameFlowManager>
 
         Debug.Log($"[GameFlowManager] Flow State: {previousState} -> {CurrentInGameState}");
 
-        if (EventBus.Instance != null)
-        {
-            EventBus.Instance.Publish(new InGameStateChangedEvent { NewState = CurrentInGameState });
-        }
+        EventBus.Instance?.Publish(new InGameStateChangedEvent { NewState = CurrentInGameState });
     }
 
     private void PublishWaveWaitTick(float remainingTime)
     {
         CurrentWaveWaitRemainingTime = Mathf.Max(0f, remainingTime);
 
-        if (EventBus.Instance != null)
+        EventBus.Instance?.Publish(new WaveWaitTimerTickEvent
         {
-            EventBus.Instance.Publish(new WaveWaitTimerTickEvent
-            {
-                RemainingTime = CurrentWaveWaitRemainingTime
-            });
+            RemainingTime = CurrentWaveWaitRemainingTime
+        });
+    }
+
+    private IEnumerator GameClearSequenceRoutine(BossHeadDefeatedEvent evt)
+    {
+        EventBus.Instance?.Publish(new SlowMotionEvent
+        {
+            TargetTimeScale = 0.2f,
+            Duration = 1.8f
+        });
+
+        yield return new WaitForSecondsRealtime(1.8f);
+
+        if (TimeManager.IsExisted)
+        {
+            TimeManager.Instance.ResetTime();
         }
+
+        _gameClearSequenceCoroutine = null;
+        ChangeFlowState(InGameState.StageCleared);
+
+        EventBus.Instance?.Publish(new GameClearSequenceCompletedEvent
+        {
+            StageIndex = evt.StageIndex,
+            IsFinalStage = evt.IsFinalStage
+        });
     }
 
     private IEnumerator SlowMotionTransitionRoutine(bool isWin)
     {
-        if (EventBus.Instance != null)
+        EventBus.Instance?.Publish(new SlowMotionEvent
         {
-            EventBus.Instance.Publish(new SlowMotionEvent
-            {
-                TargetTimeScale = 0.3f,
-                Duration = 1.5f
-            });
-        }
+            TargetTimeScale = 0.3f,
+            Duration = 1.5f
+        });
 
         yield return new WaitForSecondsRealtime(1.5f);
         _transitionCoroutine = null;
@@ -303,27 +343,19 @@ public class GameFlowManager : Singleton<GameFlowManager>
         if (isWin)
         {
             ChangeFlowState(InGameState.StageCleared);
-
-            if (EventBus.Instance != null)
+            EventBus.Instance?.Publish(new StageClearedEvent
             {
-                EventBus.Instance.Publish(new StageClearedEvent
-                {
-                    StageIndex = 0,
-                    IsFinalStage = true
-                });
-            }
+                StageIndex = 0,
+                IsFinalStage = true
+            });
         }
         else
         {
             ChangeFlowState(InGameState.StageFailed);
-
-            if (EventBus.Instance != null)
+            EventBus.Instance?.Publish(new StageFailedEvent
             {
-                EventBus.Instance.Publish(new StageFailedEvent
-                {
-                    StageIndex = 0
-                });
-            }
+                StageIndex = 0
+            });
         }
     }
 }

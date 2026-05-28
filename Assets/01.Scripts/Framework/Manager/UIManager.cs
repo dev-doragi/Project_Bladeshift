@@ -1,12 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 상태 이벤트에 따라 공통 UI 패널 가시성을 제어하는 매니저입니다.
-/// </summary>
-/// <remarks>
-/// GameState/InGameState를 기반으로 패널 표시를 결정합니다.
-/// 버튼 핸들러는 PauseManager/SceneLoader 같은 공통 매니저로 위임합니다.
-/// </remarks>
 [DefaultExecutionOrder(-100)]
 public class UIManager : Singleton<UIManager>
 {
@@ -34,6 +27,7 @@ public class UIManager : Singleton<UIManager>
             EventBus.Instance.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
             EventBus.Instance.Subscribe<InGameStateChangedEvent>(OnInGameStateChanged);
             EventBus.Instance.Subscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
+            EventBus.Instance.Subscribe<GameClearSequenceCompletedEvent>(OnGameClearSequenceCompleted);
         }
     }
 
@@ -44,6 +38,7 @@ public class UIManager : Singleton<UIManager>
             EventBus.Instance.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
             EventBus.Instance.Unsubscribe<InGameStateChangedEvent>(OnInGameStateChanged);
             EventBus.Instance.Unsubscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
+            EventBus.Instance.Unsubscribe<GameClearSequenceCompletedEvent>(OnGameClearSequenceCompleted);
         }
 
         if (_hud != null)
@@ -73,12 +68,21 @@ public class UIManager : Singleton<UIManager>
                 if (_gameOverPanel != null) _gameOverPanel.SetActive(true);
                 break;
             case GameState.GameClear:
-                ShowClearPanel(isAllGameClear: true);
                 break;
             case GameState.Ready:
                 HideAllPanels();
                 break;
         }
+    }
+
+    private void OnGameClearSequenceCompleted(GameClearSequenceCompletedEvent evt)
+    {
+        if (!evt.IsFinalStage)
+        {
+            return;
+        }
+
+        ShowClearPanel(isAllGameClear: true);
     }
 
     private void OnInGameStateChanged(InGameStateChangedEvent evt)
@@ -135,8 +139,6 @@ public class UIManager : Singleton<UIManager>
 
         if (_inGamePanel != null) _inGamePanel.SetActive(false);
     }
-
-    // Button handlers
 
     public void OnPauseClicked()
     {

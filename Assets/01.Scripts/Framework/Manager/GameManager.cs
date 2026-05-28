@@ -17,6 +17,8 @@ public class GameManager : Singleton<GameManager>
             EventBus.Instance.Subscribe<StageLoadedEvent>(OnStageLoaded);
             EventBus.Instance.Subscribe<StageClearedEvent>(OnStageCleared);
             EventBus.Instance.Subscribe<StageFailedEvent>(OnStageFailed);
+            EventBus.Instance.Subscribe<BossHeadDefeatedEvent>(OnBossHeadDefeated);
+            EventBus.Instance.Subscribe<GameClearSequenceCompletedEvent>(OnGameClearSequenceCompleted);
         }
 
         if (_forcePlayingOnBootstrap)
@@ -32,6 +34,8 @@ public class GameManager : Singleton<GameManager>
             EventBus.Instance.Unsubscribe<StageLoadedEvent>(OnStageLoaded);
             EventBus.Instance.Unsubscribe<StageClearedEvent>(OnStageCleared);
             EventBus.Instance.Unsubscribe<StageFailedEvent>(OnStageFailed);
+            EventBus.Instance.Unsubscribe<BossHeadDefeatedEvent>(OnBossHeadDefeated);
+            EventBus.Instance.Unsubscribe<GameClearSequenceCompletedEvent>(OnGameClearSequenceCompleted);
         }
     }
 
@@ -53,6 +57,21 @@ public class GameManager : Singleton<GameManager>
     {
         SoundManager.Instance?.StopBGM();
         ChangeState(GameState.GameOver);
+    }
+
+    private void OnBossHeadDefeated(BossHeadDefeatedEvent evt)
+    {
+        SoundManager.Instance?.StopBGM();
+    }
+
+    private void OnGameClearSequenceCompleted(GameClearSequenceCompletedEvent evt)
+    {
+        if (!evt.IsFinalStage)
+        {
+            return;
+        }
+
+        ChangeState(GameState.GameClear);
     }
 
     public void ChangeState(GameState newState)

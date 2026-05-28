@@ -162,6 +162,18 @@ public struct PlayerDamagedEvent
 }
 
 public struct PlayerDeathStartedEvent { }
+
+public struct BossHeadDefeatedEvent
+{
+    public int StageIndex;
+    public bool IsFinalStage;
+}
+
+public struct GameClearSequenceCompletedEvent
+{
+    public int StageIndex;
+    public bool IsFinalStage;
+}
 #endregion
 
 #region [6. Audio & Camera Events]
@@ -173,5 +185,6 @@ public struct PlaySFXEvent
 
 public struct CameraManipulationEvent { }
 #endregion
+
 
 
