@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class WeaponActionRouter : MonoBehaviour
+public class WeaponActionRouter : MonoBehaviour, IWeaponActionHandler
 {
     [SerializeField] private WeaponController _controller;
     [SerializeField] private WeaponModeController _modeController;
@@ -9,7 +9,7 @@ public class WeaponActionRouter : MonoBehaviour
     [SerializeField] private WeaponActionModule _remoteSecondaryModule;
     [SerializeField] private WeaponActionModule _meleePrimaryModule;
     [SerializeField] private WeaponActionModule _meleeSecondaryModule;
-    private bool _blockNextPrimaryRelease;
+    private WeaponActionService _actionService;
 
     public void Initialize(WeaponController controller, WeaponModeController modeController)
     {
@@ -34,139 +34,61 @@ public class WeaponActionRouter : MonoBehaviour
         _remoteSecondaryModule?.Initialize(_controller);
         _meleePrimaryModule?.Initialize(_controller);
         _meleeSecondaryModule?.Initialize(_controller);
+        _actionService = new WeaponActionService(
+            _controller,
+            _modeController,
+            _remotePrimaryModule,
+            _remoteSecondaryModule,
+            _meleePrimaryModule,
+            _meleeSecondaryModule);
     }
 
     private void OnEnable()
     {
-        EventBus.Instance?.Subscribe<PrimaryAttackEvent>(OnPrimaryAttack);
-        EventBus.Instance?.Subscribe<SecondaryAttackEvent>(OnSecondaryAttack);
+        EventBus.Instance?.Subscribe<WeaponActionCommandEvent>(OnWeaponActionCommand);
     }
 
     private void OnDisable()
     {
-        EventBus.Instance?.Unsubscribe<PrimaryAttackEvent>(OnPrimaryAttack);
-        EventBus.Instance?.Unsubscribe<SecondaryAttackEvent>(OnSecondaryAttack);
+        EventBus.Instance?.Unsubscribe<WeaponActionCommandEvent>(OnWeaponActionCommand);
     }
 
     private void FixedUpdate()
     {
-        foreach (WeaponActionModule module in EnumerateUniqueModules())
-        {
-            module.OnTick();
-        }
+        _actionService?.TickFixed();
     }
 
     private void Update()
     {
-        foreach (WeaponActionModule module in EnumerateUniqueModules())
-        {
-            module.OnFrameTick();
-        }
+        _actionService?.TickFrame();
     }
 
-    private void OnPrimaryAttack(PrimaryAttackEvent evt)
+    public WeaponActionAvailability GetAvailability(WeaponActionCommand command)
     {
-        if (_controller != null && _controller.IsActionInputBlocked) return;
-
-        WeaponActionModule primaryModule = GetPrimaryModule();
-        WeaponActionModule secondaryModule = GetSecondaryModule();
-
-        if (evt.IsStarted)
-        {
-            WeaponActionInputContext inputContext = BuildInputContext(WeaponActionInputType.Primary);
-            primaryModule?.SetActiveInputContext(inputContext);
-            _blockNextPrimaryRelease = false;
-            if (secondaryModule != null && secondaryModule.TryHandlePinnedPrimary()) return;
-            if (secondaryModule != null && secondaryModule.BlocksPrimaryInput)
-            {
-                _blockNextPrimaryRelease = true;
-                return;
-            }
-
-            primaryModule?.OnPress();
-            return;
-        }
-
-        if (_blockNextPrimaryRelease)
-        {
-            _blockNextPrimaryRelease = false;
-            primaryModule?.ClearActiveInputContext(WeaponActionInputType.Primary);
-            return;
-        }
-
-        primaryModule?.OnRelease();
-        primaryModule?.ClearActiveInputContext(WeaponActionInputType.Primary);
+        return _actionService != null
+            ? _actionService.GetAvailability(command)
+            : WeaponActionAvailability.Blocked(WeaponMode.Remote, WeaponState.Grounded, "Action service unavailable");
     }
 
-    private void OnSecondaryAttack(SecondaryAttackEvent evt)
+    public bool TryStartPrimaryAction(WeaponActionCommand command)
     {
-        if (_controller != null && _controller.IsActionInputBlocked) return;
+        return command.ActionType == WeaponActionInputType.Primary &&
+               _actionService != null &&
+               _actionService.TryHandleCommand(command);
+    }
 
-        WeaponActionModule secondaryModule = GetSecondaryModule();
+    public bool TryStartSecondaryAction(WeaponActionCommand command)
+    {
+        return command.ActionType == WeaponActionInputType.Secondary &&
+               _actionService != null &&
+               _actionService.TryHandleCommand(command);
+    }
 
-        if (evt.IsStarted)
-        {
-            WeaponActionInputContext inputContext = BuildInputContext(WeaponActionInputType.Secondary);
-            secondaryModule?.SetActiveInputContext(inputContext);
-            if (secondaryModule != null && secondaryModule.TryHandlePinnedSecondary()) return;
-            secondaryModule?.OnPress();
-        }
+    private void OnWeaponActionCommand(WeaponActionCommandEvent evt)
+    {
+        if (evt.Command.ActionType == WeaponActionInputType.Primary)
+            TryStartPrimaryAction(evt.Command);
         else
-        {
-            secondaryModule?.OnRelease();
-            secondaryModule?.ClearActiveInputContext(WeaponActionInputType.Secondary);
-        }
-    }
-
-    private static WeaponActionInputContext BuildInputContext(WeaponActionInputType actionType)
-    {
-        WeaponInputDevice device = WeaponInputDevice.Unknown;
-        InputReader input = InputReader.Instance;
-        if (input != null)
-        {
-            bool isGamepad = actionType == WeaponActionInputType.Primary
-                ? input.IsPrimaryAttackStartedFromGamepad()
-                : input.IsSecondaryAttackStartedFromGamepad();
-            device = isGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard;
-        }
-
-        return new WeaponActionInputContext
-        {
-            ActionType = actionType,
-            Device = device,
-            StartedFrame = Time.frameCount,
-            StartedTime = Time.unscaledTime
-        };
-    }
-
-    private WeaponActionModule GetPrimaryModule()
-    {
-        if (_modeController != null && _modeController.CurrentMode == WeaponMode.Melee)
-            return _meleePrimaryModule;
-
-        return _remotePrimaryModule;
-    }
-
-    private WeaponActionModule GetSecondaryModule()
-    {
-        if (_modeController != null && _modeController.CurrentMode == WeaponMode.Melee)
-            return _meleeSecondaryModule;
-
-        return _remoteSecondaryModule;
-    }
-
-    private IEnumerable<WeaponActionModule> EnumerateUniqueModules()
-    {
-        HashSet<WeaponActionModule> modules = new HashSet<WeaponActionModule>();
-        TryAdd(_remotePrimaryModule, modules);
-        TryAdd(_remoteSecondaryModule, modules);
-        TryAdd(_meleePrimaryModule, modules);
-        TryAdd(_meleeSecondaryModule, modules);
-        return modules;
-    }
-
-    private static void TryAdd(WeaponActionModule module, HashSet<WeaponActionModule> modules)
-    {
-        if (module != null) modules.Add(module);
+            TryStartSecondaryAction(evt.Command);
     }
 }

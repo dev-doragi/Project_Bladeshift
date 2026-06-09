@@ -592,9 +592,6 @@ public sealed class BelialBossCore : MonoBehaviour
 
     private Transform ResolvePlayerTarget()
     {
-        if (PlayerController.ActivePlayer != null)
-            return PlayerController.ActivePlayer.transform;
-
         PlayerController found = FindFirstObjectByType<PlayerController>();
         return found != null ? found.transform : null;
     }

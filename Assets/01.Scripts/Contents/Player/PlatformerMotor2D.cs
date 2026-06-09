@@ -30,6 +30,7 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private Rigidbody2D _rb;
     private GroundSensor2D _sensor;
+    private MotorAbilityPolicy2D _abilityPolicy;
 
     private Vector2 _velocity;
     private float _horizontalInput;
@@ -47,13 +48,6 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private bool _wasGrounded;
     private bool _jumpConsumed;
-    private int _enemyLayer = -1;
-    private int _dashCollisionPlayerLayer = -1;
-    private bool _isIgnoringEnemyCollision;
-    private int _dashInvincibleLayer = -1;
-    private int _dashOriginalLayer = -1;
-    private bool _isDashLayerOverridden;
-
     public bool IsDashing => _isDashing;
     public bool IsJumping => !_isDashing && _sensor != null && !_sensor.IsGrounded;
     public Vector2 Velocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
@@ -63,9 +57,11 @@ public class PlatformerMotor2D : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody2D>();
         _sensor = GetComponent<GroundSensor2D>();
+        _abilityPolicy = GetComponent<MotorAbilityPolicy2D>();
+        if (_abilityPolicy == null)
+            _abilityPolicy = gameObject.AddComponent<MotorAbilityPolicy2D>();
         _defaultGravityScale = _rb.gravityScale;
-        _enemyLayer = LayerMask.NameToLayer(_enemyLayerName);
-        _dashInvincibleLayer = LayerMask.NameToLayer(_invincibleLayerName);
+        _abilityPolicy.Configure(_enemyLayerName, _invincibleLayerName);
     }
 
     private void Update()
@@ -162,8 +158,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _jumpBufferTimer = 0f;
         _isJumpHeld = false;
 
-        SetEnemyCollisionIgnoredForDash(true);
-        SetDashInvincibleLayer(true);
+        _abilityPolicy?.ApplyDashStart(gameObject, _ignoreEnemyCollisionWhileDashing, _useInvincibleLayerWhileDashing);
 
         if (_dashLocksGravity)
             _rb.gravityScale = 0f;
@@ -171,8 +166,7 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private void OnDisable()
     {
-        SetEnemyCollisionIgnoredForDash(false);
-        SetDashInvincibleLayer(false);
+        _abilityPolicy?.ApplyDashEnd(gameObject, _ignoreEnemyCollisionWhileDashing, _useInvincibleLayerWhileDashing);
 
         if (_rb != null)
             _rb.gravityScale = _defaultGravityScale;
@@ -190,8 +184,7 @@ public class PlatformerMotor2D : MonoBehaviour
         _isDashing = false;
         _velocity = Vector2.zero;
         _rb.gravityScale = _defaultGravityScale;
-        SetEnemyCollisionIgnoredForDash(false);
-        SetDashInvincibleLayer(false);
+        _abilityPolicy?.ApplyDashEnd(gameObject, _ignoreEnemyCollisionWhileDashing, _useInvincibleLayerWhileDashing);
     }
 
     private void HandleHorizontalMovement()
@@ -217,69 +210,5 @@ public class PlatformerMotor2D : MonoBehaviour
             _rb.gravityScale = _defaultGravityScale * _fallGravityMultiplier;
         else
             _rb.gravityScale = _defaultGravityScale;
-    }
-
-    private void SetEnemyCollisionIgnoredForDash(bool ignored)
-    {
-        if (!_ignoreEnemyCollisionWhileDashing)
-            return;
-
-        if (_enemyLayer < 0 || _enemyLayer > 31)
-            return;
-
-        if (ignored)
-        {
-            if (_isIgnoringEnemyCollision)
-                return;
-
-            _dashCollisionPlayerLayer = gameObject.layer;
-            if (_dashCollisionPlayerLayer < 0 || _dashCollisionPlayerLayer > 31)
-                return;
-
-            Physics2D.IgnoreLayerCollision(_dashCollisionPlayerLayer, _enemyLayer, true);
-            _isIgnoringEnemyCollision = true;
-            return;
-        }
-
-        if (!_isIgnoringEnemyCollision)
-            return;
-
-        if (_dashCollisionPlayerLayer >= 0 && _dashCollisionPlayerLayer <= 31)
-            Physics2D.IgnoreLayerCollision(_dashCollisionPlayerLayer, _enemyLayer, false);
-
-        _dashCollisionPlayerLayer = -1;
-        _isIgnoringEnemyCollision = false;
-    }
-
-    private void SetDashInvincibleLayer(bool active)
-    {
-        if (!_useInvincibleLayerWhileDashing)
-            return;
-
-        if (_dashInvincibleLayer < 0 || _dashInvincibleLayer > 31)
-            return;
-
-        if (active)
-        {
-            if (_isDashLayerOverridden)
-                return;
-
-            _dashOriginalLayer = gameObject.layer;
-            if (_dashOriginalLayer == _dashInvincibleLayer)
-                return;
-
-            gameObject.layer = _dashInvincibleLayer;
-            _isDashLayerOverridden = true;
-            return;
-        }
-
-        if (!_isDashLayerOverridden)
-            return;
-
-        if (_dashOriginalLayer >= 0 && _dashOriginalLayer <= 31)
-            gameObject.layer = _dashOriginalLayer;
-
-        _dashOriginalLayer = -1;
-        _isDashLayerOverridden = false;
     }
 }

@@ -4,6 +4,7 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     private PlatformerMotor2D _motor;
+    private PlayerAimResolver _aimResolver;
 
     [SerializeField] private float _controlRadius = 20f;
     [SerializeField] private bool _showControlRadiusGizmo = true;
@@ -14,13 +15,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private WeaponModeController _weaponModeController;
 
     private Camera _mainCamera;
-
-    public static PlayerController ActivePlayer { get; private set; }
+    private PlayerAimState _aimState = PlayerAimState.Default;
 
     public float ControlRadius => _controlRadius;
-    public int FacingSign { get; private set; } = 1;
+    public int FacingSign => _aimState.FacingSign;
     public Vector2 MoveInput { get; private set; }
-    public Vector2 AimDirection { get; private set; } = Vector2.right;
+    public Vector2 AimDirection => _aimState.AimDirection;
+    public PlayerAimState AimState => _aimState;
     public bool IsMoving => Mathf.Abs(MoveInput.x) > 0.01f;
     public bool IsDashing => _motor != null && _motor.IsDashing;
     public bool IsJumping => _motor != null && _motor.IsJumping;
@@ -29,32 +30,29 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         _motor = GetComponent<PlatformerMotor2D>();
+        _aimResolver = GetComponent<PlayerAimResolver>();
+        if (_aimResolver == null)
+            _aimResolver = gameObject.AddComponent<PlayerAimResolver>();
         _controlRadius = Mathf.Max(0f, _controlRadius);
         _mainCamera = Camera.main;
+        _aimResolver.Initialize(_mainCamera);
+        _aimResolver.Configure(_weaponAimCursor, _weaponSensor, _weaponModeController);
+        _aimState = PlayerAimState.Default;
     }
 
     private void OnEnable()
     {
-        ActivePlayer = this;
-
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.Subscribe<MoveInputEvent>(OnMoveInput);
-            EventBus.Instance.Subscribe<JumpInputEvent>(OnJumpInput);
-            EventBus.Instance.Subscribe<DashInputEvent>(OnDashInput);
+            EventBus.Instance.Subscribe<PlayerLocomotionCommandEvent>(OnLocomotionCommand);
         }
     }
 
     private void OnDisable()
     {
-        if (ActivePlayer == this)
-            ActivePlayer = null;
-
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.Unsubscribe<MoveInputEvent>(OnMoveInput);
-            EventBus.Instance.Unsubscribe<JumpInputEvent>(OnJumpInput);
-            EventBus.Instance.Unsubscribe<DashInputEvent>(OnDashInput);
+            EventBus.Instance.Unsubscribe<PlayerLocomotionCommandEvent>(OnLocomotionCommand);
         }
     }
 
@@ -68,113 +66,52 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        UpdateAimDirection();
+        if (_aimResolver == null)
+            return;
+
+        _aimState = _aimResolver.Resolve(transform, MoveInput, _aimState.FacingSign == 0 ? 1 : _aimState.FacingSign);
     }
 
     public void SetAimProvider(WeaponAimCursor aimCursor, WeaponSensor weaponSensor)
     {
         _weaponAimCursor = aimCursor;
         _weaponSensor = weaponSensor;
+        _aimResolver?.Configure(_weaponAimCursor, _weaponSensor, _weaponModeController);
     }
 
     public void SetWeaponModeController(WeaponModeController modeController)
     {
         _weaponModeController = modeController;
+        _aimResolver?.Configure(_weaponAimCursor, _weaponSensor, _weaponModeController);
     }
 
-    private void OnMoveInput(MoveInputEvent evt)
+    private void OnLocomotionCommand(PlayerLocomotionCommandEvent evt)
     {
-        MoveInput = evt.Direction;
-        _motor.SetHorizontalInput(evt.Direction.x);
-    }
-
-    private void OnJumpInput(JumpInputEvent evt)
-    {
-        if (evt.IsStarted)
-            _motor.RequestJump();
-        else
-            _motor.CancelJump();
-    }
-
-    private void OnDashInput(DashInputEvent evt)
-    {
-        if (!evt.IsStarted)
-            return;
-
-        Vector2 dashDirection;
-
-        if (Mathf.Abs(MoveInput.x) > 0.01f)
-            dashDirection = new Vector2(Mathf.Sign(MoveInput.x), 0f);
-        else
-            dashDirection = new Vector2(FacingSign, 0f);
-
-        _motor.RequestDash(dashDirection);
-    }
-
-    private void UpdateAimDirection()
-    {
-        if (InputReader.Instance == null)
-            return;
-
-        if (InputReader.Instance.IsInputBlocked)
-            return;
-
-        if (_weaponModeController != null && _weaponModeController.CurrentMode == WeaponMode.Melee)
+        switch (evt.Command.Type)
         {
-            UpdateMeleeAimDirectionFromLook();
-            return;
+            case PlayerLocomotionCommandType.Move:
+                MoveInput = evt.Command.MoveVector;
+                _motor.SetHorizontalInput(evt.Command.MoveVector.x);
+                break;
+            case PlayerLocomotionCommandType.Jump:
+                if (evt.Command.IsStarted)
+                    _motor.RequestJump();
+                else
+                    _motor.CancelJump();
+                break;
+            case PlayerLocomotionCommandType.Dash:
+                if (!evt.Command.IsStarted)
+                    return;
+
+                Vector2 dashDirection = evt.Command.DashVector;
+                if (Mathf.Abs(MoveInput.x) > 0.01f)
+                    dashDirection = new Vector2(Mathf.Sign(MoveInput.x), 0f);
+                else if (dashDirection.sqrMagnitude <= 0.0001f)
+                    dashDirection = new Vector2(FacingSign, 0f);
+
+                _motor.RequestDash(dashDirection);
+                break;
         }
-
-        Vector2 lookInput = InputReader.Instance.GetLookInput();
-        if (InputReader.Instance.IsGamepadLookActive() && lookInput.sqrMagnitude > 0.0001f)
-        {
-            AimDirection = lookInput.normalized;
-            FacingSign = AimDirection.x >= 0f ? 1 : -1;
-            return;
-        }
-
-        Camera cam = _mainCamera != null ? _mainCamera : Camera.main;
-        if (cam == null)
-            return;
-
-        Vector2 origin = transform.position;
-        Vector2 aimWorld = ResolveAimWorldPosition(cam);
-        Vector2 dir = aimWorld - origin;
-
-        if (dir.sqrMagnitude <= 0.0001f)
-            return;
-
-        AimDirection = dir.normalized;
-        FacingSign = AimDirection.x >= 0f ? 1 : -1;
-    }
-
-    private Vector2 ResolveAimWorldPosition(Camera cam)
-    {
-        if (_weaponAimCursor != null && _weaponAimCursor.IsInitialized)
-            return _weaponAimCursor.AimWorldPosition;
-
-        if (_weaponSensor != null)
-            return _weaponSensor.GetMouseWorldPosition();
-
-        Vector2 screenPos = InputReader.Instance.GetMousePosition();
-        return cam.ScreenToWorldPoint(screenPos);
-    }
-
-    private void UpdateMeleeAimDirectionFromLook()
-    {
-        Vector2 lookInput = InputReader.Instance.GetLookInput();
-        float absX = Mathf.Abs(lookInput.x);
-        if (InputReader.Instance.IsGamepadLookActive() && absX > 0.15f)
-        {
-            FacingSign = lookInput.x >= 0f ? 1 : -1;
-            AimDirection = new Vector2(FacingSign, 0f);
-            return;
-        }
-
-        if (Mathf.Abs(MoveInput.x) > 0.01f)
-            FacingSign = MoveInput.x >= 0f ? 1 : -1;
-
-        AimDirection = new Vector2(FacingSign, 0f);
     }
 
     private void OnDrawGizmos()

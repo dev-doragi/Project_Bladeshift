@@ -94,7 +94,7 @@ public class WeaponStateMachine : MonoBehaviour
         int enemyLayer = LayerMask.NameToLayer("Enemy");
         int environmentLayer = LayerMask.NameToLayer("Environment");
 
-        if (enemyLayer >= 0) Physics2D.IgnoreLayerCollision(weaponLayer, enemyLayer, true);
-        if (environmentLayer >= 0) Physics2D.IgnoreLayerCollision(weaponLayer, environmentLayer, false);
+        CollisionPolicyService.SetIgnoreLayerCollision(weaponLayer, enemyLayer, true);
+        CollisionPolicyService.SetIgnoreLayerCollision(weaponLayer, environmentLayer, false);
     }
 }

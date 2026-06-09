@@ -206,20 +206,47 @@ public class InputReader : Singleton<InputReader>
     private void OnMovePerformed(InputAction.CallbackContext ctx)
     {
         InputDeviceTracker.SetFromControl(ctx.control);
-        PublishIfAllowed(new MoveInputEvent { Direction = ctx.ReadValue<Vector2>() });
+        Vector2 direction = ctx.ReadValue<Vector2>();
+        PublishIfAllowed(new MoveInputEvent { Direction = direction });
+        PublishIfAllowed(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateMove(direction)
+        });
     }
-    private void OnMoveCanceled(InputAction.CallbackContext ctx) => PublishIfAllowed(new MoveInputEvent { Direction = Vector2.zero });
+    private void OnMoveCanceled(InputAction.CallbackContext ctx)
+    {
+        PublishIfAllowed(new MoveInputEvent { Direction = Vector2.zero });
+        PublishIfAllowed(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateMove(Vector2.zero)
+        });
+    }
 
     private void OnJumpStarted(InputAction.CallbackContext ctx)
     {
         InputDeviceTracker.SetFromControl(ctx.control);
         PublishIfAllowed(new JumpInputEvent { IsStarted = true });
+        PublishIfAllowed(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateJump(true)
+        });
     }
-    private void OnJumpCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new JumpInputEvent { IsStarted = false });
+    private void OnJumpCanceled(InputAction.CallbackContext _)
+    {
+        PublishIfAllowed(new JumpInputEvent { IsStarted = false });
+        PublishIfAllowed(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateJump(false)
+        });
+    }
     private void OnDashStarted(InputAction.CallbackContext ctx)
     {
         InputDeviceTracker.SetFromControl(ctx.control);
         PublishIfAllowed(new DashInputEvent { IsStarted = true });
+        PublishIfAllowed(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateDash(GetLookInput())
+        });
     }
 
     private void OnPrimaryAttackStarted(InputAction.CallbackContext ctx)
@@ -227,19 +254,50 @@ public class InputReader : Singleton<InputReader>
         InputDeviceTracker.SetFromControl(ctx.control);
         _isPrimaryAttackStartedFromGamepad = ctx.control != null && ctx.control.device is Gamepad;
         PublishIfAllowed(new PrimaryAttackEvent { IsStarted = true });
+        PublishIfAllowed(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Primary,
+                InputCommandPhase.Started,
+                _isPrimaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
     }
-    private void OnPrimaryAttackCanceled(InputAction.CallbackContext _) => PublishIfAllowed(new PrimaryAttackEvent { IsStarted = false });
+    private void OnPrimaryAttackCanceled(InputAction.CallbackContext _)
+    {
+        PublishIfAllowed(new PrimaryAttackEvent { IsStarted = false });
+        PublishIfAllowed(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Primary,
+                InputCommandPhase.Canceled,
+                _isPrimaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
+    }
 
     private void OnSecondaryAttackStarted(InputAction.CallbackContext ctx)
     {
         InputDeviceTracker.SetFromControl(ctx.control);
         _isSecondaryAttackStartedFromGamepad = ctx.control != null && ctx.control.device is Gamepad;
         PublishIfAllowed(new SecondaryAttackEvent { IsStarted = true });
+        PublishIfAllowed(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Secondary,
+                InputCommandPhase.Started,
+                _isSecondaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
     }
 
     private void OnSecondaryAttackCanceled(InputAction.CallbackContext _)
     {
         PublishIfAllowed(new SecondaryAttackEvent { IsStarted = false });
+        PublishIfAllowed(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Secondary,
+                InputCommandPhase.Canceled,
+                _isSecondaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
     }
 
     private void OnRotatePerformed(InputAction.CallbackContext _) => PublishIfAllowed(new RotateEvent());
@@ -308,6 +366,28 @@ public class InputReader : Singleton<InputReader>
         EventBus.Instance?.Publish(new JumpInputEvent { IsStarted = false });
         EventBus.Instance?.Publish(new PrimaryAttackEvent { IsStarted = false });
         EventBus.Instance?.Publish(new SecondaryAttackEvent { IsStarted = false });
+        EventBus.Instance?.Publish(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateMove(Vector2.zero)
+        });
+        EventBus.Instance?.Publish(new PlayerLocomotionCommandEvent
+        {
+            Command = PlayerLocomotionCommand.CreateJump(false)
+        });
+        EventBus.Instance?.Publish(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Primary,
+                InputCommandPhase.Canceled,
+                _isPrimaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
+        EventBus.Instance?.Publish(new WeaponActionCommandEvent
+        {
+            Command = WeaponActionCommand.Create(
+                WeaponActionInputType.Secondary,
+                InputCommandPhase.Canceled,
+                _isSecondaryAttackStartedFromGamepad ? WeaponInputDevice.Gamepad : WeaponInputDevice.MouseKeyboard)
+        });
 
         _isInputBlocked = true;
         _playerMap?.Disable();

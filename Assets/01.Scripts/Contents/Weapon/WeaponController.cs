@@ -61,6 +61,9 @@ public class WeaponController : MonoBehaviour
     private Coroutine _meleeModeRechargeRoutine;
     private int _platformLayer = -1;
     private int _weaponLayer = -1;
+    private WeaponAimPresentation _aimPresentation;
+    private WeaponModeService _modeService;
+    private bool _isInitialized;
 
     public Rigidbody2D Rigidbody => _rb;
     public Collider2D WeaponCollider => _weaponCollider;
@@ -119,13 +122,10 @@ public class WeaponController : MonoBehaviour
     private void Awake()
     {
         CacheComponents();
-        if (!ResolvePlayerContext())
-        {
-            enabled = false;
-            return;
-        }
-
-        InitializeSubsystems();
+        CreateServices();
+        TryBindSerializedPlayerContext();
+        TryBindExistingPlayerContext();
+        TryInitializeSubsystems();
     }
 
     private void CacheComponents()
@@ -158,33 +158,49 @@ public class WeaponController : MonoBehaviour
             _mouseWorldProxyFollower = GetComponentInChildren<MouseWorldProxyFollower>(true);
     }
 
-    private bool ResolvePlayerContext()
+    private void CreateServices()
     {
-        if (_playerTransform == null)
-        {
-            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-            if (playerObject != null)
-                _playerTransform = playerObject.transform;
-        }
-
-        if (_playerTransform == null)
-        {
-            Debug.LogError("[WeaponController] Player object missing.");
-            return false;
-        }
-
-        _playerController = _playerTransform.GetComponent<PlayerController>();
-        if (_playerController == null)
-        {
-            Debug.LogError("[WeaponController] PlayerController missing on player object.");
-            return false;
-        }
-
-        return true;
+        _aimPresentation = new WeaponAimPresentation();
+        _modeService = new WeaponModeService(this);
     }
 
-    private void InitializeSubsystems()
+    private void TryBindSerializedPlayerContext()
     {
+        if (_playerTransform == null)
+            return;
+
+        BindPlayer(_playerTransform.GetComponent<PlayerController>());
+    }
+
+    private void TryBindExistingPlayerContext()
+    {
+        if (_playerController != null)
+            return;
+
+        PlayerController foundPlayer = FindFirstObjectByType<PlayerController>();
+        if (foundPlayer != null)
+            BindPlayer(foundPlayer);
+    }
+
+    private void BindPlayer(PlayerController playerController)
+    {
+        if (playerController == null)
+            return;
+
+        if (_playerController != null && _playerController != playerController)
+            _isInitialized = false;
+
+        _playerController = playerController;
+        _playerTransform = playerController.transform;
+    }
+
+    private bool TryInitializeSubsystems()
+    {
+        if (_isInitialized)
+            return true;
+        if (_playerController == null || _playerTransform == null)
+            return false;
+
         _fullRechargeDelayAfterReturn = Mathf.Max(1.5f, _fullRechargeDelayAfterReturn);
         _movement.CacheRigidbody(_rb);
         _stateMachine.Initialize(_rb, _weaponCollider);
@@ -197,19 +213,24 @@ public class WeaponController : MonoBehaviour
         _sensor.SetAimCursor(_aimCursor);
         _mouseWorldProxyFollower?.SetAimCursor(_aimCursor);
         _mouseWorldProxyFollower?.SetPlayerTransform(_playerTransform);
+        _playerController?.SetAimProvider(_aimCursor, _sensor);
         _playerController?.SetWeaponModeController(_modeController);
         _view.Initialize(_sensor.GetPlayerTransform(), ControlRadius, _combat, _stateMachine, _modeController, _linkEnergy);
         _embeddedAttack.Initialize(this);
         _actionRouter.Initialize(this, _modeController);
+        _aimPresentation.Initialize(_aimCursor, _mouseWorldProxyFollower, () => CurrentMode, EvaluateAimCursorVisibleFromState);
         _stateMachine.ChangeState(WeaponState.Grounded);
         _modeController.ApplyCurrentMode();
-        ApplyAimCursorModePolicy(_modeController.CurrentMode, resetCursorPosition: true);
+        _aimPresentation.ApplyModePolicy(resetCursorPosition: true);
         ApplyWeaponPlatformCollisionPolicy(_modeController.CurrentMode);
-        RefreshAimCursorVisibilityFromState();
+        _aimPresentation.RefreshVisibility();
+        _isInitialized = true;
+        return true;
     }
 
     private void OnEnable()
     {
+        EventBus.Instance?.Subscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
         EventBus.Instance?.Subscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
         if (_modeController != null)
             _modeController.ModeChanged += OnWeaponModeChanged;
@@ -217,6 +238,7 @@ public class WeaponController : MonoBehaviour
 
     private void OnDisable()
     {
+        EventBus.Instance?.Unsubscribe<PlayerSpawnedEvent>(OnPlayerSpawned);
         EventBus.Instance?.Unsubscribe<WeaponModeToggleEvent>(OnWeaponModeToggle);
         if (_modeController != null)
             _modeController.ModeChanged -= OnWeaponModeChanged;
@@ -231,25 +253,58 @@ public class WeaponController : MonoBehaviour
 
     private void Update()
     {
+        if (!_isInitialized && !TryInitializeSubsystems())
+            return;
+
         _aimCursor?.Tick();
-        RefreshAimCursorVisibilityFromState();
+        _aimPresentation?.RefreshVisibility();
+    }
+
+    private void OnPlayerSpawned(PlayerSpawnedEvent evt)
+    {
+        if (evt.Player == null)
+            return;
+
+        BindPlayer(evt.Player);
+        TryInitializeSubsystems();
     }
 
     private void OnWeaponModeToggle(WeaponModeToggleEvent _)
     {
+        TryToggleMode();
+    }
+
+    public bool TryToggleMode()
+    {
         if (!CanToggleWeaponMode())
-            return;
+            return false;
 
         if (_modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
         {
             StartCoroutine(RemoteToMeleeSwitchRoutine());
-            return;
+            return true;
         }
 
         if (_capture != null && _capture.HasCapturedTarget)
             _capture.ForceReleaseCapturedTarget();
 
         _modeController?.ToggleMode();
+        return true;
+    }
+
+    public PlayerAimState GetAimState()
+    {
+        return _playerController != null ? _playerController.AimState : PlayerAimState.Default;
+    }
+
+    public bool TryStartPrimaryAction(WeaponActionCommand command)
+    {
+        return _actionRouter != null && _actionRouter.TryStartPrimaryAction(command);
+    }
+
+    public bool TryStartSecondaryAction(WeaponActionCommand command)
+    {
+        return _actionRouter != null && _actionRouter.TryStartSecondaryAction(command);
     }
 
     private void OnWeaponModeChanged(WeaponMode previousMode, WeaponMode newMode)
@@ -264,39 +319,9 @@ public class WeaponController : MonoBehaviour
         }
 
         bool shouldReset = previousMode != newMode;
-        ApplyAimCursorModePolicy(newMode, shouldReset);
+        _aimPresentation?.ApplyModePolicy(shouldReset);
         ApplyWeaponPlatformCollisionPolicy(newMode);
-        RefreshAimCursorVisibilityFromState();
-    }
-
-    private void ApplyAimCursorModePolicy(WeaponMode mode, bool resetCursorPosition)
-    {
-        if (_aimCursor == null)
-            return;
-
-        bool suppressCursor = mode == WeaponMode.Melee;
-        bool shouldResetToMouse = resetCursorPosition && !suppressCursor;
-        _aimCursor.SetCursorSuppressedByMode(suppressCursor, shouldResetToMouse);
-
-        if (_mouseWorldProxyFollower != null)
-        {
-            if (suppressCursor)
-                _mouseWorldProxyFollower.SnapToPlayerPosition();
-            else if (resetCursorPosition)
-                _mouseWorldProxyFollower.ResetByCurrentInputMode();
-        }
-    }
-
-    private void RefreshAimCursorVisibilityFromState()
-    {
-        if (_aimCursor == null)
-            return;
-
-        // Safety sync: if mode event ordering was missed, keep suppression aligned.
-        ApplyAimCursorModePolicy(CurrentMode, resetCursorPosition: false);
-
-        bool shouldShow = EvaluateAimCursorVisibleFromState();
-        _aimCursor.SetCursorVisible(shouldShow);
+        _aimPresentation?.RefreshVisibility();
     }
 
     private bool EvaluateAimCursorVisibleFromState()
@@ -351,12 +376,13 @@ public class WeaponController : MonoBehaviour
             return;
 
         bool ignoreInRemoteMode = mode == WeaponMode.Remote;
-        Physics2D.IgnoreLayerCollision(_weaponLayer, _platformLayer, ignoreInRemoteMode);
+        CollisionPolicyService.SetIgnoreLayerCollision(_weaponLayer, _platformLayer, ignoreInRemoteMode);
     }
 
     private bool CanToggleWeaponMode()
     {
-        if (_modeController == null) return false;
+        if (!_isInitialized && !TryInitializeSubsystems()) return false;
+        if (_modeService == null || !_modeService.CanToggleMode()) return false;
         if (_isModeSwitchInProgress) return false;
         if (IsActionInputBlocked) return false;
         if (_playerTransform == null) return false;
@@ -367,20 +393,6 @@ public class WeaponController : MonoBehaviour
             if (_thrustPierceModule.IsAiming) return false;
             if (_thrustPierceModule.IsPinningFlightActive) return false;
         }
-
-        WeaponState state = CurrentState;
-        if (state == WeaponState.Slashing ||
-            state == WeaponState.Thrusting ||
-            state == WeaponState.PinningFlight ||
-            state == WeaponState.Pinned ||
-            state == WeaponState.Returning)
-            return false;
-
-        float controlRadius = ControlRadius;
-        if (controlRadius <= 0f) return false;
-
-        float distance = Vector2.Distance(_playerTransform.position, transform.position);
-        if (distance > controlRadius) return false;
 
         return true;
     }

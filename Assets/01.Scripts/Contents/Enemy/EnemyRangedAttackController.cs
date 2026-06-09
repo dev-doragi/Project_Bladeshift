@@ -49,8 +49,9 @@ public class EnemyRangedAttackController : MonoBehaviour
             return;
         }
 
-        if (PlayerController.ActivePlayer != null)
-            _target = PlayerController.ActivePlayer.transform;
+        PlayerController foundPlayer = FindFirstObjectByType<PlayerController>();
+        if (foundPlayer != null)
+            _target = foundPlayer.transform;
     }
 
     private void Update()

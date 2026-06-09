@@ -28,6 +28,7 @@ public class EnemyController : MonoBehaviour
     private bool _isTargetDetected;
     private bool _hasDetectedTarget;
     private Vector2 _lastObservedTargetPosition;
+    private EnemyDetectionState _detectionState;
 
     protected EnemyMovementData MovementData => _movementData;
     protected Transform Target => _target;
@@ -47,6 +48,7 @@ public class EnemyController : MonoBehaviour
     public bool IsTargetDetected => _isTargetDetected;
     public bool HasDetectedTarget => _hasDetectedTarget;
     public Vector2 LastObservedTargetPosition => _lastObservedTargetPosition;
+    public EnemyDetectionState CurrentDetectionState => _detectionState;
 
     protected virtual void Awake()
     {
@@ -75,8 +77,9 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        if (PlayerController.ActivePlayer != null)
-            SetTarget(PlayerController.ActivePlayer.transform);
+        PlayerController foundPlayer = FindFirstObjectByType<PlayerController>();
+        if (foundPlayer != null)
+            SetTarget(foundPlayer.transform);
     }
 
     protected virtual void FixedUpdate()
@@ -212,6 +215,13 @@ public class EnemyController : MonoBehaviour
         {
             OnTargetLost(_target, _lastObservedTargetPosition);
         }
+
+        _detectionState = new EnemyDetectionState
+        {
+            IsTargetDetected = _isTargetDetected,
+            HasDetectedTarget = _hasDetectedTarget,
+            LastObservedTargetPosition = _lastObservedTargetPosition
+        };
     }
 
     private void HandlePlayerSpawned(PlayerSpawnedEvent evt)

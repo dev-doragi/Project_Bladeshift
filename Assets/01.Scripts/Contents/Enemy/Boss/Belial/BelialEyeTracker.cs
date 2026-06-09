@@ -48,8 +48,12 @@ public class BelialEyeTracker : MonoBehaviour
         if (_eyesRoot == null)
             return;
 
-        if (_player == null && PlayerController.ActivePlayer != null)
-            _player = PlayerController.ActivePlayer.transform;
+        if (_player == null)
+        {
+            PlayerController foundPlayer = FindFirstObjectByType<PlayerController>();
+            if (foundPlayer != null)
+                _player = foundPlayer.transform;
+        }
 
         if (_player == null)
             return;

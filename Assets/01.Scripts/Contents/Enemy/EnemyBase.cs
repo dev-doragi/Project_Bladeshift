@@ -24,6 +24,9 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     [SerializeField, Min(0f)] private float _deathCollisionWaitTimeout = 8f;
     [SerializeField, Min(0f)] private float _deathSettleTimeout = 4f;
 
+    [SerializeField, HideInInspector] private EnemyHealth _healthState = new EnemyHealth();
+    [SerializeField, HideInInspector] private EnemyGroggyState _groggyState = new EnemyGroggyState();
+
     protected float _currentHealth;
 
     protected Rigidbody2D _rb;
@@ -45,6 +48,8 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     protected bool _hasTouchedSurfaceAfterDeath = false;
     protected float _currentGroggyGauge;
     private Quaternion _originalRotation;
+    private EnemyContactDamage _contactDamageHandler;
+    private EnemyDeathSequence _deathSequence;
 
     public virtual TeamType Team => TeamType.Enemy;
     public virtual bool IsDead => _currentHealth <= 0f;
@@ -68,6 +73,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual float EmbeddedTearOutDamage => _enemyData != null ? _enemyData.EmbeddedTearOutDamage : 50f;
     public virtual float EmbeddedAttackDamage => _enemyData != null ? _enemyData.EmbeddedAttackDamage : 100f;
     public virtual float EmbeddedAttackRange => _enemyData != null ? _enemyData.EmbeddedAttackRange : 2f;
+    public bool HasTouchedSurfaceAfterDeath => _hasTouchedSurfaceAfterDeath;
     public event Action<EnemyBase> GroggyStateEntered;
     public event Action<EnemyBase> GroggyStateExited;
     public bool IsDamageBlocked { get; set; }
@@ -79,10 +85,21 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             _maxHealth = _enemyData.MaxHealth;
 
         _currentHealth = _maxHealth;
+        _healthState.Initialize(_maxHealth);
+        _groggyState.ResetAll();
         _rb = GetComponent<Rigidbody2D>();
         _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
         _collider = GetComponent<Collider2D>();
         _originalRotation = transform.rotation;
+        _contactDamageHandler = GetComponent<EnemyContactDamage>();
+        if (_contactDamageHandler == null)
+            _contactDamageHandler = gameObject.AddComponent<EnemyContactDamage>();
+        _contactDamageHandler.Configure(this, _contactDamage);
+
+        _deathSequence = GetComponent<EnemyDeathSequence>();
+        if (_deathSequence == null)
+            _deathSequence = gameObject.AddComponent<EnemyDeathSequence>();
+        _deathSequence.Configure(this, _rb, _collider, _spriteRenderer, _deathCollisionWaitTimeout, _deathSettleTimeout);
 
         if (_spriteRenderer != null)
             _originalColor = _spriteRenderer.color;
@@ -122,6 +139,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         float previousHealth = _currentHealth;
 
         _currentHealth -= damageData.Damage;
+        _healthState.SetCurrent(_currentHealth);
 
         if (_rb != null && !IsKnockbackBlocked && damageData.KnockbackForce.sqrMagnitude > 0.0001f)
         {
@@ -160,36 +178,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
 
     private void TryDealContactDamage(Collider2D other)
     {
-        if (IsDead)
-            return;
-        if (_isCaptured)
-            return;
-        if (_isPierced)
-            return;
-
-        if (_contactDamage <= 0)
-            return;
-
-        if (other == null)
-            return;
-
-        PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
-
-        if (playerHealth == null)
-            playerHealth = other.GetComponentInParent<PlayerHealth>();
-
-        if (playerHealth == null)
-            return;
-
-        playerHealth.TakeDamage(new DamageData
-        {
-            Damage = _contactDamage,
-            GroggyDamage = 0,
-            AttackerTeam = TeamType.Enemy,
-            HitPoint = other.ClosestPoint(transform.position),
-            KnockbackForce = Vector2.zero,
-            IsPiercing = false
-        });
+        _contactDamageHandler?.TryDealContactDamage(other);
     }
 
     public virtual bool ShouldPiercingAttackStick()
@@ -299,6 +288,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         _isGroggy = true;
         _isGroggyInvulnerable = true;
         _isRecoveringFromGroggy = false;
+        SyncGroggyState();
 
         if (_enemyData != null && _enemyData.ResetGroggyGaugeOnEnter)
             _currentGroggyGauge = 0f;
@@ -382,6 +372,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         StopGroggyVisual(true);
         OnGroggyExited();
         GroggyStateExited?.Invoke(this);
+        SyncGroggyState();
 
         if (_enemyData != null && _enemyData.ResetGroggyGaugeOnExit)
             _currentGroggyGauge = 0f;
@@ -541,6 +532,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual void SetCaptured(bool isCaptured)
     {
         _isCaptured = isCaptured;
+        SyncGroggyState();
 
         if (_isCaptured)
         {
@@ -557,6 +549,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     public virtual void SetPierced(bool isPierced)
     {
         _isPierced = isPierced;
+        SyncGroggyState();
     }
 
     public virtual void ExecuteDeath(Vector2 knockbackForce)
@@ -564,6 +557,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         if (IsDead) return;
 
         _currentHealth = 0f;
+        _healthState.SetCurrent(_currentHealth);
         Die(knockbackForce);
     }
 
@@ -601,22 +595,8 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             }
         }
 
-        if (_rb != null)
-        {
-            _rb.bodyType = RigidbodyType2D.Dynamic; 
-            _rb.freezeRotation = false; 
-            _rb.linearDamping = 1.5f;
-            _rb.angularDamping = 1.0f;
-            _rb.linearVelocity = Vector2.zero;
-            _rb.AddForce(knockbackForce, ForceMode2D.Impulse); 
-            float torqueDir = knockbackForce.x > 0 ? -1f : 1f;
-            _rb.AddTorque(torqueDir * 40f, ForceMode2D.Impulse);
-        }
-
-        int corpseLayer = LayerMask.NameToLayer("Corpse");
-        if (corpseLayer != -1) gameObject.layer = corpseLayer;
-
-        StartCoroutine(DeathSequenceRoutine());
+        _deathSequence?.Configure(this, _rb, _collider, _spriteRenderer, _deathCollisionWaitTimeout, _deathSettleTimeout);
+        _deathSequence?.Play(knockbackForce);
     }
 
     protected virtual IEnumerator DeathSequenceRoutine()
@@ -707,6 +687,7 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
         _isCaptured = false;
         _isPierced = false;
         _currentGroggyGauge = 0f;
+        SyncGroggyState();
     }
 
     protected virtual void StartGroggyPose()
@@ -801,5 +782,15 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
             _spriteRenderer.color = _originalColor;
         }
         _blinkRoutine = null;
+    }
+
+    private void SyncGroggyState()
+    {
+        _groggyState.IsGroggy = _isGroggy;
+        _groggyState.IsGroggyInvulnerable = _isGroggyInvulnerable;
+        _groggyState.IsRecoveringFromGroggy = _isRecoveringFromGroggy;
+        _groggyState.IsCaptured = _isCaptured;
+        _groggyState.IsPierced = _isPierced;
+        _groggyState.CurrentGroggyGauge = _currentGroggyGauge;
     }
 }
