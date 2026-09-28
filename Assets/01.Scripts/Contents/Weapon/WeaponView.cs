@@ -44,6 +44,7 @@ public class WeaponView : MonoBehaviour
     private WeaponStateMachine _stateMachine;
     private WeaponModeController _modeController;
     private WeaponLinkEnergy _linkEnergy;
+    private WeaponController _controller;
     private float _controlRadius;
     private float _slashRadius;
 
@@ -56,6 +57,7 @@ public class WeaponView : MonoBehaviour
 
     private void Awake()
     {
+        _controller = GetComponent<WeaponController>();
         if (_weaponRenderer == null)
             _weaponRenderer = GetComponentInChildren<SpriteRenderer>();
 
@@ -171,6 +173,26 @@ public class WeaponView : MonoBehaviour
 
     private void RefreshConnectionLine()
     {
+        if (_controller != null && _controller.UseDroneRemoteControl &&
+            _modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
+        {
+            if (_connectionLine == null || _stateMachine == null ||
+                _stateMachine.CurrentState != WeaponState.Controlled || _controller.Sensor == null)
+            {
+                SetConnectionLineVisible(false);
+                return;
+            }
+
+            Vector3 pointerPosition = _controller.Sensor.GetAimWorldPosition();
+            _connectionLine.enabled = true;
+            _connectionLine.positionCount = 2;
+            _connectionLine.SetPosition(0, transform.position);
+            _connectionLine.SetPosition(1, pointerPosition);
+            _connectionLine.startColor = _stableColor;
+            _connectionLine.endColor = _stableColor;
+            return;
+        }
+
         if (!ShouldShowConnectionLine())
         {
             SetConnectionLineVisible(false);
@@ -195,6 +217,10 @@ public class WeaponView : MonoBehaviour
 
     private bool ShouldShowConnectionLine()
     {
+        if (_controller != null && _controller.UseDroneRemoteControl &&
+            _modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
+            return false;
+
         if (_connectionLine == null || _playerTransform == null || _stateMachine == null || _modeController == null)
             return false;
 

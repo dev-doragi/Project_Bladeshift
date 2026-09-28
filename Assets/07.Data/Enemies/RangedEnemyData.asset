@@ -20,9 +20,9 @@ MonoBehaviour:
   _canBeCaptured: 1
   _captureWeight: 1
   _canBeExecuted: 1
-  _usesGroggy: 0
-  _groggyTriggerMode: 0
-  _groggyThresholdRatio: 0.1
+  _usesGroggy: 1
+  _groggyTriggerMode: 1
+  _groggyThresholdRatio: 0.3
   _maxGroggyGauge: 100
   _resetGroggyGaugeOnEnter: 1
   _resetGroggyGaugeOnExit: 1

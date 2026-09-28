@@ -617,7 +617,7 @@ GameObject:
   - component: {fileID: 4215078335511638844}
   - component: {fileID: 8291976222345149367}
   m_Layer: 6
-  m_Name: Weapon
+  m_Name: Weapon_PoC
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -736,7 +736,6 @@ MonoBehaviour:
   _recallEnergyCost: 0
   _fullRechargeDelayAfterReturn: 1.5
   _platformLayerName: Platform
-  _useDroneRemoteControl: 0
   _aimCursor: {fileID: 0}
   _mouseWorldProxyFollower: {fileID: 0}
 --- !u!114 &5923836136970560632
@@ -797,9 +796,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d4d7e3d9a9a4d6c9e2f4d7f3e5a1b11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponMovement
-  _droneFollowSmoothTime: 0.045
-  _droneFollowMaxSpeed: 160
-  _droneTrailStartSpeed: 8
   _weaponRadius: 0.73
   _skinWidth: 0.05
   _followSmoothTime: 0.1
@@ -822,13 +818,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponCombat
   _minimumSwingSpeed: 20
-  _maximumSwingSpeed: 40
+  _maximumSwingSpeed: 35
   _minimumSwingDamage: 5
   _maximumSwingDamage: 20
   _minimumSwingGroggyDamage: 8
   _maximumSwingGroggyDamage: 25
   _swingHitCooldown: 0.25
-  _minimumDroneAttackDistance: 1
   _enemyLayer:
     serializedVersion: 2
     m_Bits: 512
@@ -999,7 +994,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpinSlashModule
   _slashHoldCostPerSecond: 25
   _slashHoldSpendMode: 1
-  _droneRetargetAngle: 70
 --- !u!114 &5259452382723162312
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -24,8 +24,8 @@ public abstract class EnemyBase : MonoBehaviour, IDamageable
     [SerializeField, Min(0f)] private float _deathCollisionWaitTimeout = 8f;
     [SerializeField, Min(0f)] private float _deathSettleTimeout = 4f;
 
-    [SerializeField, HideInInspector] private EnemyHealth _healthState = new EnemyHealth();
-    [SerializeField, HideInInspector] private EnemyGroggyState _groggyState = new EnemyGroggyState();
+    [SerializeField, HideInInspector] protected EnemyHealth _healthState = new EnemyHealth();
+    [SerializeField, HideInInspector] protected EnemyGroggyState _groggyState = new EnemyGroggyState();
 
     protected float _currentHealth;
 

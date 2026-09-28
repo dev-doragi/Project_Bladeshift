@@ -2349,6 +2349,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 303466040254391467, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _initialMode
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
@@ -2361,6 +2365,10 @@ PrefabInstance:
       propertyPath: _playerTransform
       value: 
       objectReference: {fileID: 1089678679}
+    - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _useDroneRemoteControl
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2485444516966444499, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _mouseWorldProxyFollower
       value: 
@@ -2405,6 +2413,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3241085922754617426, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _droneRetargetAngle
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 3241085922754617426, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _slashHoldCostPerSecond
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6705958014074586991, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: _aimCursor
       value: 
@@ -2428,6 +2444,10 @@ PrefabInstance:
     - target: {fileID: 8857529888259376973, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
       propertyPath: m_Name
       value: Weapon
+      objectReference: {fileID: 0}
+    - target: {fileID: 8890931883336942143, guid: 3d5f6a231434a3e49807821de3f52e87, type: 3}
+      propertyPath: _minimumDroneAttackDistance
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -37,6 +37,7 @@ public class WeaponController : MonoBehaviour
     [SerializeField] private float _recallEnergyCost = 0f;
     [SerializeField] private float _fullRechargeDelayAfterReturn = 1.5f;
     [SerializeField] private string _platformLayerName = "Platform";
+    [SerializeField] private bool _useDroneRemoteControl;
 
     private Rigidbody2D _rb;
     private Collider2D _weaponCollider;
@@ -96,6 +97,7 @@ public class WeaponController : MonoBehaviour
     public float SlowMotionHoldDuration => _slowMotionHoldDuration;
     public float ThrustDragThreshold => _thrustDragThreshold;
     public float RecallEnergyCost => _recallEnergyCost;
+    public bool UseDroneRemoteControl => _useDroneRemoteControl;
     public LayerMask WallAndEnvironmentLayerForPin => _wallAndEnvironmentLayer;
     public LayerMask WallAndEnvironmentLayer
     {
@@ -109,7 +111,7 @@ public class WeaponController : MonoBehaviour
     }
     public WeaponState CurrentState => _stateMachine != null ? _stateMachine.CurrentState : WeaponState.Grounded;
     public WeaponMode CurrentMode => _modeController != null ? _modeController.CurrentMode : WeaponMode.Remote;
-    public bool IsOffline => _linkEnergy != null && _linkEnergy.IsOffline;
+    public bool IsOffline => !_useDroneRemoteControl && _linkEnergy != null && _linkEnergy.IsOffline;
     public bool IsActionInputBlocked =>
         IsAutoReturnInProgress ||
         (CurrentMode == WeaponMode.Remote && IsDockWaiting) ||
@@ -348,7 +350,7 @@ public class WeaponController : MonoBehaviour
         if (IsDockWaiting)
             reasons |= AimCursorBlockReason.DockWaiting;
 
-        if (IsDepletionSequenceActive)
+        if (!_useDroneRemoteControl && IsDepletionSequenceActive)
             reasons |= AimCursorBlockReason.DepletionSequence;
 
         if (_thrustPierceModule != null && _thrustPierceModule.IsAiming)
@@ -357,7 +359,7 @@ public class WeaponController : MonoBehaviour
         if (_thrustPierceModule != null && _thrustPierceModule.IsPinningFlightActive)
             reasons |= AimCursorBlockReason.PinningFlight;
 
-        if (_spinSlashModule != null && _spinSlashModule.IsSlashing)
+        if (!_useDroneRemoteControl && _spinSlashModule != null && _spinSlashModule.IsSlashing)
             reasons |= AimCursorBlockReason.SpinSlashing;
 
         return reasons;
@@ -365,7 +367,9 @@ public class WeaponController : MonoBehaviour
 
     private bool IsAimCursorSupportedWeaponState(WeaponState state)
     {
-        return state == WeaponState.Grounded || state == WeaponState.Controlled;
+        return state == WeaponState.Grounded ||
+               state == WeaponState.Controlled ||
+               (_useDroneRemoteControl && state == WeaponState.Slashing);
     }
 
     private void ApplyWeaponPlatformCollisionPolicy(WeaponMode mode)

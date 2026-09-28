@@ -8,8 +8,17 @@ public class WeaponMovement : MonoBehaviour
     private Rigidbody2D _rb;
     private Vector2 _currentVelocity;
     private Coroutine _activeMovementRoutine;
+    private WeaponCombat _combat;
     private const float DefaultFollowSmoothTime = 0.1f;
     private const float DefaultFollowMaxSpeed = 100f;
+    private const float DroneHoverMaxSpeed = 25f;
+    [Header("Drone Remote Control")]
+    [SerializeField, Min(0.01f)] private float _droneFollowSmoothTime = 0.045f;
+    [SerializeField, Min(1f)] private float _droneFollowMaxSpeed = 160f;
+    [SerializeField, Min(0f)] private float _droneTrailStartSpeed = 8f;
+    private WeaponController _controller;
+    private TrailRenderer _droneTrail;
+    private Material _droneTrailMaterial;
     [SerializeField] private float _weaponRadius = 0.3f;
     [SerializeField] private float _skinWidth = 0.05f;
     [SerializeField] private float _followSmoothTime = 0.1f;
@@ -26,22 +35,61 @@ public class WeaponMovement : MonoBehaviour
     public void CacheRigidbody(Rigidbody2D rb)
     {
         _rb = rb;
+        _combat = GetComponent<WeaponCombat>();
+        _controller = GetComponent<WeaponController>();
+        if (_controller != null && _controller.UseDroneRemoteControl)
+            ConfigureDroneTrail();
     }
 
-    public void FollowMouseHover(Vector2 targetWorldPos, float smoothTime, LayerMask wallMask)
+    private void FixedUpdate()
     {
-        if (_rb == null) return;
+        if (_droneTrail == null || _controller == null)
+            return;
+
+        if (_controller.CurrentMode != WeaponMode.Remote)
+            _droneTrail.emitting = false;
+    }
+
+    private void OnDestroy()
+    {
+        if (_droneTrailMaterial != null)
+            Destroy(_droneTrailMaterial);
+    }
+
+    public bool FollowMouseHover(Vector2 targetWorldPos, float smoothTime, LayerMask wallMask)
+    {
+        if (_rb == null) return false;
 
         Vector2 currentPos = _rb.position;
+        bool isDroneRemote = _controller != null && _controller.UseDroneRemoteControl &&
+                             _controller.CurrentMode == WeaponMode.Remote;
         float useSmoothTime = smoothTime > 0f ? smoothTime : DefaultFollowSmoothTime;
-        Vector2 idealNextPos = Vector2.SmoothDamp(currentPos, targetWorldPos, ref _currentVelocity, useSmoothTime, DefaultFollowMaxSpeed, Time.fixedDeltaTime);
+        float maxSpeed = DefaultFollowMaxSpeed;
+        bool isDroneCombat = isDroneRemote && _controller.CurrentState == WeaponState.Slashing;
+        if (isDroneRemote)
+        {
+            if (isDroneCombat)
+            {
+                useSmoothTime = _droneFollowSmoothTime;
+                maxSpeed = _droneFollowMaxSpeed;
+            }
+            else
+            {
+                maxSpeed = DroneHoverMaxSpeed;
+            }
+        }
+
+        Vector2 idealNextPos = Vector2.SmoothDamp(currentPos, targetWorldPos, ref _currentVelocity, useSmoothTime, maxSpeed, Time.fixedDeltaTime);
         Vector2 frameMove = idealNextPos - currentPos;
         float moveDist = frameMove.magnitude;
 
         if (moveDist <= 0.0001f)
         {
+            SetDroneTrailSpeed(0f, isDroneCombat);
+            if (isDroneRemote && !isDroneCombat)
+                _rb.MoveRotation(0f);
             _rb.MovePosition(idealNextPos);
-            return;
+            return Vector2.Distance(currentPos, targetWorldPos) > _weaponRadius;
         }
 
         Vector2 moveDir = frameMove / moveDist;
@@ -53,18 +101,97 @@ public class WeaponMovement : MonoBehaviour
             Vector2 tangent = new Vector2(-hit.normal.y, hit.normal.x);
             Vector2 remainingMove = idealNextPos - safePos;
             Vector2 slideMove = tangent * Vector2.Dot(remainingMove, tangent);
-            _rb.MovePosition(safePos + slideMove);
+            Vector2 nextPos = safePos + slideMove;
+            UpdateDroneVisuals(currentPos, nextPos, isDroneRemote, isDroneCombat);
+            _combat?.ProcessMouseSwing(currentPos, nextPos, Time.fixedDeltaTime);
+            _rb.MovePosition(nextPos);
+            float previousDistance = Vector2.Distance(currentPos, targetWorldPos);
+            float nextDistance = Vector2.Distance(nextPos, targetWorldPos);
+            return nextDistance >= previousDistance - 0.001f;
+        }
+
+        UpdateDroneVisuals(currentPos, idealNextPos, isDroneRemote, isDroneCombat);
+        _combat?.ProcessMouseSwing(currentPos, idealNextPos, Time.fixedDeltaTime);
+        _rb.MovePosition(idealNextPos);
+        return false;
+    }
+
+    private void UpdateDroneVisuals(Vector2 start, Vector2 end, bool isDroneRemote, bool isDroneCombat)
+    {
+        Vector2 movement = end - start;
+        float speed = movement.magnitude / Time.fixedDeltaTime;
+        SetDroneTrailSpeed(speed, isDroneCombat);
+
+        if (!isDroneRemote)
+            return;
+
+        if (!isDroneCombat)
+        {
+            _rb.MoveRotation(0f);
             return;
         }
 
-        _rb.MovePosition(idealNextPos);
+        if (movement.sqrMagnitude <= 0.0001f)
+            return;
+
+        float angle = Mathf.Atan2(movement.y, movement.x) * Mathf.Rad2Deg;
+        _rb.MoveRotation(angle);
     }
 
-    public void HandleHoverMovement(Vector2 targetPos, bool isSpinning, LayerMask wallMask)
+    private void SetDroneTrailSpeed(float speed, bool isDroneCombat)
     {
-        if (IsManagedMovementRunning) return;
+        if (_droneTrail == null)
+            return;
+
+        _droneTrail.emitting = isDroneCombat && speed >= _droneTrailStartSpeed;
+        if (_droneTrail.emitting)
+            _droneTrail.widthMultiplier = Mathf.Lerp(0.18f, 0.45f, Mathf.Clamp01(speed / 40f));
+    }
+
+    private void ConfigureDroneTrail()
+    {
+        _droneTrail = GetComponent<TrailRenderer>();
+        if (_droneTrail == null)
+            _droneTrail = gameObject.AddComponent<TrailRenderer>();
+
+        _droneTrail.time = 0.2f;
+        _droneTrail.minVertexDistance = 0.06f;
+        _droneTrail.alignment = LineAlignment.View;
+        _droneTrail.emitting = false;
+        _droneTrail.colorGradient = new Gradient
+        {
+            colorKeys = new[]
+            {
+                new GradientColorKey(new Color(0.3f, 2.5f, 3f), 0f),
+                new GradientColorKey(new Color(0.05f, 0.5f, 2f), 1f)
+            },
+            alphaKeys = new[]
+            {
+                new GradientAlphaKey(0.9f, 0f),
+                new GradientAlphaKey(0f, 1f)
+            }
+        };
+
+        Shader trailShader = Shader.Find("Sprites/Default");
+        if (trailShader != null)
+        {
+            _droneTrailMaterial = new Material(trailShader);
+            _droneTrail.material = _droneTrailMaterial;
+        }
+
+        SpriteRenderer bladeRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (bladeRenderer != null)
+        {
+            _droneTrail.sortingLayerID = bladeRenderer.sortingLayerID;
+            _droneTrail.sortingOrder = bladeRenderer.sortingOrder - 1;
+        }
+    }
+
+    public bool HandleHoverMovement(Vector2 targetPos, bool isSpinning, LayerMask wallMask)
+    {
+        if (IsManagedMovementRunning) return false;
         float smoothTime = isSpinning ? _spinFollowSmoothTime : _followSmoothTime;
-        FollowMouseHover(targetPos, smoothTime, wallMask);
+        return FollowMouseHover(targetPos, smoothTime, wallMask);
     }
 
     public void ApplySpinRotation(float spinSpeed)
@@ -99,6 +226,8 @@ public class WeaponMovement : MonoBehaviour
     public void StopFollow()
     {
         _currentVelocity = Vector2.zero;
+        if (_droneTrail != null)
+            _droneTrail.emitting = false;
     }
 
     public void ExecuteReturn(Func<Vector2> getTargetPos, float controlRadius, Func<Vector2, Vector2, bool> checkIntercept, Action<bool> onReturnComplete)

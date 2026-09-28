@@ -3,6 +3,16 @@ using UnityEngine;
 
 public class WeaponCombat : MonoBehaviour
 {
+    [Header("Mouse Swing")]
+    [SerializeField] private float _minimumSwingSpeed = 6f;
+    [SerializeField] private float _maximumSwingSpeed = 35f;
+    [SerializeField] private float _minimumSwingDamage = 5f;
+    [SerializeField] private float _maximumSwingDamage = 20f;
+    [SerializeField] private float _minimumSwingGroggyDamage = 8f;
+    [SerializeField] private float _maximumSwingGroggyDamage = 25f;
+    [SerializeField] private float _swingHitCooldown = 0.25f;
+    [SerializeField, Min(0f)] private float _minimumDroneAttackDistance = 1f;
+
     [SerializeField] private LayerMask _enemyLayer;
     [SerializeField] private LayerMask _projectileLayer;
     [SerializeField] private float _knockbackPower = 15f;
@@ -21,6 +31,114 @@ public class WeaponCombat : MonoBehaviour
     [SerializeField, Range(0.05f, 1f)] private float _finisherBlockedForceRatio = 0.2f;
 
     private float _lastTickTime;
+    private readonly Dictionary<IDamageable, float> _lastSwingHitTimes = new Dictionary<IDamageable, float>();
+    private readonly HashSet<EnemyDirectProjectile> _deflectedProjectiles = new HashSet<EnemyDirectProjectile>();
+    private BoxCollider2D _bladeCollider;
+    private WeaponController _controller;
+    private Vector2 _droneAttackSegmentStart;
+
+    private void Awake()
+    {
+        _bladeCollider = GetComponent<BoxCollider2D>();
+        _controller = GetComponent<WeaponController>();
+    }
+
+    public void ResetDroneAttackSegment(Vector2 startPosition)
+    {
+        _droneAttackSegmentStart = startPosition;
+    }
+
+    public void ProcessMouseSwing(Vector2 start, Vector2 end, float deltaTime)
+    {
+        if (_controller == null || _bladeCollider == null || deltaTime <= 0f)
+            return;
+
+        bool isControlled = _controller.CurrentState == WeaponState.Controlled;
+        bool isCombat = _controller.CurrentState == WeaponState.Slashing;
+        bool isCarryingEnemy = _controller.CurrentState == WeaponState.Pinned &&
+                               _controller.Capture != null && _controller.Capture.HasCapturedEnemy;
+        if (_controller.CurrentMode != WeaponMode.Remote)
+            return;
+
+        if (_controller.UseDroneRemoteControl && !isCombat)
+            return;
+
+        if (!_controller.UseDroneRemoteControl && !isControlled && !isCarryingEnemy)
+            return;
+
+        Vector2 movement = end - start;
+        float distance = movement.magnitude;
+        float speed = distance / deltaTime;
+        if (speed < _minimumSwingSpeed || distance <= 0.0001f)
+            return;
+
+        float speedRange = Mathf.Max(0.01f, _maximumSwingSpeed - _minimumSwingSpeed);
+        float speedRatio = Mathf.Clamp01((speed - _minimumSwingSpeed) / speedRange);
+        float damage = Mathf.Lerp(_minimumSwingDamage, _maximumSwingDamage, speedRatio);
+        float groggyDamage = Mathf.Lerp(_minimumSwingGroggyDamage, _maximumSwingGroggyDamage, speedRatio);
+        Vector2 direction = movement / distance;
+        Vector3 scale = transform.lossyScale;
+        Vector2 boxSize = new Vector2(
+            Mathf.Abs(_bladeCollider.size.x * scale.x),
+            Mathf.Abs(_bladeCollider.size.y * scale.y));
+        Vector2 castStart = start + (Vector2)transform.TransformVector(_bladeCollider.offset);
+        int targetLayers = _enemyLayer.value | _projectileLayer.value;
+        float bladeAngle = transform.eulerAngles.z;
+        if (_controller.UseDroneRemoteControl)
+            bladeAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+        RaycastHit2D[] hits = Physics2D.BoxCastAll(
+            castStart, boxSize, bladeAngle, direction, distance, targetLayers);
+
+        _deflectedProjectiles.Clear();
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null)
+                continue;
+
+            if ((_projectileLayer.value & (1 << hitCollider.gameObject.layer)) != 0)
+            {
+                EnemyDirectProjectile projectile = hitCollider.GetComponentInParent<EnemyDirectProjectile>();
+                if (projectile != null && _deflectedProjectiles.Add(projectile))
+                    projectile.Deflect(direction);
+                continue;
+            }
+
+            IDamageable damageable = hitCollider.GetComponentInParent<IDamageable>();
+            if (damageable == null || damageable.Team != TeamType.Enemy || damageable.IsDead)
+                continue;
+
+            EnemyBase enemy = hitCollider.GetComponentInParent<EnemyBase>();
+            if (enemy != null && enemy.IsCaptured)
+                continue;
+
+            if (_controller.UseDroneRemoteControl)
+            {
+                Vector2 hitPosition = start + direction * hits[i].distance;
+                if (Vector2.Distance(_droneAttackSegmentStart, hitPosition) < _minimumDroneAttackDistance)
+                    continue;
+            }
+
+            if (_lastSwingHitTimes.TryGetValue(damageable, out float lastHitTime) &&
+                Time.time < lastHitTime + _swingHitCooldown)
+                continue;
+
+            _lastSwingHitTimes[damageable] = Time.time;
+
+            damageable.TakeDamage(new DamageData
+            {
+                Damage = damage,
+                GroggyDamage = groggyDamage,
+                AttackerTeam = TeamType.Player,
+                HitPoint = hitCollider.ClosestPoint(hits[i].point),
+                KnockbackForce = direction * _knockbackPower,
+                IsPiercing = false,
+                AttackKind = WeaponAttackKind.None
+            });
+
+        }
+    }
 
     public float SlashRadius => _slashRadius;
     public float SpinSpeed => _spinSpeed;

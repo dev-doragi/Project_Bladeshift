@@ -21,6 +21,7 @@ public class EnemyDirectProjectile : MonoBehaviour
     private GameObject _owner;
     private bool _isInitialized;
     private bool _isDespawning;
+    private bool _isDeflected;
     private Coroutine _lifeTimeRoutine;
     private int _playerInvincibleLayer = -1;
 
@@ -50,6 +51,7 @@ public class EnemyDirectProjectile : MonoBehaviour
         _owner = owner;
         _isInitialized = true;
         _isDespawning = false;
+        _isDeflected = false;
 
         transform.position = _startPosition;
         ApplyRotation();
@@ -73,6 +75,7 @@ public class EnemyDirectProjectile : MonoBehaviour
         StopLifeTimeRoutine();
         _isInitialized = false;
         _isDespawning = false;
+        _isDeflected = false;
         _owner = null;
     }
 
@@ -95,6 +98,19 @@ public class EnemyDirectProjectile : MonoBehaviour
         if (_playerInvincibleLayer >= 0 && other.gameObject.layer == _playerInvincibleLayer)
             return;
 
+        if (_isDeflected)
+        {
+            if (TryDamageEnemy(other))
+            {
+                Despawn();
+                return;
+            }
+
+            if (IsInLayerMask(other.gameObject.layer, _obstacleLayer))
+                Despawn();
+            return;
+        }
+
         if (TryDamageTarget(other))
         {
             Despawn();
@@ -103,6 +119,35 @@ public class EnemyDirectProjectile : MonoBehaviour
 
         if (IsInLayerMask(other.gameObject.layer, _obstacleLayer))
             Despawn();
+    }
+
+    public void Deflect(Vector2 direction)
+    {
+        if (!_isInitialized || _isDespawning || _isDeflected || direction.sqrMagnitude <= 0.0001f)
+            return;
+
+        _isDeflected = true;
+        _owner = null;
+        _moveDirection = direction.normalized;
+        ApplyRotation();
+    }
+
+    private bool TryDamageEnemy(Collider2D other)
+    {
+        IDamageable damageable = other.GetComponentInParent<IDamageable>();
+        if (damageable == null || damageable.Team != TeamType.Enemy || damageable.IsDead)
+            return false;
+
+        damageable.TakeDamage(new DamageData
+        {
+            Damage = _damage,
+            AttackerTeam = TeamType.Player,
+            HitPoint = other.ClosestPoint(transform.position),
+            KnockbackForce = (Vector2)_moveDirection * _knockbackPower,
+            IsPiercing = false,
+            AttackKind = WeaponAttackKind.None
+        });
+        return true;
     }
 
     private bool TryDamageTarget(Collider2D other)

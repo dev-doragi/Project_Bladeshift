@@ -138,6 +138,20 @@ public class ThrustPierceModule : WeaponActionModule
 
         EnsureSortingMatchesState();
         TickRemoteControlState();
+        if (Controller.UseDroneRemoteControl && Controller.CurrentMode == WeaponMode.Remote)
+        {
+            WeaponLinkEnergy droneEnergy = Controller.LinkEnergy;
+            if (droneEnergy != null)
+            {
+                if (Controller.CurrentState == WeaponState.Controlled)
+                    droneEnergy.TickDroneHoverRecovery(Time.fixedDeltaTime);
+
+                droneEnergy.ClearFrameSpendFlag();
+            }
+
+            return;
+        }
+
         TickEnergy();
         TickPinnedCaptureDrain();
         TickDockWait();
@@ -171,7 +185,8 @@ public class ThrustPierceModule : WeaponActionModule
             return;
         }
 
-        if (Controller.LinkEnergy != null && !Controller.LinkEnergy.TrySpendEnergy(_thrustFireCost))
+        if (!Controller.UseDroneRemoteControl && Controller.LinkEnergy != null &&
+            !Controller.LinkEnergy.TrySpendEnergy(_thrustFireCost))
         {
             Controller.ChangeState(WeaponState.Controlled);
             return;
@@ -186,6 +201,9 @@ public class ThrustPierceModule : WeaponActionModule
         if (_isAutoReturning || _isDockWaiting) return;
         if (Controller.StateMachine != null && Controller.StateMachine.IsPinnedToWall) return;
 
+        if (Controller.UseDroneRemoteControl && Controller.CurrentState == WeaponState.Grounded)
+            Controller.ChangeState(WeaponState.Controlled);
+
         Vector2 mouseWorldPos = Controller.Sensor.GetAimWorldPosition();
         bool isEnemyPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEnemy;
         bool isEmbeddedPinned = Controller.StateMachine != null && Controller.StateMachine.IsPinnedToEmbeddedEnemy;
@@ -194,7 +212,8 @@ public class ThrustPierceModule : WeaponActionModule
                         Controller.CurrentState == WeaponState.Slashing ||
                         (Controller.CurrentState == WeaponState.Pinned && !isEmbeddedPinned && (isEnemyPinned || hasEnemyCapture));
 
-        if (!_isAiming && canHover)
+        bool isDroneCombat = Controller.UseDroneRemoteControl && Controller.CurrentState == WeaponState.Slashing;
+        if (!_isAiming && canHover && !isDroneCombat)
         {
             Controller.Movement.HandleHoverMovement(
                 Controller.Sensor.GetReachableAimTargetPosition(Controller.WallAndEnvironmentLayer),
@@ -204,10 +223,11 @@ public class ThrustPierceModule : WeaponActionModule
 
         if (Controller.CurrentState == WeaponState.Grounded)
         {
-            if (Controller.Sensor.ShouldAcquireRemoteControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
+            if (Controller.UseDroneRemoteControl ||
+                Controller.Sensor.ShouldAcquireRemoteControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
                 Controller.ChangeState(WeaponState.Controlled);
         }
-        else if (Controller.CurrentState == WeaponState.Controlled && !_isAiming)
+        else if (!Controller.UseDroneRemoteControl && Controller.CurrentState == WeaponState.Controlled && !_isAiming)
         {
             if (Controller.Sensor.ShouldReleaseRemoteControl(Controller.transform.position, mouseWorldPos, Controller.WallAndEnvironmentLayer))
                 Controller.ChangeState(WeaponState.Grounded);
@@ -579,6 +599,13 @@ public class ThrustPierceModule : WeaponActionModule
         Controller.StateMachine?.ClearPinSource();
         Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
 
+        if (Controller.UseDroneRemoteControl)
+        {
+            Controller.View?.RestoreDefaultSorting();
+            Controller.ChangeState(WeaponState.Controlled);
+            return;
+        }
+
         bool shouldSnapCursor = _lastPinShotWasGamepad;
         _snapCursorOnCurrentReturnFlow = shouldSnapCursor;
         if (shouldSnapCursor)
@@ -657,6 +684,14 @@ public class ThrustPierceModule : WeaponActionModule
     private void StartRangeExceededReturnToDock()
     {
         Controller.StateMachine?.ClearPinSource();
+        if (Controller.UseDroneRemoteControl)
+        {
+            Controller.Capture?.UnbindAll(forcePhysicsRestore: true);
+            Controller.View?.RestoreDefaultSorting();
+            Controller.ChangeState(WeaponState.Controlled);
+            return;
+        }
+
         _snapCursorOnCurrentReturnFlow = _lastPinShotWasGamepad;
         if (_lastPinShotWasGamepad)
         {

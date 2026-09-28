@@ -103,6 +103,13 @@ public sealed class WeaponActionService
         WeaponActionModule secondaryModule = GetSecondaryModule();
         if (command.IsStarted)
         {
+            if (_controller != null && _controller.UseDroneRemoteControl &&
+                _controller.CurrentMode == WeaponMode.Remote)
+            {
+                WeaponActionModule primaryModule = GetPrimaryModule();
+                primaryModule?.OnRelease();
+            }
+
             WeaponActionInputContext inputContext = command.ToInputContext();
             secondaryModule?.SetActiveInputContext(inputContext);
             if (secondaryModule != null && secondaryModule.TryHandlePinnedSecondary())

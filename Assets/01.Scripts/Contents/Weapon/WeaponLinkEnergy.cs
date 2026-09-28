@@ -154,6 +154,36 @@ public class WeaponLinkEnergy : MonoBehaviour
         }
     }
 
+    public void TickDroneHoverRecovery(float deltaTime)
+    {
+        float previousEnergy = _currentEnergy;
+        _currentEnergy = Mathf.Min(_maxEnergy, _currentEnergy + _recoverPerSecond * Mathf.Max(0f, deltaTime));
+        _spentEnergyThisFrame = false;
+        DistanceRatio = 0f;
+        IsRecovering = _currentEnergy < _maxEnergy && _recoverPerSecond > 0f;
+        IsDraining = false;
+
+        if (IsControlLocked && _currentEnergy >= _maxEnergy * _reactivationEnergyRatio && !IsEmpty)
+        {
+            IsControlLocked = false;
+            _isOffline = false;
+            ExitDepletedRechargeMode();
+        }
+
+        if (!Mathf.Approximately(previousEnergy, _currentEnergy))
+        {
+            EventBus.Instance?.Publish(new LinkEnergyChangedEvent
+            {
+                Current = _currentEnergy,
+                Max = _maxEnergy,
+                Normalized = Normalized,
+                DistanceRatio = DistanceRatio,
+                IsRecovering = IsRecovering,
+                IsDraining = IsDraining
+            });
+        }
+    }
+
     public bool IsInsideRecoverRadius(float distance, float controlRadius)
     {
         float safeControlRadius = Mathf.Max(Epsilon, controlRadius);

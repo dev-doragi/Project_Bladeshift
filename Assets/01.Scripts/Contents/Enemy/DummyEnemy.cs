@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class DummyEnemy : EnemyBase
 {
+    [SerializeField, Range(0.01f, 1f)] private float _groggyHealthRatio = 0.3f;
     private bool _isDowned;
     private int _originalLayer;
 
@@ -36,11 +37,23 @@ public class DummyEnemy : EnemyBase
         return true;
     }
 
+    public override GroggyRightClickActionType GroggyRightClickAction =>
+        Data != null ? base.GroggyRightClickAction : GroggyRightClickActionType.Capture;
+
+    public override bool TryHandleGroggyPierceInteraction()
+    {
+        if (Data != null)
+            return base.TryHandleGroggyPierceInteraction();
+
+        return IsGroggy && !IsDead;
+    }
+
     public override void TakeDamage(DamageData damageData)
     {
-        if (_isDowned) return;
+        if (_isDowned || IsDamageBlocked) return;
 
-        _currentHealth -= damageData.Damage;
+        _currentHealth = Mathf.Max(1f, _currentHealth - damageData.Damage);
+        _healthState.SetCurrent(_currentHealth);
 
         if (_rb != null && damageData.KnockbackForce.sqrMagnitude > 0.0001f)
         {
@@ -56,14 +69,15 @@ public class DummyEnemy : EnemyBase
         if (_blinkRoutine == null && gameObject.activeInHierarchy)
             _blinkRoutine = StartCoroutine(BlinkRoutine());
 
-        if (_currentHealth <= 0f)
-            Die(damageData.KnockbackForce);
+        if (!_isGroggy && _currentHealth <= _maxHealth * _groggyHealthRatio)
+            ForceEnterGroggy(damageData.KnockbackForce);
     }
 
     protected override void Die(Vector2 knockbackForce)
     {
         if (_isDowned) return;
 
+        StopGroggyRoutines();
         _isDowned = true;
         _hasHitWallAfterDeath = false;
 
@@ -155,6 +169,7 @@ public class DummyEnemy : EnemyBase
         if (_originalLayer != -1) gameObject.layer = _originalLayer;
 
         _currentHealth = _maxHealth;
+        _healthState.SetCurrent(_currentHealth);
         _isDowned = false;
     }
 }
