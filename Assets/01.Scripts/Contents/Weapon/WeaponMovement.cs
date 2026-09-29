@@ -89,7 +89,7 @@ public class WeaponMovement : MonoBehaviour
             if (isDroneRemote && !isDroneCombat)
                 _rb.MoveRotation(0f);
             _rb.MovePosition(idealNextPos);
-            return Vector2.Distance(currentPos, targetWorldPos) > _weaponRadius;
+            return false;
         }
 
         Vector2 moveDir = frameMove / moveDist;

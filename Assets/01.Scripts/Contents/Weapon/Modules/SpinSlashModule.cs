@@ -70,12 +70,17 @@ public class SpinSlashModule : WeaponActionModule
                 Controller.Combat.ResetDroneAttackSegment(weaponPosition);
             }
 
-            Controller.Movement.HandleHoverMovement(
+            bool isBlocked = Controller.Movement.HandleHoverMovement(
                 _catchUpTarget, true, Controller.WallAndEnvironmentLayer);
 
-            if (Vector2.Distance(Controller.transform.position, _catchUpTarget) <= weaponRadius)
+            bool reachedTarget = Vector2.Distance(Controller.transform.position, _catchUpTarget) <= weaponRadius;
+            bool blockedWithNewPointer = isBlocked &&
+                                         Vector2.Distance(pointerTarget, _catchUpTarget) > weaponRadius;
+            if (reachedTarget || blockedWithNewPointer)
             {
                 _catchUpTarget = pointerTarget;
+                if (blockedWithNewPointer)
+                    Controller.Movement.StopFollow();
                 Controller.Combat.ResetDroneAttackSegment(Controller.transform.position);
             }
             return;

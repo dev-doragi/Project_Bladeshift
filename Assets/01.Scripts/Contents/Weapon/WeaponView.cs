@@ -45,6 +45,7 @@ public class WeaponView : MonoBehaviour
     private WeaponModeController _modeController;
     private WeaponLinkEnergy _linkEnergy;
     private WeaponController _controller;
+    private ThrustPierceModule _thrustPierceModule;
     private float _controlRadius;
     private float _slashRadius;
 
@@ -58,6 +59,7 @@ public class WeaponView : MonoBehaviour
     private void Awake()
     {
         _controller = GetComponent<WeaponController>();
+        _thrustPierceModule = GetComponent<ThrustPierceModule>();
         if (_weaponRenderer == null)
             _weaponRenderer = GetComponentInChildren<SpriteRenderer>();
 
@@ -177,7 +179,8 @@ public class WeaponView : MonoBehaviour
             _modeController != null && _modeController.CurrentMode == WeaponMode.Remote)
         {
             if (_connectionLine == null || _stateMachine == null ||
-                _stateMachine.CurrentState != WeaponState.Controlled || _controller.Sensor == null)
+                _stateMachine.CurrentState != WeaponState.Controlled || _controller.Sensor == null ||
+                (_thrustPierceModule != null && _thrustPierceModule.IsAiming))
             {
                 SetConnectionLineVisible(false);
                 return;

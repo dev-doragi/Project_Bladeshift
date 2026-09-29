@@ -2,7 +2,9 @@ using UnityEngine;
 
 public static class WeaponAimConstraintSolver
 {
-    private const float ReachabilityLinecastMargin = 0.2f;
+    private const float WallSkinWidth = 0.02f;
+    private const float MinimumMoveDistance = 0.0001f;
+    private const int MaxSlideIterations = 3;
 
     public static Vector2 SolveReachablePosition(
         Vector2 origin,
@@ -13,53 +15,64 @@ public static class WeaponAimConstraintSolver
         bool hasLastReachablePosition)
     {
         Vector2 desired = ClampToControlRadius(origin, desiredWorldPosition, controlRadius);
-
-        if (IsReachable(origin, desired, wallMask))
+        Vector2 start = origin;
+        if (hasLastReachablePosition)
         {
-            lastReachablePosition = desired;
-            return desired;
+            // Player movement can invalidate the cached position. Recover it before sliding.
+            Vector2 previous = ClampToControlRadius(origin, lastReachablePosition, controlRadius);
+            start = ClipAtWall(origin, previous, wallMask);
         }
 
-        if (!hasLastReachablePosition)
+        Vector2 result = MoveAndSlide(start, desired, wallMask);
+        result = ClampToControlRadius(origin, result, controlRadius);
+        // A clear cursor movement path does not guarantee visibility from the player.
+        result = ClipAtWall(origin, result, wallMask);
+        lastReachablePosition = result;
+        return result;
+    }
+
+    private static Vector2 MoveAndSlide(Vector2 start, Vector2 target, LayerMask wallMask)
+    {
+        Vector2 position = start;
+        Vector2 remainingMove = target - start;
+
+        for (int iteration = 0; iteration < MaxSlideIterations; iteration++)
         {
-            Vector2 fallback = SolveBlockedFallback(origin, desired, controlRadius, wallMask);
-            lastReachablePosition = fallback;
-            return fallback;
+            float distance = remainingMove.magnitude;
+            if (distance <= MinimumMoveDistance)
+                break;
+
+            Vector2 direction = remainingMove / distance;
+            if (!TryGetBlockingHit(position, position + remainingMove, wallMask, out RaycastHit2D hit))
+            {
+                position += remainingMove;
+                break;
+            }
+
+            float travelDistance = Mathf.Max(0f, hit.distance - WallSkinWidth);
+            Vector2 movementToWall = direction * travelDistance;
+            position += movementToWall;
+            remainingMove -= movementToWall;
+
+            // Cast the tangential remainder again so sliding cannot skip a second wall.
+            float normalMovement = Vector2.Dot(remainingMove, hit.normal);
+            if (normalMovement < 0f)
+                remainingMove -= hit.normal * normalMovement;
+            else
+                break;
         }
 
-        Vector2 last = ClampToControlRadius(origin, lastReachablePosition, controlRadius);
+        return position;
+    }
 
-        Vector2 xOnly = new Vector2(desired.x, last.y);
-        xOnly = ClampToControlRadius(origin, xOnly, controlRadius);
+    private static Vector2 ClipAtWall(Vector2 start, Vector2 target, LayerMask wallMask)
+    {
+        if (!TryGetBlockingHit(start, target, wallMask, out RaycastHit2D hit))
+            return target;
 
-        Vector2 yOnly = new Vector2(last.x, desired.y);
-        yOnly = ClampToControlRadius(origin, yOnly, controlRadius);
-
-        bool canMoveX = IsReachable(origin, xOnly, wallMask);
-        bool canMoveY = IsReachable(origin, yOnly, wallMask);
-
-        if (canMoveX && canMoveY)
-        {
-            Vector2 delta = desired - last;
-            Vector2 result = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y) ? xOnly : yOnly;
-            lastReachablePosition = result;
-            return result;
-        }
-
-        if (canMoveX)
-        {
-            lastReachablePosition = xOnly;
-            return xOnly;
-        }
-
-        if (canMoveY)
-        {
-            lastReachablePosition = yOnly;
-            return yOnly;
-        }
-
-        lastReachablePosition = last;
-        return last;
+        Vector2 direction = (target - start).normalized;
+        float travelDistance = Mathf.Max(0f, hit.distance - WallSkinWidth);
+        return start + direction * travelDistance;
     }
 
     private static Vector2 ClampToControlRadius(Vector2 origin, Vector2 position, float controlRadius)
@@ -69,116 +82,42 @@ public static class WeaponAimConstraintSolver
             return origin;
 
         Vector2 offset = position - origin;
-        float distance = offset.magnitude;
-
-        if (distance <= radius)
+        if (offset.sqrMagnitude <= radius * radius)
             return position;
 
         return origin + offset.normalized * radius;
     }
 
-    private static bool IsReachable(Vector2 origin, Vector2 target, LayerMask wallMask)
+    private static bool TryGetBlockingHit(
+        Vector2 start,
+        Vector2 target,
+        LayerMask wallMask,
+        out RaycastHit2D blockingHit)
     {
-        if (wallMask.value == 0)
-            return true;
-
-        Vector2 direction = target - origin;
-        float distance = direction.magnitude;
-
-        if (distance <= 0.0001f)
-            return true;
-
-        float checkDistance = Mathf.Max(0f, distance - ReachabilityLinecastMargin);
-        if (checkDistance <= 0.0001f)
-            return true;
-
-        RaycastHit2D[] hits = Physics2D.RaycastAll(
-            origin,
-            direction.normalized,
-            checkDistance,
-            wallMask
-        );
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider2D col = hits[i].collider;
-            if (col == null)
-                continue;
-
-            if (IsIgnoredLineOfSightCollider(col))
-                continue;
-
+        blockingHit = default;
+        Vector2 movement = target - start;
+        float distance = movement.magnitude;
+        if (wallMask.value == 0 || distance <= MinimumMoveDistance)
             return false;
-        }
 
-        return true;
-    }
-
-    private static Vector2 SolveBlockedFallback(
-        Vector2 origin,
-        Vector2 desired,
-        float controlRadius,
-        LayerMask wallMask)
-    {
-        Vector2 direction = desired - origin;
-        float distance = direction.magnitude;
-
-        if (distance <= 0.0001f)
-            return origin;
-
-        Vector2 clamped = ClampToControlRadius(origin, desired, controlRadius);
-
-        if (wallMask.value == 0)
-            return clamped;
-
-        Vector2 clampedDirection = clamped - origin;
-        float clampedDistance = clampedDirection.magnitude;
-
-        if (clampedDistance <= 0.0001f)
-            return origin;
-
-        float checkDistance = Mathf.Max(0f, clampedDistance - ReachabilityLinecastMargin);
-        if (checkDistance <= 0.0001f)
-            return clamped;
-
-        RaycastHit2D[] hits = Physics2D.RaycastAll(
-            origin,
-            clampedDirection.normalized,
-            checkDistance,
-            wallMask
-        );
-
-        RaycastHit2D? nearestBlockingHit = null;
+        RaycastHit2D[] hits = Physics2D.RaycastAll(start, movement / distance, distance, wallMask);
+        float nearestDistance = float.PositiveInfinity;
+        bool foundHit = false;
         for (int i = 0; i < hits.Length; i++)
         {
-            Collider2D col = hits[i].collider;
-            if (col == null)
+            Collider2D collider = hits[i].collider;
+            if (collider == null || collider.isTrigger)
+                continue;
+            if (collider.GetComponentInParent<PlatformEffector2D>() != null)
+                continue;
+            if (hits[i].distance >= nearestDistance)
                 continue;
 
-            if (IsIgnoredLineOfSightCollider(col))
-                continue;
-
-            if (nearestBlockingHit == null || hits[i].distance < nearestBlockingHit.Value.distance)
-                nearestBlockingHit = hits[i];
+            blockingHit = hits[i];
+            nearestDistance = hits[i].distance;
+            foundHit = true;
         }
 
-        if (nearestBlockingHit == null)
-            return clamped;
-
-        return nearestBlockingHit.Value.point;
-    }
-
-    private static bool IsIgnoredLineOfSightCollider(Collider2D col)
-    {
-        if (col == null)
-            return true;
-
-        if (col.isTrigger)
-            return true;
-
-        if (col.GetComponentInParent<PlatformEffector2D>() != null)
-            return true;
-
-        return false;
+        return foundHit;
     }
 }

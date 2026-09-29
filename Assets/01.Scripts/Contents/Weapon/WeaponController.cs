@@ -209,8 +209,8 @@ public class WeaponController : MonoBehaviour
         _meleeHoverFollow.Initialize(_playerController, _rb, _weaponCollider);
         _modeController.Initialize(_stateMachine);
         _sensor.Initialize(_playerTransform, _mainCamera, ControlRadius);
+        _aimCursor?.SetWallMask(WallAndEnvironmentLayer);
         _aimCursor?.Initialize(_playerTransform, _mainCamera, ControlRadius);
-        _aimCursor?.SetWallMask(_wallAndEnvironmentLayer);
         _aimCursor?.SetFallbackGamepadStartPosition(transform.position);
         _sensor.SetAimCursor(_aimCursor);
         _mouseWorldProxyFollower?.SetAimCursor(_aimCursor);
@@ -258,6 +258,7 @@ public class WeaponController : MonoBehaviour
         if (!_isInitialized && !TryInitializeSubsystems())
             return;
 
+        _aimCursor?.SetWallMask(WallAndEnvironmentLayer);
         _aimCursor?.Tick();
         _aimPresentation?.RefreshVisibility();
     }

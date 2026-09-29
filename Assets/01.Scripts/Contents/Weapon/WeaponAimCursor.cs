@@ -91,6 +91,7 @@ public class WeaponAimCursor : MonoBehaviour
 
     public void ForceSyncToMousePositionOrFallback()
     {
+        ResetAimConstraintCache();
         if (_camera == null)
             _camera = Camera.main;
 

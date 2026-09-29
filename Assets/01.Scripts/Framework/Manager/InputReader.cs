@@ -106,6 +106,7 @@ public class InputReader : Singleton<InputReader>
 
     private void OnDisable()
     {
+        Cursor.lockState = CursorLockMode.None;
         UnbindEvents();
 
         if (EventBus.Instance != null)
@@ -121,10 +122,37 @@ public class InputReader : Singleton<InputReader>
 
     private void Update()
     {
+        RefreshCursorConfinement();
         if (EventSystem.current != null)
         {
             IsPointerOverUI = EventSystem.current.IsPointerOverGameObject();
         }
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            return;
+        }
+
+        RefreshCursorConfinement();
+    }
+
+    private void RefreshCursorConfinement()
+    {
+        bool isPlaying = GameManager.Instance == null ||
+                         GameManager.Instance.CurrentState == GameState.Playing;
+        bool shouldConfine = isActiveAndEnabled && Application.isFocused &&
+                             isPlaying && !_isInputBlocked &&
+                             _playerMap != null && _playerMap.enabled;
+        CursorLockMode desiredMode = CursorLockMode.None;
+        if (shouldConfine)
+            desiredMode = CursorLockMode.Confined;
+
+        if (Cursor.lockState != desiredMode)
+            Cursor.lockState = desiredMode;
     }
 
     private void BindEvents()
